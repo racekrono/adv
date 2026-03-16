@@ -5,7 +5,7 @@ const ASSETS = [
   './manifest.json',
   'https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js',
-  'https://raw.githubusercontent.com/racekrono/adv/refs/heads/main/Logo.jpg'
+  'https://raw.githubusercontent.com/racekrono/adv/refs/heads/main/Logo.png'
 ];
 
 // Instalação e Cache
