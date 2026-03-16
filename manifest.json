@@ -8,13 +8,13 @@
   "orientation": "portrait",
   "icons": [
     {
-  "src": "https://raw.githubusercontent.com/racekrono/adv/refs/heads/main/Logo.jpg",
+  "src": "https://raw.githubusercontent.com/racekrono/adv/refs/heads/main/Logo.png",
   "sizes": "512x512",
   "type": "image/png",
   "purpose": "any" 
 },
 {
-  "src": "https://raw.githubusercontent.com/racekrono/adv/refs/heads/main/Logo.jpg",
+  "src": "https://raw.githubusercontent.com/racekrono/adv/refs/heads/main/Logo.png",
   "sizes": "512x512",
   "type": "image/png",
   "purpose": "maskable"
