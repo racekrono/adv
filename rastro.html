@@ -139,8 +139,8 @@
                         }
                     });
 
-                    if(tempoExcesso > 30000) {
-                        let pts = (Math.floor((tempoExcesso - 10000) / 30000) + 1) * 500;
+                    if(tempoExcesso > 10000) {
+                        let pts = (Math.floor((tempoExcesso - 10000) / 10000) + 1) * 500;
                         penTotal += pts;
                         logs += `⚠️ Radar: Excesso (${Math.round(tempoExcesso/1000)}s) -${pts} pts<br>`;
                     }
