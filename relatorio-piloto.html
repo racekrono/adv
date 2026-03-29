@@ -6,44 +6,133 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+    
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
     <style>
-        body { font-family: sans-serif; background: #1a202c; color: white; margin: 0; display: flex; flex-direction: column; height: 100vh; }
-        header { background: #111; padding: 15px; border-bottom: 3px solid #e67e22; text-align: center; }
-        .controls { background: #2d3748; padding: 10px; display: flex; justify-content: center; gap: 10px; }
-        #map { flex-grow: 1; width: 100%; background: #222; }
-        .info-box { position: absolute; bottom: 20px; right: 20px; background: rgba(0,0,0,0.8); padding: 15px; border-radius: 8px; z-index: 1000; max-width: 300px; border: 1px solid #444; }
-        select, button { padding: 10px; border-radius: 4px; border: none; }
-        button { background: #e67e22; color: white; font-weight: bold; cursor: pointer; }
+        body { font-family: sans-serif; background: #1a202c; color: white; margin: 0; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
+        .header-bar { background: #111; padding: 15px; border-bottom: 3px solid #e67e22; display: flex; gap: 10px; align-items: center; justify-content: center; z-index: 1000; }
+        select, button { padding: 10px; border-radius: 4px; border: none; font-size: 14px; }
+        button { background: #e67e22; color: white; cursor: pointer; font-weight: bold; }
+        #map { flex-grow: 1; z-index: 1; }
+        .painel-info { position: absolute; bottom: 20px; left: 20px; background: rgba(0,0,0,0.85); padding: 15px; border-radius: 8px; z-index: 1000; border: 1px solid #e67e22; max-width: 280px; }
     </style>
 </head>
 <body>
 
-<header>
-    <h2 id="titulo">RELATÓRIO DE DESEMPENHO</h2>
-</header>
-
-<div class="controls">
-    <select id="carSelect"><option value="">Carregando...</option></select>
-    <button onclick="gerar()">ANALISAR</button>
+<div class="header-bar">
+    <select id="carSelect"><option value="">Aguardando banco...</option></select>
+    <button onclick="gerarRelatorio()">VER MEU DESEMPENHO</button>
 </div>
 
 <div id="map"></div>
 
-<div class="info-box" id="detalhes">
-    <strong>Instruções:</strong><br>
-    Selecione seu número para ver o rastro e onde ocorreram as penalidades de radar.
+<div class="painel-info" id="painel">
+    <strong style="color:#e67e22">INSTRUÇÕES:</strong><br>
+    Escolha o número do seu carro acima para carregar sua telemetria e conferir radares.
 </div>
 
 <script>
-    // Configuração EXATA do seu sistema
+    // 1. INICIALIZAÇÃO IMEDIATA
     const firebaseConfig = {
         apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
         databaseURL: "https://cronometro-rally-default-rtdb.firebaseio.com"
     };
-    firebase.initializeApp(firebaseConfig);
+
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
     const db = firebase.database();
 
+    // 2. CONFIGURAÇÃO DO MAPA
     const map = L.map('map').setView([-12.26, -38.96], 13);
-    L.tileLayer('
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}').addTo(map);
+    const camadaRastro = L.featureGroup().addTo(map);
+
+    // 3. CARREGAR LISTA DE CARROS (USANDO ON VALUE)
+    const select = document.getElementById('carSelect');
+    
+    db.ref('competidores').on('value', snap => {
+        console.log("Dados recebidos do Firebase");
+        if (!snap.exists()) {
+            select.innerHTML = '<option>Nenhum carro no banco</option>';
+            return;
+        }
+        
+        let html = '<option value="">Selecione seu Carro</option>';
+        snap.forEach(c => {
+            html += `<option value="${c.key}">Carro ${c.key} - ${c.val().nome}</option>`;
+        });
+        select.innerHTML = html;
+    }, err => {
+        console.error("Erro no Firebase:", err);
+        alert("Erro ao conectar: " + err.message);
+    });
+
+    // 4. FUNÇÃO DE GERAÇÃO
+    async function gerarRelatorio() {
+        const id = document.getElementById('carSelect').value;
+        if (!id) return alert("Selecione um carro!");
+
+        document.getElementById('painel').innerHTML = "Carregando trilha...";
+        camadaRastro.clearLayers();
+
+        try {
+            // Pega rastro, competidor e percurso
+            const [sComp, sRastro, sPerc] = await Promise.all([
+                db.ref(`competidores/${id}`).once('value'),
+                db.ref(`rastros/${id}`).once('value'),
+                db.ref('configuracoes/percurso').once('value')
+            ]);
+
+            const piloto = sComp.val();
+            const rastro = Object.values(sRastro.val() || {}).sort((a,b) => a.ts - b.ts);
+            const percurso = sPerc.val();
+
+            if (rastro.length === 0) {
+                document.getElementById('painel').innerHTML = "❌ Sem dados de GPS para este carro.";
+                return;
+            }
+
+            // Desenhar Rastro
+            const latlngs = rastro.map(p => [p.lat, p.lng]);
+            L.polyline(latlngs, {color: 'yellow', weight: 3}).addTo(camadaRastro);
+
+            // Analisar Radares
+            let alertas = 0;
+            if (percurso && percurso.features) {
+                percurso.features.forEach(f => {
+                    if (f.geometry.type.includes('Polygon')) {
+                        const vMax = f.properties.velocidade || 60;
+                        L.geoJSON(f, {style: {color: '#3182ce', fillOpacity: 0.1}}).addTo(camadaRastro);
+
+                        rastro.forEach(p => {
+                            const ponto = turf.point([p.lng, p.lat]);
+                            if (p.vel > (vMax * 1.1) && turf.booleanPointInPolygon(ponto, f)) {
+                                L.circleMarker([p.lat, p.lng], {radius: 4, color: 'red', fillColor: '#f00', fillOpacity: 1})
+                                 .addTo(camadaRastro).bindPopup(`Excesso: ${p.vel}km/h (Limite ${vMax})`);
+                                alertas++;
+                            }
+                        });
+                    }
+                });
+            }
+
+            map.fitBounds(camadaRastro.getBounds());
+            
+            document.getElementById('painel').innerHTML = `
+                <b style="color:#e67e22">${piloto.nome}</b><br>
+                Categoria: ${piloto.categoria}<br>
+                Total: ${piloto.pontos || 0} pontos<br><hr>
+                ${alertas > 0 ? `<span style="color:#fc8181">⚠️ ${alertas} pontos de infração detectados.</span>` : '<span style="color:#48bb78">✅ Nenhuma infração de radar.</span>'}
+            `;
+
+        } catch (e) {
+            console.error(e);
+            document.getElementById('painel').innerHTML = "Erro ao processar dados.";
+        }
+    }
+</script>
+</body>
+</html>
