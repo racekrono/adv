@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Relatório Rally</title>
+    <title>Relatório Final - Rally</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
@@ -12,20 +12,18 @@
     <style>
         body { font-family: sans-serif; background: #121212; color: white; margin: 0; padding: 10px; }
         .container { max-width: 500px; margin: auto; }
+        .card { background: #1e1e1e; padding: 15px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #333; }
         
-        /* Caixa de Seleção - Forçada para aparecer */
-        .selecao-carro { 
-            background: #1e1e1e; 
-            padding: 15px; 
-            border-radius: 8px; 
-            border: 2px solid #e67e22; 
-            margin-bottom: 20px;
-        }
-        select, button { 
-            width: 100%; padding: 12px; margin: 5px 0; 
-            border-radius: 5px; border: none; font-size: 16px; 
-        }
-        select { background: #000; color: white; border: 1px solid #444; }
-        .btn-principal { background: #e67e22; color: white; font-weight: bold; cursor: pointer; }
+        /* Seletor Forçado */
+        .box-busca { background: #2d3748; padding: 15px; border-radius: 8px; border: 2px solid #e67e22; margin-bottom: 15px; }
+        input, select, button { width: 100%; padding: 12px; margin: 5px 0; border-radius: 6px; border: 1px solid #444; font-size: 16px; box-sizing: border-box; }
+        input, select { background: #000; color: white; }
+        .btn-acao { background: #e67e22; color: white; border: none; font-weight: bold; cursor: pointer; }
         
-        .card { background: #1e1e1e; padding: 15
+        #map { height: 250px; background: #222; border-radius: 8px; margin: 10px 0; border: 1px solid #444; }
+        .resumo { display: flex; justify-content: space-between; gap: 8px; }
+        .box-info { flex: 1; background: #252525; padding: 10px; border-radius: 5px; text-align: center; border-bottom: 3px solid #e67e22; }
+        .box-info b { display: block; font-size: 1.1rem; }
+        .box-info small { color: #888; font-size: 10px; text-transform: uppercase; }
+        
+        table { width: 100%; border-collapse: collapse
