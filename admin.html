@@ -302,7 +302,7 @@
                         }
                     }
                     if(tempoExcessoMs > 30000) {
-                        pen += (Math.floor((tempoExcessoMs - 10000) / 30000) + 1) * 500;
+                        pen += (Math.floor((tempoExcessoMs - 10000) / 10000) + 1) * 500;
                     }
                 } else if(feat.properties?.type === 'circle') {
                     const centro = feat.geometry.coordinates;
