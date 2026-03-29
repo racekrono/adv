@@ -19,113 +19,13 @@
         .header { text-align: center; margin-bottom: 20px; border-bottom: 1px solid var(--primary); padding-bottom: 15px; }
         .header h2 { color: var(--primary); margin: 0; }
         
+        /* Seletor de Carro de Emergência */
+        .selector-box { background: var(--card); padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 20px; border: 2px solid var(--primary); }
+        select { padding: 12px; border-radius: 6px; background: #000; color: white; border: 1px solid #444; width: 100%; font-size: 16px; margin-bottom: 10px; }
+
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
         .stat-card { background: var(--card); padding: 12px; border-radius: 10px; text-align: center; border: 1px solid #333; }
         .stat-card small { color: #888; display: block; font-size: 11px; margin-bottom: 4px; }
         .stat-card span { font-weight: bold; font-size: 1.1rem; }
 
-        #map { height: 300px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; z-index: 1; background: #222; }
-        
-        .penalty-list { background: var(--card); border-radius: 12px; padding: 15px; border: 1px solid #333; }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        th { text-align: left; color: #666; border-bottom: 1px solid #333; padding-bottom: 8px; }
-        td { padding: 10px 0; border-bottom: 1px solid #2d2d2d; }
-        .text-red { color: #f56565; font-weight: bold; }
-
-        .actions-footer { position: fixed; bottom: 0; left: 0; right: 0; padding: 15px; background: rgba(18, 18, 18, 0.95); display: flex; gap: 10px; border-top: 1px solid #333; z-index: 1000; }
-        .btn { flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; color: white; }
-        .btn-pdf { background: #c0392b; }
-        .btn-voltar { background: #333; }
-
-        /* Estilo para a busca manual caso não encontre ID */
-        .busca-manual { background: var(--card); padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 20px; border: 1px solid var(--primary); }
-        .busca-manual input { padding: 10px; border-radius: 5px; border: 1px solid #444; background: #000; color: white; width: 80px; text-align: center; font-size: 18px; margin-right: 10px; }
-        .busca-manual button { padding: 10px 20px; border-radius: 5px; background: var(--primary); border: none; color: white; font-weight: bold; cursor: pointer; }
-    </style>
-</head>
-<body>
-
-<div class="container" id="relatorio-conteudo">
-    <div id="boxBusca" class="busca-manual" style="display:none;">
-        <p style="margin-top:0">Número do carro não detectado:</p>
-        <input type="number" id="inputCarro" placeholder="Nº">
-        <button onclick="definirCarroManual()">CARREGAR</button>
-    </div>
-
-    <div class="header">
-        <h2 id="nomePiloto">Relatório de Prova</h2>
-        <p id="infoCarro">Selecione um carro para começar</p>
-    </div>
-
-    <div class="stats-grid">
-        <div class="stat-card">
-            <small>TEMPO TOTAL</small>
-            <span id="tempoTotal">--:--:--</span>
-        </div>
-        <div class="stat-card">
-            <small>FOTOS (BÔNUS)</small>
-            <span id="pontosFotos">0</span>
-        </div>
-        <div class="stat-card" style="grid-column: span 2; border-color: #f56565;">
-            <small>PENALIZAÇÃO TOTAL</small>
-            <span id="totalPenalidade" class="text-red">0 pontos</span>
-        </div>
-    </div>
-
-    <div id="map"></div>
-
-    <div class="penalty-list">
-        <h3 style="margin-top:0">Detalhamento de Infrações</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>Hora</th>
-                    <th>Radar</th>
-                    <th>Velocidade</th>
-                    <th>Pontos</th>
-                </tr>
-            </thead>
-            <tbody id="listaPenalidades"></tbody>
-        </table>
-    </div>
-</div>
-
-<div class="actions-footer">
-    <button class="btn btn-voltar" onclick="location.href='index.html'">VOLTAR</button>
-    <button class="btn btn-pdf" id="btnGerarPDF" onclick="gerarPDF()">GERAR PDF</button>
-</div>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-<script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
-        databaseURL: "https://cronometro-rally-default-rtdb.firebaseio.com",
-        projectId: "cronometro-rally"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    let carId = localStorage.getItem('rally_carro_ativo');
-    let map = L.map('map', { zoomControl: false }).setView([0,0], 13);
-    
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-    function definirCarroManual() {
-        const input = document.getElementById('inputCarro').value;
-        if(input) {
-            carId = input;
-            document.getElementById('boxBusca').style.display = 'none';
-            carregarRelatorio();
-        }
-    }
-
-    async function carregarRelatorio() {
-        if (!carId) {
-            document.getElementById('boxBusca').style.display = 'block';
-            return;
-        }
-
-        try {
-            const [compSnap, radaresSnap, rastroSnap] = await Promise.all([
-                db.ref(
+        #map { height: 300px; border-radius: 12px; margin-
