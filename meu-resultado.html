@@ -3,41 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Resultado Oficial - Rally</title>
-    
+    <title>Meu Resultado - Rally Tracker</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #000; color: #fff; margin: 0; padding: 10px; }
-        .container { max-width: 450px; margin: auto; }
+        :root { --primary: #e67e22; --bg: #1a202c; --card: #2d3748; }
+        body { font-family: sans-serif; background: var(--bg); color: white; margin: 0; padding: 15px; }
+        .container { max-width: 800px; margin: auto; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        .stat-card { background: var(--card); padding: 15px; border-radius: 10px; text-align: center; border-bottom: 3px solid var(--primary); }
+        .stat-card small { color: #a0aec0; display: block; margin-bottom: 5px; text-transform: uppercase; font-size: 10px; }
+        .stat-card span { font-size: 1.2rem; font-weight: bold; }
         
-        /* Cabeçalho de Busca */
-        .search-header { background: #1a1a1a; padding: 15px; border-radius: 12px; border: 1px solid #e67e22; margin-bottom: 15px; }
-        .search-header h3 { margin: 0 0 10px 0; font-size: 14px; color: #e67e22; text-align: center; }
-        .input-row { display: flex; gap: 8px; }
-        input { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #000; color: #fff; font-size: 16px; outline: none; }
-        .btn-busca { background: #e67e22; border: none; padding: 0 20px; border-radius: 8px; color: #fff; font-weight: bold; cursor: pointer; }
+        #map { height: 300px; border-radius: 12px; margin-bottom: 20px; border: 2px solid var(--card); z-index: 1; }
+        
+        .penalty-list { background: var(--card); border-radius: 10px; padding: 15px; }
+        h3 { margin-top: 0; color: var(--primary); font-size: 16px; border-bottom: 1px solid #4a5568; padding-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th { text-align: left; color: #a0aec0; padding: 8px 0; }
+        td { padding: 10px 0; border-bottom: 1px solid #4a5568; }
+        .text-red { color: #f56565; font-weight: bold; }
+        .btn-voltar { background: #333; border: none; color: white; padding: 15px; border-radius: 8px; width: 100%; cursor: pointer; margin-top: 20px; font-weight: bold; }
+    </style>
+</head>
+<body>
 
-        /* Cartão de Dados */
-        .card { background: #121212; border-radius: 12px; padding: 15px; border: 1px solid #222; margin-bottom: 10px; }
-        .pilot-name { font-size: 20px; font-weight: bold; color: #e67e22; margin-bottom: 4px; }
-        .pilot-info { font-size: 12px; color: #888; margin-bottom: 15px; }
+<div class="container">
+    <div class="header">
+        <h2 id="nomePiloto" style="margin-bottom: 5px;">Carregando...</h2>
+        <p id="infoCarro" style="margin: 0; color: #a0aec0;">Identificando veículo...</p>
+    </div>
 
-        /* Grid de Status */
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 15px; }
-        .stat-box { background: #1a1a1a; padding: 10px; border-radius: 8px; text-align: center; border-bottom: 2px solid #333; }
-        .stat-box small { font-size: 9px; color: #aaa; text-transform: uppercase; display: block; }
-        .stat-box b { font-size: 14px; color: #fff; }
-        .stat-danger { border-color: #f44336; }
-        .stat-danger b { color: #f44336; }
-
-        #map { height: 250px; background: #222; border-radius: 12px; margin-bottom: 15px; border: 1px solid #333; }
-
-        /* Tabela */
-        table { width: 100%; border-collapse: collapse; font-size: 11px; }
-        th { text-align: left; padding: 8px; color
+    <div class="stats-grid">
+        <div class="stat-card">
+            <small>Tempo Total</small>
+            <span id="tempoTotal">--:--:--</span>
+        </div>
