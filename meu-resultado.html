@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meu Resultado - Rally Tracker</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <style>
+        :root { --primary: #e67e22; --bg: #1a202c; --card: #2d3748; }
+        body { font-family: sans-serif; background: var(--bg); color: white; margin: 0; padding: 15px; }
+        .container { max-width: 800px; margin: auto; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        .stat-card { background: var(--card); padding: 15px; border-radius: 10px; text-align: center; border-bottom: 3px solid var(--primary); }
+        .stat-card small { color: #a0aec0; display: block; margin-bottom: 5px; }
+        .stat-card span { font-size: 1.2rem; font-weight: bold; }
+        
+        #map { height: 350px; border-radius: 12px; margin-bottom: 20px; border: 2px solid var(--card); }
+        
+        .penalty-list { background: var(--card); border-radius: 10px; padding: 15px; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th { text-align: left; color: #a0aec0; padding-bottom: 10px; }
+        td { padding: 8px 0; border-bottom: 1px solid #4a5568; }
+        .text-red { color: #f56565; font-weight: bold; }
+        .btn-voltar { background: transparent; border: 1px solid #4a5568; color: white; padding: 10px; border-radius: 6px; width: 100%; cursor: pointer; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2 id="nomePiloto">Carregando...</h2>
+        <p id="infoCarro">Carro -- | Categoria --</p>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <small>Tempo Total</small>
+            <span id="tempoTotal">--:--:--</span>
+        </div>
+        <div class="stat-card">
+            <small>Pontos Fotos</small>
+            <span id="pontosFotos">0</span>
+        </div>
+        <div class="stat-card" style="grid-column: span 2; border-color: #f56565;">
+            <small>Penalização Radar (Pontos)</small>
+            <span id="totalPenalidade" class="text-red">0</span>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <div class="penalty-list">
+        <h3>Detalhamento de Infrações</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Hora</th>
+                    <th>Radar</th>
+                    <th>Vel.</th>
+                    <th>Pontos</th>
+                </tr>
+            </thead>
+            <tbody id="listaPenalidades">
+                </tbody>
+        </table>
+    </div>
+
+    <button class="btn-voltar" onclick="history.back()">VOLTAR</button>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
+        databaseURL: "https://cronometro-rally-default-rtdb.firebaseio.com",
+        projectId: "cronometro-rally"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Pega o ID do carro pelo localStorage (mesma lógica do index.html)
+    const carId = localStorage.getItem('rally_carro_ativo') || prompt("Digite o número do seu carro:");
+    
+    let map = L.map('map').setView([0,0], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    async function carregarDados() {
+        if (!carId) return;
+
+        // 1. Dados Básicos e Pontos de Fotos
+        const compSnap = await db.ref(`competidores/${carId}`).once('value');
+        const comp = compSnap.val();
+        if(!comp) return alert("Competidor não encontrado!");
+
+        document.getElementById('nomePiloto').innerText = comp.nome;
+        document.getElementById('infoCarro').innerText = `Carro ${carId} | Categoria ${comp.categoria}`;
+        document.getElementById('tempoTotal').innerText = comp.tempoFormatado || "Ainda sem tempo";
+        document.getElementById('pontosFotos').innerText = comp.pontosFotos || 0;
+
+        // 2. Carregar Radares para Processamento
+        const radaresSnap = await db.ref('radares').once('value');
+        const radares = radaresSnap.val() || {};
+
+        // 3. Carregar Rastro e Calcular Penalidades (Lógica similar ao rastro.html)
+        const rastroSnap = await db.ref(`rastros/${carId}`).once('value');
+        const rastro = rastroSnap.val() || {};
+        
+        let totalPontosRadar = 0;
+        let coords = [];
+        let penalidadesHTML = "";
+
+        Object.values(rastro).forEach(p => {
+            coords.push([p.lat, p.lng]);
+            
+            // Verifica se este ponto está dentro de algum radar
+            for(let rid in radares) {
+                let r = radares[rid];
+                let dist = L.latLng(p.lat, p.lng).distanceTo([r.lat, r.lng]);
+                
+                if(dist <= r.raio && p.vel > r.limite) {
+                    let excesso = p.vel - r.limite;
+                    let pontos = Math.ceil(excesso * 2); // Exemplo: 2 pontos por km acima
+                    totalPontosRadar += pontos;
+
+                    // Marcador de infração no mapa
+                    L.circleMarker([p.lat, p.lng], {color: 'red', radius: 5}).addTo(map)
+                        .bindPopup(`<b>Infração</b><br>Vel: ${p.vel}km/h (Limite: ${r.limite})`);
+
+                    // Adiciona na tabela
+                    penalidadesHTML += `<tr>
+                        <td>${new Date(p.ts).toLocaleTimeString('pt-BR')}</td>
+                        <td>${r.nome}</td>
+                        <td class="text-red">${p.vel} km/h</td>
+                        <td>${pontos}</td>
+                    </tr>`;
+                }
+            }
+        });
+
+        document.getElementById('totalPenalidade').innerText = totalPontosRadar;
+        document.getElementById('listaPenalidades').innerHTML = penalidadesHTML || "<tr><td colspan='4'>Nenhuma infração detectada. Parabéns!</td></tr>";
+
+        // Desenha o rastro total
+        if(coords.length > 0) {
+            L.polyline(coords, {color: '#e67e22', weight: 3, opacity: 0.6}).addTo(map);
+            map.fitBounds(coords);
+        }
+    }
+
+    carregarDados();
+</script>
+</body>
+</html>
