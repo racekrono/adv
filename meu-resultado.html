@@ -16,9 +16,6 @@
         body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; }
         .container { max-width: 600px; margin: auto; padding-bottom: 100px; }
         
-        /* Estilo do Relatório para o PDF */
-        #relatorio-conteudo { background: var(--bg); padding: 10px; border-radius: 8px; }
-        
         .header { text-align: center; margin-bottom: 20px; border-bottom: 1px solid var(--primary); padding-bottom: 15px; }
         .header h2 { color: var(--primary); margin: 0; }
         
@@ -27,7 +24,7 @@
         .stat-card small { color: #888; display: block; font-size: 11px; margin-bottom: 4px; }
         .stat-card span { font-weight: bold; font-size: 1.1rem; }
 
-        #map { height: 300px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; z-index: 1; }
+        #map { height: 300px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; z-index: 1; background: #222; }
         
         .penalty-list { background: var(--card); border-radius: 12px; padding: 15px; border: 1px solid #333; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -35,29 +32,29 @@
         td { padding: 10px 0; border-bottom: 1px solid #2d2d2d; }
         .text-red { color: #f56565; font-weight: bold; }
 
-        /* Rodapé de Ações */
         .actions-footer { position: fixed; bottom: 0; left: 0; right: 0; padding: 15px; background: rgba(18, 18, 18, 0.95); display: flex; gap: 10px; border-top: 1px solid #333; z-index: 1000; }
-        .btn { flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 14px; color: white; transition: 0.3s; }
+        .btn { flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; color: white; }
         .btn-pdf { background: #c0392b; }
         .btn-voltar { background: #333; }
-        .btn:active { transform: scale(0.98); }
 
-        .loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; }
-        .spinner { width: 30px; height: 30px; border: 3px solid #333; border-top: 3px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
+        /* Estilo para a busca manual caso não encontre ID */
+        .busca-manual { background: var(--card); padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 20px; border: 1px solid var(--primary); }
+        .busca-manual input { padding: 10px; border-radius: 5px; border: 1px solid #444; background: #000; color: white; width: 80px; text-align: center; font-size: 18px; margin-right: 10px; }
+        .busca-manual button { padding: 10px 20px; border-radius: 5px; background: var(--primary); border: none; color: white; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
-<div id="loading" class="loading-overlay">
-    <div class="spinner"></div>
-    <p>Processando seu rastro...</p>
-</div>
-
 <div class="container" id="relatorio-conteudo">
+    <div id="boxBusca" class="busca-manual" style="display:none;">
+        <p style="margin-top:0">Número do carro não detectado:</p>
+        <input type="number" id="inputCarro" placeholder="Nº">
+        <button onclick="definirCarroManual()">CARREGAR</button>
+    </div>
+
     <div class="header">
-        <h2 id="nomePiloto">Buscando...</h2>
-        <p id="infoCarro">Aguarde...</p>
+        <h2 id="nomePiloto">Relatório de Prova</h2>
+        <p id="infoCarro">Selecione um carro para começar</p>
     </div>
 
     <div class="stats-grid">
@@ -95,7 +92,7 @@
 
 <div class="actions-footer">
     <button class="btn btn-voltar" onclick="location.href='index.html'">VOLTAR</button>
-    <button class="btn btn-pdf" onclick="gerarPDF()">GERAR PDF</button>
+    <button class="btn btn-pdf" id="btnGerarPDF" onclick="gerarPDF()">GERAR PDF</button>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -109,113 +106,26 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    const carId = localStorage.getItem('rally_carro_ativo');
+    let carId = localStorage.getItem('rally_carro_ativo');
     let map = L.map('map', { zoomControl: false }).setView([0,0], 13);
     
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        className: 'map-tiles' // Para aplicar filtros se quiser
-    }).addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    function definirCarroManual() {
+        const input = document.getElementById('inputCarro').value;
+        if(input) {
+            carId = input;
+            document.getElementById('boxBusca').style.display = 'none';
+            carregarRelatorio();
+        }
+    }
 
     async function carregarRelatorio() {
-        if (!carId) return alert("Erro: ID do carro não encontrado.");
+        if (!carId) {
+            document.getElementById('boxBusca').style.display = 'block';
+            return;
+        }
 
         try {
             const [compSnap, radaresSnap, rastroSnap] = await Promise.all([
-                db.ref(`competidores/${carId}`).once('value'),
-                db.ref('radares').once('value'),
-                db.ref(`rastros/${carId}`).once('value')
-            ]);
-
-            const comp = compSnap.val();
-            const radares = radaresSnap.val() || {};
-            const rastro = rastroSnap.val();
-
-            if(!comp) return;
-
-            document.getElementById('nomePiloto').innerText = comp.nome;
-            document.getElementById('infoCarro').innerText = `CARRO ${carId} • ${comp.categoria}`;
-            document.getElementById('tempoTotal').innerText = comp.tempoFormatado || "00:00:00";
-            document.getElementById('pontosFotos').innerText = comp.pontosFotos || 0;
-
-            if(!rastro) {
-                document.getElementById('listaPenalidades').innerHTML = "<tr><td colspan='4' align='center'>Sem rastro gravado.</td></tr>";
-                document.getElementById('loading').style.display = 'none';
-                return;
-            }
-
-            let coords = [];
-            let ptsRadar = 0;
-            let infracoesHTML = "";
-            let cacheInfracao = new Set();
-
-            const pontos = Object.values(rastro).sort((a,b) => a.ts - b.ts);
-
-            pontos.forEach(p => {
-                coords.push([p.lat, p.lng]);
-                
-                for(let rid in radares) {
-                    let r = radares[rid];
-                    let dist = L.latLng(p.lat, p.lng).distanceTo([r.lat, r.lng]);
-
-                    if(dist <= r.raio && p.vel > r.limite) {
-                        let chave = `${rid}_${Math.floor(p.ts/2000)}`; // Janela de 2s para não repetir
-                        if(!cacheInfracao.has(chave)) {
-                            cacheInfracao.add(chave);
-                            let pts = Math.round((p.vel - r.limite) * 2);
-                            ptsRadar += pts;
-                            
-                            L.circleMarker([p.lat, p.lng], {color:'red', radius:6}).addTo(map);
-
-                            infracoesHTML += `<tr>
-                                <td>${new Date(p.ts).toLocaleTimeString('pt-BR')}</td>
-                                <td>${r.nome}</td>
-                                <td class="text-red">${p.vel} km/h</td>
-                                <td>${pts}</td>
-                            </tr>`;
-                        }
-                    }
-                }
-            });
-
-            document.getElementById('totalPenalidade').innerText = ptsRadar + " pontos";
-            document.getElementById('listaPenalidades').innerHTML = infracoesHTML || "<tr><td colspan='4' align='center'>✅ Nenhuma infração!</td></tr>";
-
-            if(coords.length > 0) {
-                L.polyline(coords, {color: '#e67e22', weight: 3}).addTo(map);
-                map.fitBounds(coords, {padding: [20, 20]});
-            }
-
-            document.getElementById('loading').style.display = 'none';
-        } catch (e) { console.error(e); }
-    }
-
-    async function gerarPDF() {
-        const { jsPDF } = window.jspdf;
-        const btnPdf = document.querySelector('.btn-pdf');
-        btnPdf.innerText = "GERANDO...";
-        
-        // Pequeno ajuste para garantir que o mapa seja renderizado no print
-        const container = document.getElementById('relatorio-conteudo');
-        
-        html2canvas(container, {
-            useCORS: true,
-            scale: 2,
-            backgroundColor: "#121212"
-        }).then(canvas => {
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const imgProps = pdf.getImageProperties(imgData);
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-            
-            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-            pdf.save(`Resultado_Carro_${carId}.pdf`);
-            btnPdf.innerText = "GERAR PDF";
-        });
-    }
-
-    carregarRelatorio();
-</script>
-
-</body>
-</html>
+                db.ref(
