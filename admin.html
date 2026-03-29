@@ -301,7 +301,7 @@
                             if(p.vel > vMax) tempoExcessoMs += duration;
                         }
                     }
-                    if(tempoExcessoMs > 30000) {
+                    if(tempoExcessoMs > 10000) {
                         pen += (Math.floor((tempoExcessoMs - 10000) / 10000) + 1) * 500;
                     }
                 } else if(feat.properties?.type === 'circle') {
