@@ -2,70 +2,78 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Explicação do Sistema de Radar</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Regulamento de Radares - Rally</title>
     <style>
-        body { font-family: sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 20px auto; padding: 20px; }
-        h2 { color: #2c3e50; border-bottom: 2px solid #eee; }
-        h3 { color: #e67e22; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; background-color: #1a202c; color: #e2e8f0; margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: auto; background: #2d3748; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border-top: 6px solid #ed8936; }
+        h1 { color: #ed8936; text-align: center; text-transform: uppercase; letter-spacing: 1px; }
+        h2 { color: #fbd38d; border-bottom: 1px solid #4a5568; padding-bottom: 10px; margin-top: 30px; }
+        .highlight { color: #f6ad55; font-weight: bold; }
+        .rule-box { background: #1a202c; border-left: 4px solid #ed8936; padding: 15px; margin: 20px 0; border-radius: 4px; }
+        .penalty { color: #fc8181; font-weight: bold; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-        th { background-color: #f8f9fa; }
-        .highlight { font-weight: bold; color: #c0392b; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #4a5568; }
+        th { background-color: #4a5568; color: white; }
+        .footer { text-align: center; margin-top: 40px; font-size: 0.9em; color: #a0aec0; }
+        .badge { background: #ed8936; color: #1a202c; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8em; }
     </style>
 </head>
 <body>
 
-    <h2>O Radar como um Taxímetro de Multa</h2>
+<div class="container">
+    <h1>Manual de Radares e Velocidade</h1>
     
-    <p>Imagine que o Radar é um trecho de <strong>30 km/h</strong>. Você entrou nele a 45 km/h. O sistema funciona como um Taxímetro de Multa:</p>
+    <p>Para garantir a segurança de todos e a justiça na competição, nosso sistema de rastreio monitora constantemente a velocidade do veículo dentro das zonas de controle (Radares).</p>
 
-    <h3>1. O Período de Graça (0 a 10 segundos)</h3>
-    <p>Assim que você entra no radar acima da velocidade, o cronômetro começa a contar. Do segundo 1 ao 10: O fiscal está olhando, mas não está escrevendo a multa. Ele está te dando a chance de frear. Se você frear aqui: <strong>Custo zero.</strong></p>
+    <h2>1. Zonas de Radar (Polígonos)</h2>
+    <p>Ao entrar em uma área demarcada como radar, o sistema ativa automaticamente o monitoramento. Cada radar possui uma velocidade máxima permitida (<span class="highlight">VMax</span>).</p>
 
-    <h3>2. O Primeiro "Pulo" (No segundo 11)</h3>
-    <p>Se você não freou e o cronômetro marcou 11 segundos, o fiscal perde a paciência e "carimba" a primeira multa. <span class="highlight">Pimba! -500 pontos.</span></p>
-    <p>Esse valor de 500 pontos cobre qualquer tempo que você ficar ali dentro entre 11 e 40 segundos. É como um estacionamento: se você parou e ficou 1 minuto ou 29 minutos, você paga o valor de uma hora cheia.</p>
+    <div class="rule-box">
+        <strong>Regra de Tolerância:</strong> O sistema oferece uma carência de <span class="highlight">10 segundos</span>. Se você exceder a velocidade e retornar ao limite dentro deste tempo, não haverá penalização.
+    </div>
 
-    <h3>3. O Segundo "Pulo" (No segundo 41)</h3>
-    <p>Se você insistir no erro e o cronômetro passar dos 40 segundos (ou seja, 10s de carência + 30s do primeiro bloco), você "pula" para o segundo bloco. <span class="highlight">Pimba! Outros -500 pontos (Totalizando -1000).</span> Agora você pode ficar até o segundo 70 sem pagar mais nada.</p>
+    <h2>2. Penalizações por Tempo <span class="badge">ATUALIZADO</span></h2>
+    <p>Caso o excesso de velocidade persista por mais de 10 segundos, as penalidades serão aplicadas de forma cumulativa a cada <strong>10 segundos</strong> adicionais.</p>
 
-    <blockquote>
-        <strong>Por que os seus "20 segundos" custaram 500 pontos?</strong><br>
-        Porque você estourou os 10 segundos de perdão. Você usou os 10s de graça. Sobraram 10 segundos de infração "cometida". Como você entrou no território do primeiro bloco de 30 segundos, você paga o bloco inteiro.
-    </blockquote>
-
-    <h3>Resumo de Penalidades</h3>
     <table>
         <thead>
             <tr>
-                <th>Tempo acima do limite</th>
-                <th>O que acontece</th>
-                <th>Punição</th>
+                <th>Tempo em Excesso</th>
+                <th>Penalidade</th>
             </tr>
         </thead>
         <tbody>
             <tr>
-                <td>0s a 10s</td>
-                <td>Carência (Perdão)</td>
-                <td>0 pts</td>
+                <td>Até 10 segundos</td>
+                <td><span class="highlight">Tolerância (0 pts)</span></td>
             </tr>
             <tr>
-                <td>11s a 40s</td>
-                <td>Entrou no 1º Bloco</td>
-                <td>-500 pts</td>
+                <td>De 11 a 20 segundos</td>
+                <td class="penalty">500 Pontos</td>
             </tr>
             <tr>
-                <td>41s a 70s</td>
-                <td>Entrou no 2º Bloco</td>
-                <td>-1000 pts</td>
+                <td>De 21 a 30 segundos</td>
+                <td class="penalty">1.000 Pontos</td>
             </tr>
             <tr>
-                <td>71s a 100s</td>
-                <td>Entrou no 3º Bloco</td>
-                <td>-1500 pts</td>
+                <td>De 31 a 40 segundos</td>
+                <td class="penalty">1.500 Pontos</td>
+            </tr>
+            <tr>
+                <td>Acima de 40 segundos</td>
+                <td class="penalty">+500 pts a cada 10s</td>
             </tr>
         </tbody>
     </table>
+
+    <h2>3. Perda de Sinal</h2>
+    <p>O sistema possui uma trava de segurança de 30 segundos para perda de sinal de GPS. Se o dispositivo ficar sem comunicação por um período superior a este, o trecho sem dados será desconsiderado para fins de cálculo de tempo em excesso, visando evitar punições injustas por "pulos" de posicionamento.</p>
+
+    <div class="footer">
+        Organização Rally &copy; 2024 - Sistema de Cronometragem Digital
+    </div>
+</div>
 
 </body>
 </html>
