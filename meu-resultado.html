@@ -3,23 +3,219 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Meu Resultado - Rally Tracker</title>
+    <title>Extrato do Piloto - Rally Tracker</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <style>
         :root { --primary: #e67e22; --bg: #121212; --card: #1e1e1e; --text: #eeeeee; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; }
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; }
+        .container { max-width: 600px; margin: auto; padding-bottom: 100px; }
         
-        .container { max-width: 600px; margin: auto; }
+        /* Estilo do Relatório para o PDF */
+        #relatorio-conteudo { background: var(--bg); padding: 10px; border-radius: 8px; }
         
-        .header { text-align: center; margin-bottom: 20px; padding: 10px; }
-        .header h2 { color: var(--primary); margin: 0; font-size: 1.5rem; }
-        .header p { color: #888; margin: 5px 0 0 0; font-size: 0.9rem; }
-
+        .header { text-align: center; margin-bottom: 20px; border-bottom: 1px solid var(--primary); padding-bottom: 15px; }
+        .header h2 { color: var(--primary); margin: 0; }
+        
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-        .stat-card { background: var(--card); padding: 15px; border-radius: 12px; text-align: center; border-bottom: 3px solid var(--primary); }
-        .stat-card small { color: #888; display: block; margin-bottom: 5px; font-size: 0.75
+        .stat-card { background: var(--card); padding: 12px; border-radius: 10px; text-align: center; border: 1px solid #333; }
+        .stat-card small { color: #888; display: block; font-size: 11px; margin-bottom: 4px; }
+        .stat-card span { font-weight: bold; font-size: 1.1rem; }
+
+        #map { height: 300px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; z-index: 1; }
+        
+        .penalty-list { background: var(--card); border-radius: 12px; padding: 15px; border: 1px solid #333; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { text-align: left; color: #666; border-bottom: 1px solid #333; padding-bottom: 8px; }
+        td { padding: 10px 0; border-bottom: 1px solid #2d2d2d; }
+        .text-red { color: #f56565; font-weight: bold; }
+
+        /* Rodapé de Ações */
+        .actions-footer { position: fixed; bottom: 0; left: 0; right: 0; padding: 15px; background: rgba(18, 18, 18, 0.95); display: flex; gap: 10px; border-top: 1px solid #333; z-index: 1000; }
+        .btn { flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 14px; color: white; transition: 0.3s; }
+        .btn-pdf { background: #c0392b; }
+        .btn-voltar { background: #333; }
+        .btn:active { transform: scale(0.98); }
+
+        .loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; }
+        .spinner { width: 30px; height: 30px; border: 3px solid #333; border-top: 3px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div id="loading" class="loading-overlay">
+    <div class="spinner"></div>
+    <p>Processando seu rastro...</p>
+</div>
+
+<div class="container" id="relatorio-conteudo">
+    <div class="header">
+        <h2 id="nomePiloto">Buscando...</h2>
+        <p id="infoCarro">Aguarde...</p>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <small>TEMPO TOTAL</small>
+            <span id="tempoTotal">--:--:--</span>
+        </div>
+        <div class="stat-card">
+            <small>FOTOS (BÔNUS)</small>
+            <span id="pontosFotos">0</span>
+        </div>
+        <div class="stat-card" style="grid-column: span 2; border-color: #f56565;">
+            <small>PENALIZAÇÃO TOTAL</small>
+            <span id="totalPenalidade" class="text-red">0 pontos</span>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <div class="penalty-list">
+        <h3 style="margin-top:0">Detalhamento de Infrações</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Hora</th>
+                    <th>Radar</th>
+                    <th>Velocidade</th>
+                    <th>Pontos</th>
+                </tr>
+            </thead>
+            <tbody id="listaPenalidades"></tbody>
+        </table>
+    </div>
+</div>
+
+<div class="actions-footer">
+    <button class="btn btn-voltar" onclick="location.href='index.html'">VOLTAR</button>
+    <button class="btn btn-pdf" onclick="gerarPDF()">GERAR PDF</button>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
+        databaseURL: "https://cronometro-rally-default-rtdb.firebaseio.com",
+        projectId: "cronometro-rally"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const carId = localStorage.getItem('rally_carro_ativo');
+    let map = L.map('map', { zoomControl: false }).setView([0,0], 13);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        className: 'map-tiles' // Para aplicar filtros se quiser
+    }).addTo(map);
+
+    async function carregarRelatorio() {
+        if (!carId) return alert("Erro: ID do carro não encontrado.");
+
+        try {
+            const [compSnap, radaresSnap, rastroSnap] = await Promise.all([
+                db.ref(`competidores/${carId}`).once('value'),
+                db.ref('radares').once('value'),
+                db.ref(`rastros/${carId}`).once('value')
+            ]);
+
+            const comp = compSnap.val();
+            const radares = radaresSnap.val() || {};
+            const rastro = rastroSnap.val();
+
+            if(!comp) return;
+
+            document.getElementById('nomePiloto').innerText = comp.nome;
+            document.getElementById('infoCarro').innerText = `CARRO ${carId} • ${comp.categoria}`;
+            document.getElementById('tempoTotal').innerText = comp.tempoFormatado || "00:00:00";
+            document.getElementById('pontosFotos').innerText = comp.pontosFotos || 0;
+
+            if(!rastro) {
+                document.getElementById('listaPenalidades').innerHTML = "<tr><td colspan='4' align='center'>Sem rastro gravado.</td></tr>";
+                document.getElementById('loading').style.display = 'none';
+                return;
+            }
+
+            let coords = [];
+            let ptsRadar = 0;
+            let infracoesHTML = "";
+            let cacheInfracao = new Set();
+
+            const pontos = Object.values(rastro).sort((a,b) => a.ts - b.ts);
+
+            pontos.forEach(p => {
+                coords.push([p.lat, p.lng]);
+                
+                for(let rid in radares) {
+                    let r = radares[rid];
+                    let dist = L.latLng(p.lat, p.lng).distanceTo([r.lat, r.lng]);
+
+                    if(dist <= r.raio && p.vel > r.limite) {
+                        let chave = `${rid}_${Math.floor(p.ts/2000)}`; // Janela de 2s para não repetir
+                        if(!cacheInfracao.has(chave)) {
+                            cacheInfracao.add(chave);
+                            let pts = Math.round((p.vel - r.limite) * 2);
+                            ptsRadar += pts;
+                            
+                            L.circleMarker([p.lat, p.lng], {color:'red', radius:6}).addTo(map);
+
+                            infracoesHTML += `<tr>
+                                <td>${new Date(p.ts).toLocaleTimeString('pt-BR')}</td>
+                                <td>${r.nome}</td>
+                                <td class="text-red">${p.vel} km/h</td>
+                                <td>${pts}</td>
+                            </tr>`;
+                        }
+                    }
+                }
+            });
+
+            document.getElementById('totalPenalidade').innerText = ptsRadar + " pontos";
+            document.getElementById('listaPenalidades').innerHTML = infracoesHTML || "<tr><td colspan='4' align='center'>✅ Nenhuma infração!</td></tr>";
+
+            if(coords.length > 0) {
+                L.polyline(coords, {color: '#e67e22', weight: 3}).addTo(map);
+                map.fitBounds(coords, {padding: [20, 20]});
+            }
+
+            document.getElementById('loading').style.display = 'none';
+        } catch (e) { console.error(e); }
+    }
+
+    async function gerarPDF() {
+        const { jsPDF } = window.jspdf;
+        const btnPdf = document.querySelector('.btn-pdf');
+        btnPdf.innerText = "GERANDO...";
+        
+        // Pequeno ajuste para garantir que o mapa seja renderizado no print
+        const container = document.getElementById('relatorio-conteudo');
+        
+        html2canvas(container, {
+            useCORS: true,
+            scale: 2,
+            backgroundColor: "#121212"
+        }).then(canvas => {
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const imgProps = pdf.getImageProperties(imgData);
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+            
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            pdf.save(`Resultado_Carro_${carId}.pdf`);
+            btnPdf.innerText = "GERAR PDF";
+        });
+    }
+
+    carregarRelatorio();
+</script>
+
+</body>
+</html>
