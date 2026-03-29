@@ -2,74 +2,33 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Relatório Individual do Piloto</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório do Piloto - Rally</title>
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+    
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
     <style>
-        :root { --primary: #e67e22; --dark: #1a202c; --card: #2d3748; }
-        body { font-family: sans-serif; background: var(--dark); color: white; margin: 0; display: flex; flex-direction: column; min-height: 100vh; }
+        :root { --orange: #e67e22; --dark: #1a202c; --card: #2d3748; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--dark); color: white; margin: 0; display: flex; flex-direction: column; height: 100vh; }
         
-        header { background: #111; padding: 20px; border-bottom: 3px solid var(--primary); text-align: center; }
-        .search-container { padding: 20px; display: flex; justify-content: center; gap: 10px; background: #222; }
+        header { background: #111; padding: 15px; border-bottom: 3px solid var(--orange); text-align: center; }
+        .selector-bar { background: #222; padding: 15px; display: flex; justify-content: center; gap: 10px; border-bottom: 1px solid #333; }
         
-        select, button { padding: 12px; border-radius: 6px; border: none; font-size: 16px; }
-        button { background: var(--primary); color: white; cursor: pointer; font-weight: bold; }
+        select, button { padding: 10px; border-radius: 6px; border: 1px solid #4a5568; background: #2d3748; color: white; cursor: pointer; }
+        button { background: var(--orange); font-weight: bold; border: none; }
+        button:hover { background: #d35400; }
+
+        .layout { display: grid; grid-template-columns: 1fr 350px; flex-grow: 1; overflow: hidden; }
+        #map { height: 100%; width: 100%; background: #222; }
         
-        .content { display: grid; grid-template-columns: 1fr 350px; gap: 20px; padding: 20px; flex-grow: 1; }
-        #map { height: 600px; border-radius: 12px; border: 2px solid #4a5568; }
-        
-        .sidebar { display: flex; flex-direction: column; gap: 15px; }
-        .stat-card { background: var(--card); padding: 20px; border-radius: 10px; border-left: 5px solid var(--primary); }
-        .stat-card h3 { margin-top: 0; color: #a0aec0; font-size: 14px; text-transform: uppercase; }
-        .stat-val { font-size: 24px; font-weight: bold; }
-        .penal-item { background: rgba(229, 62, 62, 0.2); padding: 10px; border-radius: 5px; margin-top: 5px; font-size: 13px; border-left: 3px solid #e53e3e; }
-        
-        .badge-ok { color: #48bb78; }
-        .badge-err { color: #fc8181; }
+        .sidebar { padding: 20px; overflow-y: auto; background: #1e1e1e; border-left: 1px solid #333; }
+        .card { background: var(--card); padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid var(--orange); }
+        .card h3 { margin: 0; font-size: 12px; color: #a0aec0; text-transform: uppercase; }
+        .card .val { font-size: 20px; font-weight: bold; margin-top: 5px; }
 
-        @media (max-width: 900px) {
-            .content { grid-template-columns: 1fr; }
-            #map { height: 400px; }
-        }
-        @media print {
-            .search-container, button { display: none; }
-            .content { display: block; }
-            #map { height: 500px; width: 100%; margin-bottom: 20px; }
-        }
-    </style>
-</head>
-<body>
-
-<header>
-    <h1>📋 Relatório de Telemetria do Piloto</h1>
-</header>
-
-<div class="search-container">
-    <select id="carSelect"><option value="">Carregando competidores...</option></select>
-    <button onclick="gerarRelatorio()">GERAR RELATÓRIO</button>
-    <button onclick="window.print()" style="background: #4a5568;">🖨️ IMPRIMIR</button>
-</div>
-
-<div class="content">
-    <div id="map"></div>
-    
-    <div class="sidebar" id="detalhes">
-        <div class="stat-card">
-            <h3>Piloto / Carro</h3>
-            <div class="stat-val" id="nomePiloto">---</div>
-            <div id="catPiloto" style="color: var(--primary)">Selecione um carro</div>
-        </div>
-
-        <div class="stat-card">
-            <h3>Resultado Final</h3>
-            <div class="stat-val" id="ptsTotal">0 pts</div>
-            <div id="tempoTotal">Tempo: --:--:--</div>
-        </div>
-
-        <div class="stat-card">
-            <h3>Detalhamento de Penalidades</h3>
-            <div id="listaPenalidades">
-                <p style="font-size: 13px;
+        .penalty { background: rgba(229, 62, 62, 0.1);
