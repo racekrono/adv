@@ -20,6 +20,7 @@
         border-bottom: 1px solid #4a5568;
     }
 
+    /* Grupos de botões */
     .button-group {
         display: flex;
         flex-wrap: wrap;
@@ -112,6 +113,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 
     <script>
+    // Configuração Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
         authDomain: "cronometro-rally.firebaseapp.com",
@@ -157,12 +159,6 @@
                 layer.feature = layer.feature || {type: "Feature", properties: {}};
                 layer.feature.properties.velocidade = parseInt(vel) || 60;
             }
-            // Manter a marcação correta do círculo manual
-            if (event.layerType === 'circle') {
-                layer.feature = layer.feature || {type: "Feature", properties: {}};
-                layer.feature.properties.type = 'circle';
-                layer.feature.properties.radius = layer.getRadius();
-            }
             drawnItems.addLayer(layer);
         });
 
@@ -172,6 +168,7 @@
         monitorarStatusProva();
     }
 
+    // --- FUNÇÕES NOVAS ADICIONADAS ---
     window.logoffGeral = function() {
         if (confirm("Deseja desconectar todos os competidores agora?")) {
             const senha = prompt("Senha de segurança:");
@@ -201,6 +198,7 @@
             }
         }
     };
+    // ---------------------------------
 
     window.processarPenalidadesGeral = async function() {
         if (!confirm("Deseja processar radares e penalidades de todos os carros agora?")) return;
@@ -252,12 +250,6 @@
         db.ref('configuracoes/percurso').once('value', snap => {
             if (snap.exists()) {
                 L.geoJSON(snap.val(), {
-                    pointToLayer: (feature, latlng) => {
-                        if (feature.properties && feature.properties.type === 'circle') {
-                            return L.circle(latlng, { radius: feature.properties.radius });
-                        }
-                        return L.marker(latlng);
-                    },
                     onEachFeature: (feature, layer) => {
                         if (feature.geometry.type === 'Polygon') {
                             layer.feature = feature;
@@ -335,24 +327,6 @@
         if (coords.length === 2) {
             const lat = parseFloat(coords[0]);
             const lng = parseFloat(coords[1]);
-            
-            // Criando o Círculo (Waypoint) conforme você pediu
-            const circulo = L.circle([lat, lng], {
-                radius: 20, // Raio padrão de 20 metros
-                color: '#ff7800',
-                weight: 2,
-                fillOpacity: 0.4
-            });
-
-            // Adicionando as propriedades para o GeoJSON (Apurador de 2000 pontos)
-            circulo.feature = {
-                type: "Feature",
-                properties: { type: 'circle', radius: 20 },
-                geometry: { type: "Point", coordinates: [lng, lat] }
-            };
-
-            drawnItems.addLayer(circulo);
-            
             pontosTemporarios.push([lat, lng]);
             linhaTemporaria.setLatLngs(pontosTemporarios);
             map.setView([lat, lng], 15);
