@@ -203,4 +203,185 @@
             if (snap.exists()) {
                 L.geoJSON(snap.val(), {
                     pointToLayer: (feature, latlng) => {
-                        // Se o GeoJSON tiver raio nas propriedades, rec
+                        // Se o GeoJSON tiver raio nas propriedades, recria como Círculo Leaflet
+                        if (feature.properties && feature.properties.radius) {
+                            return L.circle(latlng, { radius: feature.properties.radius });
+                        }
+                    },
+                    onEachFeature: (feature, layer) => {
+                        drawnItems.addLayer(layer);
+                    }
+                });
+            }
+        });
+    }
+
+    // --- APURAÇÃO ATUALIZADA (Radar + Checkpoint) ---
+    window.processarPenalidadesGeral = async function() {
+        if (!confirm("Deseja processar radares e checkpoints de todos os carros?")) return;
+        
+        const percursoSnap = await db.ref('configuracoes/percurso').once('value');
+        if (!percursoSnap.exists()) return alert("Trajeto não definido!");
+        
+        const features = percursoSnap.val().features;
+        const radares = features.filter(f => f.geometry.type === 'Polygon');
+        const checkpoints = features.filter(f => f.properties && f.properties.radius);
+        
+        const rastrosSnap = await db.ref('rastros').once('value');
+        const rastros = rastrosSnap.val() || {};
+
+        for (let carId in rastros) {
+            let penRadar = 0;
+            let penCheckpoint = 0;
+            let excessosPorRadar = {}; 
+            const carPoints = Object.values(rastros[carId]);
+
+            // 1. Processar Radares (Lógica de Tempo do Admin2)
+            for (let radarFeature of radares) {
+                const velMax = radarFeature.properties.velocidade || 60;
+                const poly = turf.polygon(radarFeature.geometry.coordinates);
+
+                carPoints.forEach(p => {
+                    const pt = turf.point([p.lng, p.lat]);
+                    if (turf.booleanPointInPolygon(pt, poly) && p.vel > velMax) {
+                        const radarId = JSON.stringify(radarFeature.geometry.coordinates[0][0]);
+                        if (!excessosPorRadar[radarId]) excessosPorRadar[radarId] = [];
+                        excessosPorRadar[radarId].push(p.ts);
+                    }
+                });
+            }
+
+            // Cálculo penalidade radar (Admin2 style: 500pts a cada 10s extras)
+            for (let rid in excessosPorRadar) {
+                const tempos = excessosPorRadar[rid].sort((a, b) => a - b);
+                if (tempos.length > 0) {
+                    const duracaoSeg = (tempos[tempos.length - 1] - tempos[0]) / 1000;
+                    if (duracaoSeg > 10) {
+                        penRadar += 500 + (Math.floor((duracaoSeg - 10) / 10) * 500);
+                    }
+                }
+            }
+
+            // 2. Processar Checkpoints (Lógica de Proximidade do Admin.html)
+            checkpoints.forEach(cp => {
+                const centro = cp.geometry.coordinates; // [lng, lat]
+                const raioKm = cp.properties.radius / 1000;
+                
+                const passouNoCheckpoint = carPoints.some(p => {
+                    const dist = turf.distance(turf.point([p.lng, p.lat]), turf.point(centro));
+                    return dist <= raioKm;
+                });
+
+                if (!passouNoCheckpoint) penCheckpoint += 2000; // Penalidade fixa por perder checkpoint
+            });
+
+            // Atualiza o competidor com a soma das penalidades (negativo para diminuir do ranking)
+            await db.ref(`competidores/${carId}`).update({ 
+                penalidadeRadar: penRadar,
+                penalidadeCheckpoint: penCheckpoint,
+                pontos: 0 - (penRadar + penCheckpoint) 
+            });
+        }
+        alert("Apuração completa: Radares e Checkpoints processados!");
+    };
+
+    // --- FUNÇÕES DE UTILITÁRIO (MANTIDAS) ---
+    window.logoffGeral = function() {
+        if (confirm("Deseja desconectar todos os competidores?") && prompt("Senha:") === "261291") {
+            db.ref('configuracoes').update({ comandoEncerramento: Date.now(), provaAberta: false });
+            alert("Logoff enviado!");
+        }
+    };
+
+    window.excluirTodosCarros = function() {
+        if (confirm("Apagar todos os dados?") && prompt("Senha:") === "261291") {
+            Promise.all([db.ref('competidores').remove(), db.ref('posicoes').remove(), db.ref('rastros').remove(), db.ref('tempos').remove()])
+            .then(() => location.reload());
+        }
+    };
+
+    function rastrearCarros() {
+        const markers = {};
+        db.ref('posicoes').on('value', snap => {
+            snap.forEach(child => {
+                const carId = child.key;
+                const p = child.val();
+                if (markers[carId]) {
+                    markers[carId].setLatLng([p.lat, p.lng]);
+                } else {
+                    markers[carId] = L.marker([p.lat, p.lng], {
+                        icon: L.divIcon({ className: 'marker-label', html: carId, iconSize: [30, 30] })
+                    }).addTo(map);
+                }
+            });
+        });
+    }
+
+    function atualizarSeletorCarros() {
+        db.ref('competidores').on('value', snap => {
+            const selector = document.getElementById('carSelector');
+            selector.innerHTML = '<option value="">Carro...</option>';
+            snap.forEach(child => {
+                selector.innerHTML += `<option value="${child.key}">Carro ${child.key}</option>`;
+            });
+        });
+    }
+
+    window.excluirCarro = async function() {
+        const carId = document.getElementById('carSelector').value;
+        if (carId && confirm(`Excluir Carro ${carId}?`)) {
+            await Promise.all([db.ref(`competidores/${carId}`).remove(), db.ref(`posicoes/${carId}`).remove(), db.ref(`rastros/${carId}`).remove(), db.ref(`tempos/${carId}`).remove()]);
+            location.reload(); 
+        }
+    };
+
+    function monitorarStatusProva() {
+        const btn = document.getElementById('btnStatusProva');
+        db.ref('configuracoes/provaAberta').on('value', snap => {
+            const aberta = snap.val();
+            btn.innerText = aberta ? "🔓 PROVA ABERTA" : "🔒 PROVA FECHADA";
+            btn.style.background = aberta ? "#38a169" : "#e53e3e";
+        });
+    }
+
+    window.alternarStatusProva = function() {
+        const ref = db.ref('configuracoes/provaAberta');
+        ref.once('value', snap => { ref.set(!snap.val()); });
+    };
+
+    window.adicionarPontoNaLinha = function() {
+        const val = document.getElementById('coordsInput').value;
+        const coords = val.split(',');
+        if (coords.length === 2) {
+            const lat = parseFloat(coords[0]), lng = parseFloat(coords[1]);
+            pontosTemporarios.push([lat, lng]);
+            linhaTemporaria.setLatLngs(pontosTemporarios);
+            map.setView([lat, lng], 15);
+        }
+    };
+
+    window.finalizarLinhaManual = function() {
+        if (pontosTemporarios.length < 2) return alert("Mínimo 2 pontos.");
+        drawnItems.addLayer(L.polyline(pontosTemporarios, {color: '#FF007F'}));
+        pontosTemporarios = []; linhaTemporaria.setLatLngs([]);
+    };
+
+    window.limparTemporarios = function() {
+        pontosTemporarios = []; linhaTemporaria.setLatLngs([]);
+    };
+
+    window.resetarTudo = function() {
+        if (confirm("Reset total?") && prompt("Senha:") === "261291") db.ref('/').remove().then(() => location.reload());
+    };
+
+    window.buscar = async function() {
+        const query = document.getElementById('cityInput').value;
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`);
+        const data = await res.json();
+        if (data && data.length > 0) map.setView([data[0].lat, data[0].lon], 14);
+    };
+
+    window.onload = initMap;
+    </script>
+</body>
+</html>
