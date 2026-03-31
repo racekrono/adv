@@ -1,118 +1,98 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Race Krono</title>
+    <title>Painel Admin Rally - Oficial</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
     <style>
-        body { font-family: sans-serif; background: #121212; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; overflow: hidden; }
-        .card { background: #1e1e1e; padding: 25px; border-radius: 12px; width: 90%; max-width: 380px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border-top: 5px solid #ffffff; }
-        input, select, button { width: 100%; padding: 14px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #333; background: #252525; color: white; font-size: 16px; box-sizing: border-box; }
-        button { background: #f80303; border: none; font-weight: bold; cursor: pointer; }
-        .tracking { text-align: center; display: none; }
-        .odo-val { font-size: 4rem; font-weight: bold; color: #f1c40f; font-family: monospace; }
-        .btn-sair { background: transparent; color: #555; font-size: 11px; margin-top: 20px; border: none; text-decoration: underline; }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #1a202c; font-family: sans-serif; display: flex; flex-direction: column; }
+        #toolbar { background: #2d3748; display: flex; flex-wrap: wrap; padding: 10px; gap: 15px; z-index: 9999; position: relative; border-bottom: 1px solid #4a5568; }
+        .button-group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px; }
+        #map { flex-grow: 1; width: 100%; background: #a0aec0; }
+        button { padding: 10px 14px; background: #4a5568; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; white-space: nowrap; }
+        button:hover { filter: brightness(1.2); }
+        input, select { padding: 8px; border-radius: 4px; border: none; background: #1a202c; color: white; font-size: 12px; }
+        .marker-label { background: #ed8936; border: 2px solid white; border-radius: 50%; color: white; font-weight: bold; text-align: center; line-height: 26px; width: 30px; height: 30px; font-size: 12px; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <div id="setup">
-            <h2 style="text-align:center;">Rally de Aventura</h2>
-            <input type="text" id="nome" placeholder="Nome do Piloto">
-            <select id="categoria">
-                <option>UTV</option><option>4x4</option><option>4x2</option>
-            </select>
-            <input type="number" id="carro" placeholder="Nº do Carro">
-            <button id="btnIniciar">INICIAR PROVA</button>
+    <div id="toolbar">
+        <div class="button-group">
+            <input type="text" id="coordsInput" placeholder="Lat, Lng">
+            <button onclick="adicionarPontoNaLinha()">📍 Add Ponto</button>
+            <button onclick="finalizarLinhaManual()" style="background: #2b6cb0;">✏️ Criar Linha</button>
         </div>
-
-        <div id="ativo" class="tracking">
-            <h2 id="viewCarro" style="color:#0d0af0;">Carro --</h2>
-            <div id="viewVel" style="font-size: 3rem; font-weight: bold;">0.0</div>
-            <p>KM/H</p>
-            <div class="odo-val" id="displayOdo">0.000</div>
-            <button class="btn-sair" onclick="encerrarSessaoConfirmada()">Encerrar Sessão</button>
+        <div class="button-group">
+            <button id="btnStatusProva" onclick="alternarStatusProva()">Aguardando...</button>
+            <button onclick="salvar()" style="background: #38a169;">💾 Salvar Trajeto</button>
+        </div>
+        <div class="button-group">
+            <button onclick="encerrarProvaGeral()" style="background: #742a2a; border: 1px solid #f56565;">🚫 ENCERRAR TODOS</button>
+        </div>
+        <div class="button-group">
+            <button onclick="window.location.href='rastro.html'" style="background: #805ad5;">🗺️ Rastro</button>
+            <button onclick="apurar()" style="background: #dd6b20;">🏁 Apurar</button>
+            <button onclick="resetar()" style="background: #e53e3e;">⚠️ Reset Geral</button>
         </div>
     </div>
+    <div id="map"></div>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
             authDomain: "cronometro-rally.firebaseapp.com",
             databaseURL: "https://cronometro-rally-default-rtdb.firebaseio.com",
             projectId: "cronometro-rally",
+            storageBucket: "cronometro-rally.firebasestorage.app",
+            messagingSenderId: "341731891354",
             appId: "1:341731891354:web:d0c34265be68015e98a723"
         };
         const app = firebase.initializeApp(firebaseConfig);
         const db = firebase.database(app);
 
-        let watchID = null;
-
-        function iniciarFluxoRastreio(num) {
-            document.getElementById('setup').style.display = 'none';
-            document.getElementById('ativo').style.display = 'block';
-            document.getElementById('viewCarro').innerText = "Carro " + num;
-            
-            // LOGICA PERSISTENTE: Obtém ou cria o timestamp do login original
-            let loginOriginal = localStorage.getItem('rally_login_timestamp');
-            if (!loginOriginal) {
-                loginOriginal = Date.now();
-                localStorage.setItem('rally_login_timestamp', loginOriginal);
+        // FUNÇÃO DE ENCERRAMENTO PERSISTENTE
+        window.encerrarProvaGeral = function() {
+            if (confirm("ATENÇÃO: Isso irá deslogar TODOS os pilotos e bloquear novos logins. Confirmar?")) {
+                const senha = prompt("Digite a senha de mestre:");
+                if (senha === "261291") {
+                    const agora = Date.now();
+                    db.ref('configuracoes').update({
+                        comandoEncerramento: agora,
+                        provaAberta: false
+                    }).then(() => {
+                        alert("Comando enviado! A prova foi fechada e todos serão desconectados.");
+                    });
+                } else { alert("Senha incorreta."); }
             }
-
-            // ESCUTA COMANDO DE ENCERRAMENTO DO ADMIN
-            db.ref('configuracoes/comandoEncerramento').on('value', snap => {
-                if (snap.exists()) {
-                    const tsComando = snap.val();
-                    // Se o comando do admin for mais recente que o login do piloto
-                    if (tsComando > loginOriginal) {
-                        alert("A prova foi encerrada pela organização.");
-                        encerrarSessao();
-                    }
-                }
-            });
-
-            // Inicia GPS
-            watchID = navigator.geolocation.watchPosition(p => {
-                const dados = { lat: p.coords.latitude, lng: p.coords.longitude, vel: Math.round((p.coords.speed || 0) * 3.6), ts: Date.now() };
-                document.getElementById('viewVel').innerText = dados.vel;
-                db.ref('posicoes/' + num).set(dados);
-                db.ref('rastros/' + num).push(dados);
-            }, null, { enableHighAccuracy: true });
-        }
-
-        document.getElementById('btnIniciar').onclick = async function() {
-            const num = document.getElementById('carro').value;
-            const nome = document.getElementById('nome').value;
-            if(!num || !nome) return alert("Preencha tudo!");
-
-            const aberta = (await db.ref('configuracoes/provaAberta').once('value')).val();
-            if(!aberta) return alert("Prova fechada!");
-
-            // Define o timestamp do login NO MOMENTO do clique em Iniciar
-            localStorage.setItem('rally_login_timestamp', Date.now());
-            localStorage.setItem('rally_carro_ativo', num);
-            
-            await db.ref('competidores/' + num).set({ nome, ativo: true });
-            iniciarFluxoRastreio(num);
         };
 
-        function encerrarSessaoConfirmada() {
-            if(confirm("Deseja mesmo sair?")) encerrarSessao();
+        // Outras funções administrativas (simplificadas para o exemplo)
+        function monitorarStatusProva() {
+            const btn = document.getElementById('btnStatusProva');
+            db.ref('configuracoes/provaAberta').on('value', snap => {
+                const aberta = snap.val();
+                btn.innerText = aberta ? "🔓 PROVA ABERTA" : "🔒 PROVA FECHADA";
+                btn.style.background = aberta ? "#38a169" : "#e53e3e";
+            });
         }
-
-        function encerrarSessao() {
-            if (watchID) navigator.geolocation.clearWatch(watchID);
-            localStorage.removeItem('rally_carro_ativo');
-            localStorage.removeItem('rally_login_timestamp'); // Limpa para permitir novo login futuro
-            location.reload();
-        }
+        window.alternarStatusProva = function() {
+            const ref = db.ref('configuracoes/provaAberta');
+            ref.once('value', snap => { ref.set(!snap.val()); });
+        };
+        window.resetar = function() {
+            if(prompt("Senha de Reset:") === "261291") db.ref('/').remove().then(() => location.reload());
+        };
 
         window.onload = () => {
-            const salvo = localStorage.getItem('rally_carro_ativo');
-            if (salvo) iniciarFluxoRastreio(salvo);
+            // Inicialização básica do mapa omitida para brevidade, mas deve seguir seu padrão original
+            monitorarStatusProva();
         };
     </script>
 </body>
