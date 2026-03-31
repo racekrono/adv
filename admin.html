@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
     <style>
         * { box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; height: 100vh; width: 100vw; background: #1a202c; font-family: sans-serif; display: flex; flex-direction: column; }
+        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #1a202c; font-family: sans-serif; overflow: hidden; }
         
         #toolbar { 
             background: #2d3748; 
@@ -16,8 +16,7 @@
             padding: 10px; 
             gap: 10px; 
             z-index: 9999; 
-            border-bottom: 1px solid #4a5568;
-            flex-shrink: 0; /* Impede a barra de sumir */
+            border-bottom: 2px solid #4a5568;
         }
 
         .button-group {
@@ -30,11 +29,11 @@
             border-radius: 8px;
         }
 
-        /* CONFIGURAÇÃO PARA O MAPA SEMPRE APARECER */
+        /* FORÇANDO ALTURA PARA O MAPA APARECER */
         #map { 
-            flex-grow: 1; 
             width: 100%; 
-            background: #2d3748; 
+            height: calc(100vh - 120px); 
+            background: #1a202c; 
         }
 
         button {
@@ -80,12 +79,7 @@
             <input type="text" id="coordsInput" placeholder="Lat, Lng">
             <button onclick="adicionarPontoNaLinha()">📍 Add Ponto</button>
             <button onclick="finalizarLinhaManual()" style="background: #2b6cb0;">✏️ Criar Linha</button>
-            <button onclick="limparTemporarios()">🗑️ Limpar</button>
-        </div>
-
-        <div class="button-group">
-            <button onclick="salvar()" style="background: #38a169;">💾 Salvar Trajeto</button>
-            <button id="btnStatusProva" onclick="alternarStatusProva()">Verificando...</button>
+            <button onclick="salvar()" style="background: #38a169;">💾 Salvar</button>
         </div>
 
         <div class="button-group">
@@ -97,140 +91,137 @@
             <button onclick="window.location.href='rastro.html'" style="background: #805ad5;">🗺️ Rastro</button>
             <button onclick="window.location.href='rastro.html'" style="background: #dd6b20;">🏁 Rodar Apuração</button>
             
-            <button onclick="window.location.href='tempos.html'" style="background: #2c7a7b;">⏱️ Tempos</button>
+            <button onclick="window.location.href='tempos.html'" style="background: #2c7a7b;">⏱️ Chegada</button>
             
-            <button onclick="window.location.href='fotos.html'" style="background: #3182ce;">📸 Pontos Fotos</button>
-            <button onclick="window.location.href='ranking-fotos.html'" style="background: #4a5568;">🖼️ Ranking Fotos</button>
+            <button onclick="window.location.href='fotos.html'" style="background: #3182ce;">📸 Fotos</button>
             <button onclick="window.location.href='ranking-geral.html'" style="background: #b7791f;">🏆 RANKING FINAL</button>
         </div>
 
         <div class="button-group">
-            <select id="carSelector"><option value="">Aguardando...</option></select>
-            <button onclick="excluirCarro()" style="background: #e53e3e;">🗑️</button>  
+            <select id="carSelector"><option value="">Conectando...</option></select>
+            <button id="btnStatusProva" onclick="alternarStatusProva()">...</button>
             <button onclick="resetar()" style="background: #000; color: red;">Reset</button>
         </div>
     </div>
 
     <div id="map"></div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 
     <script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
-        authDomain: "cronometro-rally.firebaseapp.com",
-        databaseURL: "https://cronometro-rally-default-rtdb.firebaseio.com",
-        projectId: "cronometro-rally",
-        appId: "1:341731891354:web:d0c34265be68015e98a723"
-    };
-    const app = firebase.initializeApp(firebaseConfig);
-    const db = firebase.database(app);
-
-    let map, drawnItems, pontosTemporarios = [], linhaTemporaria;
-
-    function initMap() {
-        map = L.map('map').setView([-12.26, -38.96], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        const firebaseConfig = {
+            apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
+            authDomain: "cronometro-rally.firebaseapp.com",
+            databaseURL: "https://cronometro-rally-default-rtdb.firebaseio.com",
+            projectId: "cronometro-rally",
+            appId: "1:341731891354:web:d0c34265be68015e98a723"
+        };
         
-        drawnItems = new L.FeatureGroup().addTo(map);
-        new L.Control.Draw({
-            edit: { featureGroup: drawnItems },
-            draw: { polyline: true, polygon: true, circle: true, rectangle: false, marker: false }
-        }).addTo(map);
+        // Inicializa Firebase Primeiro
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.database(app);
 
-        linhaTemporaria = L.polyline([], {color: 'yellow', dashArray: '5, 5'}).addTo(map);
+        let map, drawnItems, pontosTemporarios = [], linhaTemporaria;
 
-        // Força o mapa a preencher a tela após o carregamento
-        setTimeout(() => { map.invalidateSize(); }, 400);
+        function initMap() {
+            console.log("Iniciando Mapa...");
+            map = L.map('map').setView([-12.26, -38.96], 13);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19
+            }).addTo(map);
+            
+            drawnItems = new L.FeatureGroup().addTo(map);
+            new L.Control.Draw({
+                edit: { featureGroup: drawnItems },
+                draw: { polyline: true, polygon: true, circle: true, rectangle: false, marker: false }
+            }).addTo(map);
 
-        carregarTrajeto();
-        carregarCarrosNoMapa();
-        carregarListaSelecao();
-        monitorarStatusProva();
-    }
+            linhaTemporaria = L.polyline([], {color: 'yellow', dashArray: '5, 5'}).addTo(map);
 
-    // LISTA DE CARROS
-    function carregarListaSelecao() {
-        db.ref('competidores').on('value', snap => {
-            const select = document.getElementById('carSelector');
-            select.innerHTML = '<option value="">Carro...</option>';
-            snap.forEach(child => {
-                select.innerHTML += `<option value="${child.key}">${child.key}</option>`;
+            // Tenta forçar a atualização do tamanho do mapa
+            setTimeout(() => { 
+                map.invalidateSize(); 
+                console.log("Mapa redimensionado.");
+            }, 1000);
+
+            carregarDados();
+        }
+
+        function carregarDados() {
+            // Carrega Trajeto
+            db.ref('configuracoes/percurso').once('value', snap => {
+                if(snap.exists()) L.geoJSON(snap.val(), { onEachFeature: (f,l) => drawnItems.addLayer(l) });
             });
-        });
-    }
 
-    // COMANDOS NOVOS
-    window.encerrarProvaGeral = function() {
-        if(confirm("Expulsar todos os pilotos?")) {
-            const senha = prompt("Senha:");
-            if(senha === "261291") {
-                db.ref('configuracoes').update({ comandoEncerramento: Date.now(), provaAberta: false });
-                alert("Enviado!");
-            }
-        }
-    };
-
-    window.limparTodosCarros = function() {
-        if(confirm("LIMPAR TUDO?")) {
-            const senha = prompt("Senha:");
-            if(senha === "261291") {
-                db.ref('competidores').remove();
-                db.ref('posicoes').remove();
-                db.ref('rastros').remove();
-                db.ref('tempos').remove();
-                alert("Banco limpo!");
-            }
-        }
-    };
-
-    // MONITORAMENTO
-    function carregarCarrosNoMapa() {
-        const markers = {};
-        db.ref('posicoes').on('value', snap => {
-            snap.forEach(c => {
-                const id = c.key, p = c.val();
-                if(markers[id]) markers[id].setLatLng([p.lat, p.lng]);
-                else markers[id] = L.marker([p.lat, p.lng], {
-                    icon: L.divIcon({className:'marker-label', html:id, iconSize:[30,30]})
-                }).addTo(map);
+            // Carrega Carros no Dropdown
+            db.ref('competidores').on('value', snap => {
+                const select = document.getElementById('carSelector');
+                select.innerHTML = '<option value="">Carro...</option>';
+                snap.forEach(c => {
+                    select.innerHTML += `<option value="${c.key}">${c.key}</option>`;
+                });
             });
-        });
-    }
 
-    function monitorarStatusProva() {
-        db.ref('configuracoes/provaAberta').on('value', snap => {
-            const btn = document.getElementById('btnStatusProva');
-            const aberta = snap.val();
-            btn.innerText = aberta ? "🔓 ABERTA" : "🔒 FECHADA";
-            btn.style.background = aberta ? "#38a169" : "#e53e3e";
-        });
-    }
+            // Status Prova
+            db.ref('configuracoes/provaAberta').on('value', snap => {
+                const btn = document.getElementById('btnStatusProva');
+                btn.innerText = snap.val() ? "🔓 ABERTA" : "🔒 FECHADA";
+                btn.style.background = snap.val() ? "#38a169" : "#e53e3e";
+            });
 
-    // TRAJETO
-    window.adicionarPontoNaLinha = function() {
-        const val = document.getElementById('coordsInput').value.split(',');
-        if(val.length === 2) {
-            const lat = parseFloat(val[0]), lng = parseFloat(val[1]);
-            pontosTemporarios.push([lat, lng]);
-            linhaTemporaria.setLatLngs(pontosTemporarios);
-            map.setView([lat, lng], 15);
+            // Rastreio em Tempo Real
+            const markers = {};
+            db.ref('posicoes').on('value', snap => {
+                snap.forEach(child => {
+                    const id = child.key, p = child.val();
+                    if(markers[id]) {
+                        markers[id].setLatLng([p.lat, p.lng]);
+                    } else {
+                        markers[id] = L.marker([p.lat, p.lng], {
+                            icon: L.divIcon({className:'marker-label', html:id, iconSize:[30,30]})
+                        }).addTo(map);
+                    }
+                });
+            });
         }
-    };
 
-    window.finalizarLinhaManual = function() {
-        if(pontosTemporarios.length < 2) return;
-        L.polyline(pontosTemporarios, {color: '#FF007F'}).addTo(drawnItems);
-        pontosTemporarios = []; linhaTemporaria.setLatLngs([]);
-    };
+        // Funções de Botões
+        window.encerrarProvaGeral = function() {
+            if(confirm("Expulsar todos?")) {
+                const s = prompt("Senha:");
+                if(s === "261291") db.ref('configuracoes').update({ comandoEncerramento: Date.now(), provaAberta: false });
+            }
+        };
 
-    window.salvar = function() {
-        db.ref('configuracoes/percurso').set(drawnItems.toGeoJSON()).then(() => alert("Salvo!"));
-    };
+        window.limparTodosCarros = function() {
+            if(confirm("Limpar Banco?")) {
+                const s = prompt("Senha:");
+                if(s === "261291") {
+                    db.ref('competidores').remove();
+                    db.ref('posicoes').remove();
+                    db.ref('rastros').remove();
+                    db.ref('tempos').remove();
+                }
+            }
+        };
 
-    function carregarTrajeto() {
-        db.ref('configuracoes/percurso').once('value', snap => {
-            if(snap.exists()) L.geoJSON(snap.val(), { onEachFeature: (f,
+        window.salvar = () => {
+            db.ref('configuracoes/percurso').set(drawnItems.toGeoJSON()).then(() => alert("Salvo!"));
+        };
+
+        window.adicionarPontoNaLinha = () => {
+            const val = document.getElementById('coordsInput').value.split(',');
+            if(val.length === 2) {
+                const lat = parseFloat(val[0]), lng = parseFloat(val[1]);
+                pontosTemporarios.push([lat, lng]);
+                linhaTemporaria.setLatLngs(pontosTemporarios);
+                map.setView([lat, lng], 15);
+            }
+        };
+
+        window.finalizarLinhaManual = () => {
+            if(pontosTemporarios.
