@@ -88,4 +88,307 @@
 
         <div class="button-group">
             <button onclick="window.location.href='rastro.html'" style="background: #805ad5;">🗺️ Rastro</button>
-            <button onclick="processarPenal
+            <button onclick="processarPenalidadesGeral()" style="background: #dd6b20;">🏁 Rodar Apuração</button>
+            <button onclick="window.location.href='tempos.html'" style="background: #2c7a7b;">⏱️ Tempos de Prova</button>
+            <button onclick="window.location.href='ranking-tempo.html'" style="background: #2c7a7b;">⏱️ Ranking Tempos</button>
+            <button onclick="window.location.href='fotos.html'" style="background: #3182ce;">📸 Pontuação Fotos</button>
+            <button onclick="window.location.href='ranking-fotos.html'" style="background: #4a5568;">🖼️ Ranking Fotos</button>
+            <button onclick="window.location.href='ranking-geral.html'" style="background: #b7791f;">🏆 RANKING FINAL</button>
+        </div>
+
+        <div class="button-group">
+            <select id="carSelector"><option value="">Selecionar Carro...</option></select>
+            <button onclick="excluirCarro()">🗑️</button>  
+            <button onclick="resetarTudo()" style="background: #000; color: red;">⚠️ RESET TOTAL</button>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
+    <script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
+        authDomain: "cronometro-rally.firebaseapp.com",
+        databaseURL: "https://cronometro-rally-default-rtdb.firebaseio.com",
+        projectId: "cronometro-rally",
+        appId: "1:341731891354:web:d0c34265be68015e98a723"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let map, drawnItems;
+    let pontosTemporarios = [];
+    let linhaTemporaria;
+
+    function initMap() {
+        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+        const satelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
+
+        map = L.map('map', {
+            center: [-12.26, -38.96],
+            zoom: 13,
+            layers: [osm]
+        });
+
+        const baseMaps = { "Ruas": osm, "Satélite": satelite };
+        L.control.layers(baseMaps).addTo(map);
+
+        drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+
+        const drawControl = new L.Control.Draw({
+            edit: { featureGroup: drawnItems },
+            draw: { polyline: true, polygon: true, circle: true, rectangle: false, marker: false, circlemarker: false }
+        });
+        map.addControl(drawControl);
+
+        linhaTemporaria = L.polyline([], {color: 'yellow', dashArray: '5, 5'}).addTo(map);
+
+        map.on(L.Draw.Event.CREATED, function (event) {
+            const layer = event.layer;
+            if (event.layerType === 'polygon') {
+                const vel = prompt("Velocidade Máxima do Radar (km/h):", "60");
+                layer.feature = layer.feature || {type: "Feature", properties: {}};
+                layer.feature.properties.velocidade = parseInt(vel) || 60;
+            }
+            // Manter a marcação correta do círculo manual
+            if (event.layerType === 'circle') {
+                layer.feature = layer.feature || {type: "Feature", properties: {}};
+                layer.feature.properties.type = 'circle';
+                layer.feature.properties.radius = layer.getRadius();
+            }
+            drawnItems.addLayer(layer);
+        });
+
+        carregarTrajeto();
+        rastrearCarros();
+        atualizarSeletorCarros();
+        monitorarStatusProva();
+    }
+
+    window.logoffGeral = function() {
+        if (confirm("Deseja desconectar todos os competidores agora?")) {
+            const senha = prompt("Senha de segurança:");
+            if (senha === "261291") {
+                db.ref('configuracoes').update({ 
+                    comandoEncerramento: Date.now(),
+                    provaAberta: false 
+                });
+                alert("Comando de Logoff enviado com sucesso!");
+            }
+        }
+    };
+
+    window.excluirTodosCarros = function() {
+        if (confirm("ATENÇÃO: Isso apagará TODOS os carros e dados de rastro. Confirmar?")) {
+            const senha = prompt("Senha de segurança:");
+            if (senha === "261291") {
+                Promise.all([
+                    db.ref('competidores').remove(),
+                    db.ref('posicoes').remove(),
+                    db.ref('rastros').remove(),
+                    db.ref('tempos').remove()
+                ]).then(() => {
+                    alert("Todos os carros foram removidos.");
+                    location.reload();
+                });
+            }
+        }
+    };
+
+    window.processarPenalidadesGeral = async function() {
+        if (!confirm("Deseja processar radares e penalidades de todos os carros agora?")) return;
+        const percursoSnap = await db.ref('configuracoes/percurso').once('value');
+        if (!percursoSnap.exists()) return alert("Trajeto não definido!");
+        const features = percursoSnap.val().features;
+        const radares = features.filter(f => f.geometry.type === 'Polygon');
+        const rastrosSnap = await db.ref('rastros').once('value');
+        const rastros = rastrosSnap.val() || {};
+
+        for (let carId in rastros) {
+            let pontosPenalidade = 0;
+            let excessosPorRadar = {}; 
+
+            for (let radarFeature of radares) {
+                const velMax = radarFeature.properties.velocidade || 60;
+                const poly = turf.polygon(radarFeature.geometry.coordinates);
+                const carPoints = rastros[carId];
+
+                for (let pId in carPoints) {
+                    const p = carPoints[pId];
+                    const pt = turf.point([p.lng, p.lat]);
+                    if (turf.booleanPointInPolygon(pt, poly)) {
+                        if (p.vel > velMax) {
+                            const radarId = JSON.stringify(radarFeature.geometry.coordinates[0][0]);
+                            if (!excessosPorRadar[radarId]) excessosPorRadar[radarId] = [];
+                            excessosPorRadar[radarId].push(p.ts);
+                        }
+                    }
+                }
+            }
+
+            for (let rid in excessosPorRadar) {
+                const tempos = excessosPorRadar[rid].sort((a, b) => a - b);
+                if (tempos.length > 0) {
+                    const duracaoSegundos = (tempos[tempos.length - 1] - tempos[0]) / 1000;
+                    if (duracaoSegundos > 10) {
+                        const extra10s = Math.floor((duracaoSegundos - 10) / 10);
+                        pontosPenalidade += 500 + (extra10s * 500);
+                    }
+                }
+            }
+            await db.ref(`competidores/${carId}`).update({ penalidadeRadar: pontosPenalidade });
+        }
+        alert("Apuração de radares concluída para todos os carros!");
+    };
+
+    function carregarTrajeto() {
+        db.ref('configuracoes/percurso').once('value', snap => {
+            if (snap.exists()) {
+                L.geoJSON(snap.val(), {
+                    pointToLayer: (feature, latlng) => {
+                        if (feature.properties && feature.properties.type === 'circle') {
+                            return L.circle(latlng, { radius: feature.properties.radius });
+                        }
+                        return L.marker(latlng);
+                    },
+                    onEachFeature: (feature, layer) => {
+                        if (feature.geometry.type === 'Polygon') {
+                            layer.feature = feature;
+                        }
+                        drawnItems.addLayer(layer);
+                    }
+                });
+            }
+        });
+    }
+
+    window.salvar = function() {
+        const data = drawnItems.toGeoJSON();
+        db.ref('configuracoes/percurso').set(data).then(() => alert("Trajeto e Radares salvos!"));
+    };
+
+    function rastrearCarros() {
+        const markers = {};
+        db.ref('posicoes').on('value', snap => {
+            snap.forEach(child => {
+                const carId = child.key;
+                const p = child.val();
+                if (markers[carId]) {
+                    markers[carId].setLatLng([p.lat, p.lng]);
+                } else {
+                    markers[carId] = L.marker([p.lat, p.lng], {
+                        icon: L.divIcon({ className: 'marker-label', html: carId, iconSize: [30, 30] })
+                    }).addTo(map);
+                }
+            });
+        });
+    }
+
+    function atualizarSeletorCarros() {
+        db.ref('competidores').on('value', snap => {
+            const selector = document.getElementById('carSelector');
+            selector.innerHTML = '<option value="">Selecionar Carro...</option>';
+            snap.forEach(child => {
+                selector.innerHTML += `<option value="${child.key}">Carro ${child.key}</option>`;
+            });
+        });
+    }
+
+    window.excluirCarro = async function() {
+        const carId = document.getElementById('carSelector').value;
+        if (!carId) return alert("Selecione um carro.");
+        if (confirm(`Excluir Carro ${carId}?`)) {
+            await Promise.all([
+                db.ref(`competidores/${carId}`).remove(),
+                db.ref(`posicoes/${carId}`).remove(),
+                db.ref(`rastros/${carId}`).remove(),
+                db.ref(`tempos/${carId}`).remove()
+            ]);
+            location.reload(); 
+        }
+    };
+
+    function monitorarStatusProva() {
+        const btn = document.getElementById('btnStatusProva');
+        db.ref('configuracoes/provaAberta').on('value', snap => {
+            const aberta = snap.val();
+            btn.innerText = aberta ? "🔓 PROVA ABERTA" : "🔒 PROVA FECHADA";
+            btn.style.background = aberta ? "#38a169" : "#e53e3e";
+        });
+    }
+
+    window.alternarStatusProva = function() {
+        const ref = db.ref('configuracoes/provaAberta');
+        ref.once('value', snap => { ref.set(!snap.val()); });
+    };
+
+    window.adicionarPontoNaLinha = function() {
+        const val = document.getElementById('coordsInput').value;
+        const coords = val.split(',');
+        if (coords.length === 2) {
+            const lat = parseFloat(coords[0]);
+            const lng = parseFloat(coords[1]);
+            
+            // Criando o Círculo (Waypoint) conforme você pediu
+            const circulo = L.circle([lat, lng], {
+                radius: 20, // Raio padrão de 20 metros
+                color: '#ff7800',
+                weight: 2,
+                fillOpacity: 0.4
+            });
+
+            // Adicionando as propriedades para o GeoJSON (Apurador de 2000 pontos)
+            circulo.feature = {
+                type: "Feature",
+                properties: { type: 'circle', radius: 20 },
+                geometry: { type: "Point", coordinates: [lng, lat] }
+            };
+
+            drawnItems.addLayer(circulo);
+            
+            pontosTemporarios.push([lat, lng]);
+            linhaTemporaria.setLatLngs(pontosTemporarios);
+            map.setView([lat, lng], 15);
+        }
+    };
+
+    window.finalizarLinhaManual = function() {
+        if (pontosTemporarios.length < 2) return alert("Adicione pelo menos 2 pontos.");
+        const poly = L.polyline(pontosTemporarios, {color: '#FF007F'});
+        drawnItems.addLayer(poly);
+        pontosTemporarios = [];
+        linhaTemporaria.setLatLngs([]);
+    };
+
+    window.limparTemporarios = function() {
+        pontosTemporarios = [];
+        linhaTemporaria.setLatLngs([]);
+        document.getElementById('coordsInput').value = "";
+    };
+
+    window.resetarTudo = function() {
+        if (confirm("Resetar TUDO (Trajeto e Competidores)?") && prompt("Senha:") === "261291") {
+            db.ref('/').remove().then(() => location.reload());
+        }
+    };
+
+    window.buscar = async function() {
+        const query = document.getElementById('cityInput').value;
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`);
+        const data = await response.json();
+        if (data && data.length > 0) {
+            map.setView([data[0].lat, data[0].lon], 14);
+        }
+    };
+
+    window.onload = initMap;
+    </script>
+</body>
+</html>
