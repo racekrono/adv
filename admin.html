@@ -6,16 +6,16 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
     <style>
-        * { box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #1a202c; font-family: sans-serif; display: flex; flex-direction: column; }
-        #toolbar { background: #2d3748; display: flex; flex-wrap: wrap; padding: 10px; gap: 15px; z-index: 9999; position: relative; border-bottom: 1px solid #4a5568; }
-        .button-group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px; }
-        #map { flex-grow: 1; width: 100%; background: #a0aec0; }
-        button { padding: 10px 14px; background: #4a5568; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; white-space: nowrap; }
-        button:hover { filter: brightness(1.2); }
-        input, select { padding: 8px; border-radius: 4px; border: none; background: #1a202c; color: white; font-size: 12px; }
-        .marker-label { background: #ed8936; border: 2px solid white; border-radius: 50%; color: white; font-weight: bold; text-align: center; line-height: 26px; width: 30px; height: 30px; font-size: 12px; }
-    </style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #1a202c; font-family: sans-serif; display: flex; flex-direction: column; }
+    #toolbar { background: #2d3748; display: flex; flex-wrap: wrap; padding: 10px; gap: 15px; z-index: 9999; position: relative; border-bottom: 1px solid #4a5568; }
+    .button-group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px; }
+    #map { flex-grow: 1; width: 100%; background: #a0aec0; }
+    button { padding: 10px 14px; background: #4a5568; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; white-space: nowrap; }
+    button:hover { filter: brightness(1.2); }
+    input, select { padding: 8px; border-radius: 4px; border: none; background: #1a202c; color: white; font-size: 12px; }
+    .marker-label { background: #ed8936; border: 2px solid white; border-radius: 50%; color: white; font-weight: bold; text-align: center; line-height: 26px; width: 30px; height: 30px; font-size: 12px; }
+</style>
 </head>
 <body>
     <div id="toolbar">
@@ -23,77 +23,17 @@
             <input type="text" id="coordsInput" placeholder="Lat, Lng">
             <button onclick="adicionarPontoNaLinha()">📍 Add Ponto</button>
             <button onclick="finalizarLinhaManual()" style="background: #2b6cb0;">✏️ Criar Linha</button>
+            <button onclick="limparTemporarios()" style="background: #718096;">🗑️ Limpar</button>
         </div>
         <div class="button-group">
-            <button id="btnStatusProva" onclick="alternarStatusProva()">Aguardando...</button>
+            <input type="text" id="cityInput" placeholder="Cidade...">
+            <button onclick="buscar()">🔍 Buscar</button>
             <button onclick="salvar()" style="background: #38a169;">💾 Salvar Trajeto</button>
+            <button id="btnStatusProva" onclick="alternarStatusProva()">Aguardando...</button>
         </div>
         <div class="button-group">
             <button onclick="encerrarProvaGeral()" style="background: #742a2a; border: 1px solid #f56565;">🚫 ENCERRAR TODOS</button>
+            <button onclick="excluirTodosCarros()" style="background: #e53e3e; border: 1px solid #feb2b2;">💀 LIMPAR TODOS CARROS</button>
         </div>
         <div class="button-group">
-            <button onclick="window.location.href='rastro.html'" style="background: #805ad5;">🗺️ Rastro</button>
-            <button onclick="apurar()" style="background: #dd6b20;">🏁 Apurar</button>
-            <button onclick="resetar()" style="background: #e53e3e;">⚠️ Reset Geral</button>
-        </div>
-    </div>
-    <div id="map"></div>
-
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
-
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
-            authDomain: "cronometro-rally.firebaseapp.com",
-            databaseURL: "https://cronometro-rally-default-rtdb.firebaseio.com",
-            projectId: "cronometro-rally",
-            storageBucket: "cronometro-rally.firebasestorage.app",
-            messagingSenderId: "341731891354",
-            appId: "1:341731891354:web:d0c34265be68015e98a723"
-        };
-        const app = firebase.initializeApp(firebaseConfig);
-        const db = firebase.database(app);
-
-        // FUNÇÃO DE ENCERRAMENTO PERSISTENTE
-        window.encerrarProvaGeral = function() {
-            if (confirm("ATENÇÃO: Isso irá deslogar TODOS os pilotos e bloquear novos logins. Confirmar?")) {
-                const senha = prompt("Digite a senha de mestre:");
-                if (senha === "261291") {
-                    const agora = Date.now();
-                    db.ref('configuracoes').update({
-                        comandoEncerramento: agora,
-                        provaAberta: false
-                    }).then(() => {
-                        alert("Comando enviado! A prova foi fechada e todos serão desconectados.");
-                    });
-                } else { alert("Senha incorreta."); }
-            }
-        };
-
-        // Outras funções administrativas (simplificadas para o exemplo)
-        function monitorarStatusProva() {
-            const btn = document.getElementById('btnStatusProva');
-            db.ref('configuracoes/provaAberta').on('value', snap => {
-                const aberta = snap.val();
-                btn.innerText = aberta ? "🔓 PROVA ABERTA" : "🔒 PROVA FECHADA";
-                btn.style.background = aberta ? "#38a169" : "#e53e3e";
-            });
-        }
-        window.alternarStatusProva = function() {
-            const ref = db.ref('configuracoes/provaAberta');
-            ref.once('value', snap => { ref.set(!snap.val()); });
-        };
-        window.resetar = function() {
-            if(prompt("Senha de Reset:") === "261291") db.ref('/').remove().then(() => location.reload());
-        };
-
-        window.onload = () => {
-            // Inicialização básica do mapa omitida para brevidade, mas deve seguir seu padrão original
-            monitorarStatusProva();
-        };
-    </script>
-</body>
-</html>
+            <button onclick="window.location.href='rastro.html'" style="background: #
