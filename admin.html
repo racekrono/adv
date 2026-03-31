@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Painel Admin Rally - Oficial v3</title>
+    <title>Painel Admin Rally - Oficial</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
     <style>
@@ -20,6 +20,7 @@
         border-bottom: 1px solid #4a5568;
     }
 
+    /* Grupos de botões */
     .button-group {
         display: flex;
         flex-wrap: wrap;
@@ -89,12 +90,15 @@
         <div class="button-group">
             <button onclick="window.location.href='rastro.html'" style="background: #805ad5;">🗺️ Rastro</button>
             <button onclick="processarPenalidadesGeral()" style="background: #dd6b20;">🏁 Rodar Apuração</button>
-            <button onclick="window.location.href='tempos.html'" style="background: #2c7a7b;">⏱️ Tempos</button>
+            <button onclick="window.location.href='tempos.html'" style="background: #2c7a7b;">⏱️ Tempos de Prova</button>
+            <button onclick="window.location.href='ranking-tempo.html'" style="background: #2c7a7b;">📊 Ranking Tempos</button>
+            <button onclick="window.location.href='fotos.html'" style="background: #3182ce;">📸 Pontuação Fotos</button>
+            <button onclick="window.location.href='ranking-fotos.html'" style="background: #4a5568;">🖼️ Ranking Fotos</button>
             <button onclick="window.location.href='ranking-geral.html'" style="background: #b7791f;">🏆 RANKING FINAL</button>
         </div>
 
         <div class="button-group">
-            <select id="carSelector"><option value="">Carro...</option></select>
+            <select id="carSelector"><option value="">Selecionar Carro...</option></select>
             <button onclick="excluirCarro()">🗑️</button>  
             <button onclick="resetarTudo()" style="background: #000; color: red;">⚠️ RESET TOTAL</button>
         </div>
@@ -109,6 +113,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 
     <script>
+    // Configuração Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
         authDomain: "cronometro-rally.firebaseapp.com",
@@ -156,7 +161,7 @@
 
         map.on(L.Draw.Event.CREATED, function (event) {
             const layer = event.layer;
-            layer.feature = layer.feature || {type: "Feature", properties: {}};
+            layer.feature = layer.feature || {type: "Feature", properties: {}}; // Garante que feature e propriedades existam
             
             if (event.layerType === 'polygon') {
                 const vel = prompt("Velocidade Máxima do Radar (km/h):", "60");
@@ -164,6 +169,7 @@
                 layer.feature.properties.tipo = 'radar';
             }
             
+            // --- CORREÇÃO: Trata a criação de Círculos (Checkpoints) ---
             if (event.layerType === 'circle') {
                 layer.feature.properties.tipo = 'checkpoint';
                 layer.feature.properties.radius = layer.getRadius(); // Salva o raio explicitamente
@@ -178,52 +184,45 @@
         monitorarStatusProva();
     }
 
-    // --- CORREÇÃO NO SALVAMENTO (Salva o Raio do Círculo) ---
-    window.salvar = function() {
-        const data = { type: "FeatureCollection", features: [] };
-        
-        drawnItems.eachLayer(layer => {
-            const geojson = layer.toGeoJSON();
-            geojson.properties = geojson.properties || {};
-            
-            // Se for um círculo, precisamos anexar o raio manualmente pois o GeoJSON padrão não suporta círculos
-            if (layer instanceof L.Circle) {
-                geojson.properties.radius = layer.getRadius();
-                geojson.properties.tipo = 'checkpoint';
+    // --- FUNÇÕES DE UTILITÁRIO (MANTIDAS) ---
+    window.logoffGeral = function() {
+        if (confirm("Deseja desconectar todos os competidores agora?")) {
+            const senha = prompt("Senha de segurança:");
+            if (senha === "261291") {
+                db.ref('configuracoes').update({ 
+                    comandoEncerramento: Date.now(),
+                    provaAberta: false 
+                });
+                alert("Comando de Logoff enviado com sucesso!");
             }
-            data.features.push(geojson);
-        });
-
-        db.ref('configuracoes/percurso').set(data).then(() => alert("Trajeto e Radares salvos com sucesso!"));
+        }
     };
 
-    // --- CORREÇÃO NO CARREGAMENTO (Renderiza Círculos Novamente) ---
-    function carregarTrajeto() {
-        db.ref('configuracoes/percurso').once('value', snap => {
-            if (snap.exists()) {
-                L.geoJSON(snap.val(), {
-                    pointToLayer: (feature, latlng) => {
-                        // Se o GeoJSON tiver raio nas propriedades, recria como Círculo Leaflet
-                        if (feature.properties && feature.properties.radius) {
-                            return L.circle(latlng, { radius: feature.properties.radius });
-                        }
-                    },
-                    onEachFeature: (feature, layer) => {
-                        drawnItems.addLayer(layer);
-                    }
+    window.excluirTodosCarros = function() {
+        if (confirm("ATENÇÃO: Isso apagará TODOS os carros e dados de rastro. Confirmar?")) {
+            const senha = prompt("Senha de segurança:");
+            if (senha === "261291") {
+                Promise.all([
+                    db.ref('competidores').remove(),
+                    db.ref('posicoes').remove(),
+                    db.ref('rastros').remove(),
+                    db.ref('tempos').remove()
+                ]).then(() => {
+                    alert("Todos os carros foram removidos.");
+                    location.reload();
                 });
             }
-        });
-    }
+        }
+    };
 
     // --- APURAÇÃO ATUALIZADA (Radar + Checkpoint) ---
     window.processarPenalidadesGeral = async function() {
-        if (!confirm("Deseja processar radares e checkpoints de todos os carros?")) return;
-        
+        if (!confirm("Deseja processar radares e penalidades de todos os carros agora?")) return;
         const percursoSnap = await db.ref('configuracoes/percurso').once('value');
         if (!percursoSnap.exists()) return alert("Trajeto não definido!");
-        
         const features = percursoSnap.val().features;
+        
+        // Separa Radares (Polígonos) e Checkpoints (Pontos com Raio)
         const radares = features.filter(f => f.geometry.type === 'Polygon');
         const checkpoints = features.filter(f => f.properties && f.properties.radius);
         
@@ -231,8 +230,8 @@
         const rastros = rastrosSnap.val() || {};
 
         for (let carId in rastros) {
-            let penRadar = 0;
-            let penCheckpoint = 0;
+            let pontosPenalidadeRadar = 0;
+            let pontosPenalidadeCheckpoint = 0;
             let excessosPorRadar = {}; 
             const carPoints = Object.values(rastros[carId]);
 
@@ -255,9 +254,10 @@
             for (let rid in excessosPorRadar) {
                 const tempos = excessosPorRadar[rid].sort((a, b) => a - b);
                 if (tempos.length > 0) {
-                    const duracaoSeg = (tempos[tempos.length - 1] - tempos[0]) / 1000;
-                    if (duracaoSeg > 10) {
-                        penRadar += 500 + (Math.floor((duracaoSeg - 10) / 10) * 500);
+                    const duracaoSegundos = (tempos[tempos.length - 1] - tempos[0]) / 1000;
+                    if (duracaoSegundos > 10) {
+                        const extra10s = Math.floor((duracaoSegundos - 10) / 10);
+                        pontosPenalidadeRadar += 500 + (extra10s * 500);
                     }
                 }
             }
@@ -265,41 +265,68 @@
             // 2. Processar Checkpoints (Lógica de Proximidade do Admin.html)
             checkpoints.forEach(cp => {
                 const centro = cp.geometry.coordinates; // [lng, lat]
-                const raioKm = cp.properties.radius / 1000;
+                const raioKm = cp.properties.radius / 1000; // Converte metros para km para o Turf
                 
+                // Verifica se *algum* ponto do rastro está dentro do raio do checkpoint
                 const passouNoCheckpoint = carPoints.some(p => {
                     const dist = turf.distance(turf.point([p.lng, p.lat]), turf.point(centro));
                     return dist <= raioKm;
                 });
 
-                if (!passouNoCheckpoint) penCheckpoint += 2000; // Penalidade fixa por perder checkpoint
+                if (!passouNoCheckpoint) {
+                    pontosPenalidadeCheckpoint += 2000; // Penalidade fixa por perder checkpoint
+                }
             });
 
             // Atualiza o competidor com a soma das penalidades (negativo para diminuir do ranking)
             await db.ref(`competidores/${carId}`).update({ 
-                penalidadeRadar: penRadar,
-                penalidadeCheckpoint: penCheckpoint,
-                pontos: 0 - (penRadar + penCheckpoint) 
+                penalidadeRadar: pontosPenalidadeRadar,
+                penalidadeCheckpoint: pontosPenalidadeCheckpoint,
+                pontos: 0 - (pontosPenalidadeRadar + pontosPenalidadeCheckpoint) 
             });
         }
         alert("Apuração completa: Radares e Checkpoints processados!");
     };
 
-    // --- FUNÇÕES DE UTILITÁRIO (MANTIDAS) ---
-    window.logoffGeral = function() {
-        if (confirm("Deseja desconectar todos os competidores?") && prompt("Senha:") === "261291") {
-            db.ref('configuracoes').update({ comandoEncerramento: Date.now(), provaAberta: false });
-            alert("Logoff enviado!");
-        }
+    // --- CORREÇÃO NO CARREGAMENTO (Renderiza Círculos Novamente) ---
+    function carregarTrajeto() {
+        db.ref('configuracoes/percurso').once('value', snap => {
+            if (snap.exists()) {
+                L.geoJSON(snap.val(), {
+                    pointToLayer: (feature, latlng) => {
+                        // Se o GeoJSON tiver raio nas propriedades, recria como Círculo Leaflet
+                        if (feature.properties && feature.properties.radius) {
+                            return L.circle(latlng, { radius: feature.properties.radius });
+                        }
+                    },
+                    onEachFeature: (feature, layer) => {
+                        drawnItems.addLayer(layer);
+                    }
+                });
+            }
+        });
+    }
+
+    // --- CORREÇÃO NO SALVAMENTO (Salva o Raio do Círculo) ---
+    window.salvar = function() {
+        const data = { type: "FeatureCollection", features: [] };
+        
+        drawnItems.eachLayer(layer => {
+            const geojson = layer.toGeoJSON();
+            geojson.properties = geojson.properties || {};
+            
+            // Se for um círculo, precisamos anexar o raio manualmente pois o GeoJSON padrão não suporta círculos
+            if (layer instanceof L.Circle) {
+                geojson.properties.radius = layer.getRadius();
+                geojson.properties.tipo = 'checkpoint';
+            }
+            data.features.push(geojson);
+        });
+
+        db.ref('configuracoes/percurso').set(data).then(() => alert("Trajeto e Radares salvos com sucesso!"));
     };
 
-    window.excluirTodosCarros = function() {
-        if (confirm("Apagar todos os dados?") && prompt("Senha:") === "261291") {
-            Promise.all([db.ref('competidores').remove(), db.ref('posicoes').remove(), db.ref('rastros').remove(), db.ref('tempos').remove()])
-            .then(() => location.reload());
-        }
-    };
-
+    // --- FUNÇÕES DE MAPA (MANTIDAS) ---
     function rastrearCarros() {
         const markers = {};
         db.ref('posicoes').on('value', snap => {
@@ -320,7 +347,7 @@
     function atualizarSeletorCarros() {
         db.ref('competidores').on('value', snap => {
             const selector = document.getElementById('carSelector');
-            selector.innerHTML = '<option value="">Carro...</option>';
+            selector.innerHTML = '<option value="">Selecionar Carro...</option>';
             snap.forEach(child => {
                 selector.innerHTML += `<option value="${child.key}">Carro ${child.key}</option>`;
             });
@@ -329,8 +356,14 @@
 
     window.excluirCarro = async function() {
         const carId = document.getElementById('carSelector').value;
-        if (carId && confirm(`Excluir Carro ${carId}?`)) {
-            await Promise.all([db.ref(`competidores/${carId}`).remove(), db.ref(`posicoes/${carId}`).remove(), db.ref(`rastros/${carId}`).remove(), db.ref(`tempos/${carId}`).remove()]);
+        if (!carId) return alert("Selecione um carro.");
+        if (confirm(`Excluir Carro ${carId}?`)) {
+            await Promise.all([
+                db.ref(`competidores/${carId}`).remove(),
+                db.ref(`posicoes/${carId}`).remove(),
+                db.ref(`rastros/${carId}`).remove(),
+                db.ref(`tempos/${carId}`).remove()
+            ]);
             location.reload(); 
         }
     };
@@ -367,7 +400,7 @@
     };
 
     window.limparTemporarios = function() {
-        pontosTemporarios = []; linhaTemporaria.setLatLngs([]);
+        pontosTemporarios = []; linhaTemporaria.setLatLngs([]); document.getElementById('coordsInput').value = "";
     };
 
     window.resetarTudo = function() {
