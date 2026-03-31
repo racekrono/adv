@@ -159,6 +159,10 @@
                 layer.feature = layer.feature || {type: "Feature", properties: {}};
                 layer.feature.properties.velocidade = parseInt(vel) || 60;
             }
+            if (e.layerType === 'circle') {
+                layer.feature.properties.type = 'circle';
+                layer.feature.properties.radius = layer.getRadius();
+            }
             drawnItems.addLayer(layer);
         });
 
