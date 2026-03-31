@@ -30,8 +30,7 @@
         border-radius: 8px;
     }
 
-    /* ESSENCIAL PARA O MAPA APARECER */
-    #map { flex-grow: 1; width: 100%; height: 100%; background: #a0aec0; }
+    #map { flex-grow: 1; width: 100%; background: #a0aec0; }
 
     button {
         padding: 8px 12px;
@@ -83,35 +82,34 @@
             <button onclick="buscar()">🔍</button>
             <button onclick="salvar()" style="background: #38a169;">💾 Salvar Trajeto</button>
             <button id="btnStatusProva" onclick="alternarStatusProva()">...</button>
-            
-            <button onclick="logoffGeral()" style="background: #742a2a;">🚫 Logoff Geral</button>
-            <button onclick="excluirTodosCarros()" style="background: #e53e3e;">💀 Excluir Todos</button>
+            <button onclick="logoffGeral()" style="background: #742a2a;">🚫 Logoff Carros</button>
+            <button onclick="excluirTodosCarros()" style="background: #e53e3e;">💀 Excluir Carros</button>
         </div>
 
         <div class="button-group">
             <button onclick="window.location.href='rastro.html'" style="background: #805ad5;">🗺️ Rastro</button>
-            <button onclick="window.location.href='rastro.html'" style="background: #dd6b20;">🏁 Rodar Apuração</button>
+            <button onclick="processarPenalidadesGeral()" style="background: #dd6b20;">🏁 Rodar Apuração</button>
             <button onclick="window.location.href='tempos.html'" style="background: #2c7a7b;">⏱️ Tempos de Prova</button>
-            <button onclick="window.location.href='fotos.html'" style="background: #3182ce;">📸 Pontos Fotos</button>
-            <button onclick="window.location.href='ranking-geral.html'" style="background: #b7791f;">🏆 RANKING FINAL</button>
+            <button onclick="window.location.href='fotos.html'" style="background: #3182ce;">📸 Pontuação Fotos</button>
+            <button onclick="window.location.href='ranking-geral.html'" style="background: #b7791f;">🏆 Ranking Final</button>
         </div>
 
         <div class="button-group">
-            <select id="carSelector"><option value="">Carregando...</option></select>
+            <select id="carSelector"><option value="">Carro...</option></select>
             <button onclick="excluirCarro()">🗑️</button>  
-            <button onclick="resetar()" style="background: #000; color: red;">⚠️ RESET</button>
+            <button onclick="resetar()" style="background: #000; color: red;">Reset Total</button>
         </div>
     </div>
 
     <div id="map"></div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 
     <script>
-    // 1. CONFIGURAÇÃO FIREBASE (IGUAL AO ORIGINAL)
     const firebaseConfig = {
         apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
         authDomain: "cronometro-rally.firebaseapp.com",
@@ -124,7 +122,6 @@
 
     let map, drawnItems, pontosTemporarios = [], linhaTemporaria;
 
-    // 2. INICIALIZAÇÃO DO MAPA
     function initMap() {
         map = L.map('map').setView([-12.26, -38.96], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
@@ -137,7 +134,16 @@
 
         linhaTemporaria = L.polyline([], {color: 'yellow', dashArray: '5, 5'}).addTo(map);
 
-        // Força o mapa a aparecer (corrige o problema de não carregar)
+        map.on(L.Draw.Event.CREATED, (e) => {
+            const layer = e.layer;
+            if (e.layerType === 'polygon') {
+                const vel = prompt("Velocidade Máxima do Radar:", "60");
+                layer.feature = layer.feature || {type: "Feature", properties: {}};
+                layer.feature.properties.velocidade = parseInt(vel) || 60;
+            }
+            drawnItems.addLayer(layer);
+        });
+
         setTimeout(() => { map.invalidateSize(); }, 500);
 
         carregarTrajeto();
@@ -146,20 +152,96 @@
         monitorarStatusProva();
     }
 
-    // --- FUNÇÕES DE CONEXÃO AO BANCO ---
+    // --- LÓGICA DE APURAÇÃO (SUA FUNÇÃO ORIGINAL) ---
+    window.processarPenalidadesGeral = async function() {
+        if(!confirm("Deseja processar radares e penalidades de todos os carros agora?")) return;
+        
+        const percursoSnap = await db.ref('configuracoes/percurso').once('value');
+        if(!percursoSnap.exists()) return alert("Trajeto não definido!");
+        
+        const radares = percursoSnap.val().features.filter(f => f.geometry.type === 'Polygon');
+        const rastrosSnap = await db.ref('rastros').once('value');
+        const rastros = rastrosSnap.val() || {};
+
+        for (let carId in rastros) {
+            let pontosPenalidade = 0;
+            let excessos = {}; 
+
+            for (let r of radares) {
+                const velMax = r.properties.velocidade || 60;
+                const poly = turf.polygon(r.geometry.coordinates);
+                
+                for (let pId in rastros[carId]) {
+                    const p = rastros[carId][pId];
+                    const pt = turf.point([p.lng, p.lat]);
+                    
+                    if (turf.booleanPointInPolygon(pt, poly)) {
+                        if (p.vel > velMax) {
+                            const radarId = r.id || JSON.stringify(r.geometry.coordinates[0][0]);
+                            if(!excessos[radarId]) excessos[radarId] = [];
+                            excessos[radarId].push(p.ts);
+                        }
+                    }
+                }
+            }
+
+            for (let rid in excessos) {
+                const tempos = excessos[rid].sort((a, b) => a - b);
+                if (tempos.length > 0) {
+                    const duracaoS = (tempos[tempos.length - 1] - tempos[0]) / 1000;
+                    if (duracaoS > 10) {
+                        const extra = Math.floor((duracaoS - 10) / 10);
+                        pontosPenalidade += 500 + (extra * 500);
+                    }
+                }
+            }
+            await db.ref(`competidores/${carId}`).update({ penalidadeRadar: pontosPenalidade });
+        }
+        alert("Apuração concluída com sucesso!");
+    };
+
+    // --- NOVAS FUNÇÕES ---
+    window.logoffGeral = function() {
+        if (confirm("Encerrar sessão em todos os dispositivos?")) {
+            const senha = prompt("Senha:");
+            if (senha === "261291") {
+                db.ref('configuracoes').update({ comandoEncerramento: Date.now(), provaAberta: false });
+                alert("Logoff enviado!");
+            }
+        }
+    };
+
+    window.excluirTodosCarros = function() {
+        if (confirm("Apagar todos os carros?")) {
+            const senha = prompt("Senha:");
+            if (senha === "261291") {
+                db.ref('competidores').remove();
+                db.ref('posicoes').remove();
+                db.ref('rastros').remove();
+                db.ref('tempos').remove();
+                location.reload();
+            }
+        }
+    };
+
+    // --- OUTRAS FUNÇÕES ORIGINAIS ---
+    function carregarTrajeto() {
+        db.ref('configuracoes/percurso').once('value', snap => {
+            if (snap.exists()) L.geoJSON(snap.val(), { onEachFeature: (f, l) => drawnItems.addLayer(l) });
+        });
+    }
+
+    window.salvar = () => db.ref('configuracoes/percurso').set(drawnItems.toGeoJSON()).then(() => alert("Salvo!"));
+
     function rastrearCarros() {
         const markers = {};
         db.ref('posicoes').on('value', snap => {
             snap.forEach(child => {
-                const id = child.key;
-                const p = child.val();
-                if (markers[id]) {
-                    markers[id].setLatLng([p.lat, p.lng]);
-                } else {
-                    markers[id] = L.marker([p.lat, p.lng], {
-                        icon: L.divIcon({ className: 'marker-label', html: id, iconSize: [30, 30] })
-                    }).addTo(map);
-                }
+                const id = child.key, p = child.val();
+                if (markers[id]) markers[id].setLatLng([p.lat, p.lng]);
+                else markers[id] = L.marker([p.lat, p.lng], {
+                    icon: L.divIcon({ className: 'marker-label', html: id, iconSize: [30, 30] })
+                }).addTo(map);
             });
         });
     }
@@ -167,51 +249,20 @@
     function atualizarSeletorCarros() {
         db.ref('competidores').on('value', snap => {
             const selector = document.getElementById('carSelector');
-            selector.innerHTML = '<option value="">Selecionar Carro...</option>';
-            snap.forEach(child => {
-                selector.innerHTML += `<option value="${child.key}">Carro ${child.key}</option>`;
-            });
+            selector.innerHTML = '<option value="">Carro...</option>';
+            snap.forEach(c => selector.innerHTML += `<option value="${c.key}">Carro ${c.key}</option>`);
         });
     }
 
-    // --- NOVAS FUNÇÕES PEDIDAS ---
-    window.logoffGeral = function() {
-        if (confirm("Encerrar sessão em todos os dispositivos?")) {
-            const senha = prompt("Senha:");
-            if (senha === "261291") {
-                db.ref('configuracoes').update({ 
-                    comandoEncerramento: Date.now(),
-                    provaAberta: false 
-                });
-                alert("Logoff geral enviado!");
-            }
-        }
-    };
-
-    window.excluirTodosCarros = function() {
-        if (confirm("⚠️ ISSO APAGARÁ TUDO! Deseja excluir todos os competidores e rastros?")) {
-            const senha = prompt("Senha:");
-            if (senha === "261291") {
-                db.ref('competidores').remove();
-                db.ref('posicoes').remove();
-                db.ref('rastros').remove();
-                db.ref('tempos').remove();
-                alert("Banco limpo!");
-                location.reload();
-            }
-        }
-    };
-
-    // --- FUNÇÕES DE TRAJETO ---
-    function carregarTrajeto() {
-        db.ref('configuracoes/percurso').once('value', snap => {
-            if (snap.exists()) {
-                L.geoJSON(snap.val(), { onEachFeature: (f, l) => { drawnItems.addLayer(l); } });
-            }
+    function monitorarStatusProva() {
+        db.ref('configuracoes/provaAberta').on('value', snap => {
+            const btn = document.getElementById('btnStatusProva');
+            btn.innerText = snap.val() ? "🔓 PROVA ABERTA" : "🔒 PROVA FECHADA";
+            btn.style.background = snap.val() ? "#38a169" : "#e53e3e";
         });
     }
 
-    window.salvar = () => db.ref('configuracoes/percurso').set(drawnItems.toGeoJSON()).then(() => alert("Salvo!"));
+    window.alternarStatusProva = () => db.ref('configuracoes/provaAberta').once('value', s => db.ref('configuracoes/provaAberta').set(!s.val()));
 
     window.adicionarPontoNaLinha = function() {
         const val = document.getElementById('coordsInput').value.split(',');
@@ -230,23 +281,13 @@
     };
 
     window.limparTemporarios = () => { pontosTemporarios = []; linhaTemporaria.setLatLngs([]); };
-
-    function monitorarStatusProva() {
-        db.ref('configuracoes/provaAberta').on('value', snap => {
-            const btn = document.getElementById('btnStatusProva');
-            btn.innerText = snap.val() ? "🔓 PROVA ABERTA" : "🔒 PROVA FECHADA";
-            btn.style.background = snap.val() ? "#38a169" : "#e53e3e";
-        });
-    }
-
-    window.alternarStatusProva = () => db.ref('configuracoes/provaAberta').once('value', s => db.ref('configuracoes/provaAberta').set(!s.val()));
-
+    
     window.excluirCarro = () => {
         const id = document.getElementById('carSelector').value;
         if (id && confirm(`Excluir ${id}?`)) db.ref(`competidores/${id}`).remove();
     };
 
-    window.resetar = () => { if(confirm("Reset Total?") && prompt("Senha:") === "261291") db.ref('/').remove().then(()=>location.reload()); };
+    window.resetar = () => { if(confirm("Reset?") && prompt("Senha:") === "261291") db.ref('/').remove().then(()=>location.reload()); };
 
     window.buscar = async (q = document.getElementById('cityInput').value) => {
         const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}`);
