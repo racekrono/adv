@@ -7,30 +7,35 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
     <style>
     * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #1a202c; font-family: sans-serif; display: flex; flex-direction: column; }
+    html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #1a202c; font-family: sans-serif; display: flex; flex-direction: column; overflow: hidden; }
     
     #toolbar { 
         background: #2d3748; 
         display: flex; 
         flex-wrap: wrap; 
         padding: 10px; 
-        gap: 15px; 
+        gap: 10px; 
         z-index: 9999; 
-        position: relative;
-        border-bottom: 1px solid #4a5568;
+        border-bottom: 2px solid #4a5568;
     }
 
     .button-group {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
+        gap: 6px;
         align-items: center;
-        background: rgba(255,255,255,0.05);
+        background: rgba(255,255,255,0.08);
         padding: 8px;
         border-radius: 8px;
     }
 
-    #map { flex-grow: 1; width: 100%; background: #a0aec0; }
+    /* AJUSTE CRÍTICO: Garantir altura para o mapa aparecer */
+    #map { 
+        flex: 1; 
+        width: 100%; 
+        background: #1a202c; 
+        min-height: 0; /* Importante para flexbox */
+    }
 
     button {
         padding: 8px 12px;
@@ -74,30 +79,29 @@
             <input type="text" id="coordsInput" placeholder="Lat, Lng">
             <button onclick="adicionarPontoNaLinha()">📍 Add Ponto</button>
             <button onclick="finalizarLinhaManual()" style="background: #2b6cb0;">✏️ Criar Linha</button>
-            <button onclick="limparTemporarios()">🗑️ Limpar</button>
         </div>
 
         <div class="button-group">
             <input type="text" id="cityInput" placeholder="Buscar Cidade...">
             <button onclick="buscar()">🔍</button>
-            <button onclick="salvar()" style="background: #38a169;">💾 Salvar Trajeto</button>
+            <button onclick="salvar()" style="background: #38a169;">💾 Salvar</button>
             <button id="btnStatusProva" onclick="alternarStatusProva()">...</button>
-            <button onclick="logoffGeral()" style="background: #742a2a;">🚫 Logoff Todos os Carros</button>
-            <button onclick="excluirTodosCarros()" style="background: #e53e3e;">💀 Excluir Todos os Carros</button>
+            <button onclick="logoffGeral()" style="background: #742a2a;">🚫 Logoff Geral</button>
+            <button onclick="excluirTodosCarros()" style="background: #e53e3e;">💀 Excluir Todos</button>
         </div>
 
         <div class="button-group">
             <button onclick="window.location.href='rastro.html'" style="background: #805ad5;">🗺️ Rastro</button>
             <button onclick="processarPenalidadesGeral()" style="background: #dd6b20;">🏁 Rodar Apuração</button>
-            <button onclick="window.location.href='tempos.html'" style="background: #2c7a7b;">⏱️ Tempos de Prova</button>
-            <button onclick="window.location.href='fotos.html'" style="background: #3182ce;">📸 Pontuação Fotos</button>
-            <button onclick="window.location.href='ranking-geral.html'" style="background: #b7791f;">🏆 Ranking Final</button>
+            <button onclick="window.location.href='tempos.html'" style="background: #2c7a7b;">⏱️ Chegada</button>
+            <button onclick="window.location.href='fotos.html'" style="background: #3182ce;">📸 Fotos</button>
+            <button onclick="window.location.href='ranking-geral.html'" style="background: #b7791f;">🏆 RANKING FINAL</button>
         </div>
 
         <div class="button-group">
             <select id="carSelector"><option value="">Carro...</option></select>
             <button onclick="excluirCarro()">🗑️</button>  
-            <button onclick="resetar()" style="background: #000; color: red;">Reset Total</button>
+            <button onclick="resetar()" style="background: #000; color: red;">Reset</button>
         </div>
     </div>
 
@@ -107,4 +111,55 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
     <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
-    <script src="https://
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
+    <script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
+        authDomain: "cronometro-rally.firebaseapp.com",
+        databaseURL: "https://cronometro-rally-default-rtdb.firebaseio.com",
+        projectId: "cronometro-rally",
+        appId: "1:341731891354:web:d0c34265be68015e98a723"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let map, drawnItems, pontosTemporarios = [], linhaTemporaria;
+
+    function initMap() {
+        // Camadas
+        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
+        const satelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Esri, Maxar, Earthstar Geographics'
+        });
+
+        map = L.map('map', {
+            center: [-12.26, -38.96],
+            zoom: 13,
+            layers: [osm]
+        });
+
+        // Adiciona o seletor de satélite no canto superior direito
+        const baseMaps = { "Ruas": osm, "Satélite": satelite };
+        L.control.layers(baseMaps).addTo(map);
+        
+        drawnItems = new L.FeatureGroup().addTo(map);
+        map.addControl(new L.Control.Draw({
+            edit: { featureGroup: drawnItems },
+            draw: { polyline: true, polygon: true, circle: true, rectangle: false, marker: false }
+        }));
+
+        linhaTemporaria = L.polyline([], {color: 'yellow', dashArray: '5, 5'}).addTo(map);
+
+        // Captura criação de radar (Polygon)
+        map.on(L.Draw.Event.CREATED, (e) => {
+            const layer = e.layer;
+            if (e.layerType === 'polygon') {
+                const vel = prompt("Velocidade Máxima do Radar:", "60");
+                layer.feature = layer.feature || {type: "Feature", properties: {}};
+                layer.feature.properties.velocidade = parseInt(vel) || 60;
+            }
+            drawnItems.addLayer(layer);
+        });
+
+        // FORÇA O REDESENHO DO MAPA
