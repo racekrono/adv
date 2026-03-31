@@ -4,39 +4,68 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Race Krono</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0d0af0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Race Krono">
+    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/racekrono/adv/refs/heads/main/Logo.png">
+    
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    
     <style>
         body { font-family: sans-serif; background: #121212; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; overflow: hidden; }
-        .card { background: #1e1e1e; padding: 25px; border-radius: 12px; width: 90%; max-width: 380px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border-top: 5px solid #ffffff; }
+        .card { background: #1e1e1e; padding: 25px; border-radius: 12px; width: 90%; max-width: 380px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border-top: 5px solid #ffffff; z-index: 10; }
+        .logo { display: block; margin: 0 auto 20px auto; max-width: 150px; height: auto; }
         input, select, button { width: 100%; padding: 14px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #333; background: #252525; color: white; font-size: 16px; box-sizing: border-box; }
-        button { background: #f80303; border: none; font-weight: bold; cursor: pointer; }
+        button { background: #f80303; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
         .tracking { text-align: center; display: none; }
-        .odo-val { font-size: 4rem; font-weight: bold; color: #f1c40f; font-family: monospace; }
-        .btn-sair { background: transparent; color: #555; font-size: 11px; margin-top: 20px; border: none; text-decoration: underline; }
+        .status-container { margin-top: 15px; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid #333; }
+        .status-gps { color: #2ecc71; font-weight: bold; font-size: 14px; }
+        .status-offline { color: #f1c40f !important; }
+        .aviso-offline { display: none; font-size: 11px; color: #f1c40f; margin-top: 5px; text-transform: uppercase; font-weight: bold; }
+        .odo-box { margin-top: 15px; padding: 15px 10px; border-top: 1px solid #333; background: rgba(0,0,0,0.2); border-radius: 10px; }
+        .odo-label { font-size: 10px; color: #888; text-transform: uppercase; }
+        .odo-val { font-size: 5rem; font-weight: bold; color: #f1c40f; margin: 2px 0; font-family: monospace; }
+        .btn-mini { padding: 10px; font-size: 14px; background: #333; width: auto; flex: 1; }
+        .btn-sair { background: transparent; color: #444; font-size: 11px; margin-top: 20px; border: none; width: 100%; text-decoration: underline; }
     </style>
 </head>
 <body>
     <div class="card">
         <div id="setup">
-            <h2 style="text-align:center;">Rally de Aventura</h2>
+            <img src="https://raw.githubusercontent.com/racekrono/adv/refs/heads/main/Logo.png" class="logo">
             <input type="text" id="nome" placeholder="Nome do Piloto">
             <select id="categoria">
-                <option>UTV</option><option>4x4</option><option>4x2</option>
+                <option>UTV</option><option>BAIANO 4x4</option><option>BAIANO 4x2</option><option>INICIANTE</option>
             </select>
             <input type="number" id="carro" placeholder="Nº do Carro">
             <button id="btnIniciar">INICIAR PROVA</button>
         </div>
 
         <div id="ativo" class="tracking">
-            <h2 id="viewCarro" style="color:#0d0af0;">Carro --</h2>
+            <h2 id="viewCarro" style="color:#0d0af0; margin-bottom: 4px;">Carro --</h2>
             <div id="viewVel" style="font-size: 3rem; font-weight: bold;">0.0</div>
-            <p>KM/H</p>
-            <div class="odo-val" id="displayOdo">0.000</div>
-            <button class="btn-sair" onclick="encerrarSessaoConfirmada()">Encerrar Sessão</button>
+            <p style="color: #888;">KM/H</p>
+            
+            <div class="odo-box">
+                <span class="odo-label">Odômetro</span>
+                <div id="displayOdo" class="odo-val">0.000</div>
+                <div style="display:flex; gap:5px;">
+                    <button class="btn-mini" onclick="odoTotal=0; atualizarTelaOdo();">ZERAR</button>
+                </div>
+            </div>
+
+            <div class="status-container">
+                <div id="msgGps" class="status-gps">● LOCALIZANDO...</div>
+                <div id="detalheOffline" class="aviso-offline">MODO OFFLINE ATIVO</div>
+            </div>
+            
+            <button class="btn-sair" onclick="encerrarSessao()">Encerrar / Sair</button>
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
@@ -48,72 +77,26 @@
         const app = firebase.initializeApp(firebaseConfig);
         const db = firebase.database(app);
 
-        let watchID = null;
+        let watchID = null, odoTotal = 0, ultimaPos = null;
 
         function iniciarFluxoRastreio(num) {
             document.getElementById('setup').style.display = 'none';
             document.getElementById('ativo').style.display = 'block';
             document.getElementById('viewCarro').innerText = "Carro " + num;
             
-            // LOGICA PERSISTENTE: Obtém ou cria o timestamp do login original
-            let loginOriginal = localStorage.getItem('rally_login_timestamp');
-            if (!loginOriginal) {
-                loginOriginal = Date.now();
-                localStorage.setItem('rally_login_timestamp', loginOriginal);
-            }
+            // CONTROLE DE EXPULSÃO
+            let loginTS = localStorage.getItem('rally_login_ts');
+            if(!loginTS) { loginTS = Date.now(); localStorage.setItem('rally_login_ts', loginTS); }
 
-            // ESCUTA COMANDO DE ENCERRAMENTO DO ADMIN
             db.ref('configuracoes/comandoEncerramento').on('value', snap => {
-                if (snap.exists()) {
-                    const tsComando = snap.val();
-                    // Se o comando do admin for mais recente que o login do piloto
-                    if (tsComando > loginOriginal) {
-                        alert("A prova foi encerrada pela organização.");
-                        encerrarSessao();
-                    }
+                if(snap.exists() && snap.val() > loginTS) {
+                    alert("A prova foi encerrada pela organização.");
+                    encerrarSessao();
                 }
             });
 
-            // Inicia GPS
-            watchID = navigator.geolocation.watchPosition(p => {
-                const dados = { lat: p.coords.latitude, lng: p.coords.longitude, vel: Math.round((p.coords.speed || 0) * 3.6), ts: Date.now() };
-                document.getElementById('viewVel').innerText = dados.vel;
-                db.ref('posicoes/' + num).set(dados);
-                db.ref('rastros/' + num).push(dados);
-            }, null, { enableHighAccuracy: true });
-        }
-
-        document.getElementById('btnIniciar').onclick = async function() {
-            const num = document.getElementById('carro').value;
-            const nome = document.getElementById('nome').value;
-            if(!num || !nome) return alert("Preencha tudo!");
-
-            const aberta = (await db.ref('configuracoes/provaAberta').once('value')).val();
-            if(!aberta) return alert("Prova fechada!");
-
-            // Define o timestamp do login NO MOMENTO do clique em Iniciar
-            localStorage.setItem('rally_login_timestamp', Date.now());
-            localStorage.setItem('rally_carro_ativo', num);
-            
-            await db.ref('competidores/' + num).set({ nome, ativo: true });
-            iniciarFluxoRastreio(num);
-        };
-
-        function encerrarSessaoConfirmada() {
-            if(confirm("Deseja mesmo sair?")) encerrarSessao();
-        }
-
-        function encerrarSessao() {
-            if (watchID) navigator.geolocation.clearWatch(watchID);
-            localStorage.removeItem('rally_carro_ativo');
-            localStorage.removeItem('rally_login_timestamp'); // Limpa para permitir novo login futuro
-            location.reload();
-        }
-
-        window.onload = () => {
-            const salvo = localStorage.getItem('rally_carro_ativo');
-            if (salvo) iniciarFluxoRastreio(salvo);
-        };
-    </script>
-</body>
-</html>
+            // STATUS DE CONEXÃO
+            db.ref(".info/connected").on("value", snap => {
+                const msg = document.getElementById('msgGps');
+                const det = document.getElementById('detalheOffline');
+                msg.innerText = snap.val() ? "● TRANSMITINDO" : "○
