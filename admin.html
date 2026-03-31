@@ -90,4 +90,144 @@
             <button onclick="window.location.href='rastro.html'" style="background: #dd6b20;">🏁 Apurar/Rastro</button>
             <button onclick="window.location.href='ranking-tempo.html'" style="background: #2c7a7b;">⏱️ Inserir Tempos</button>
             <button onclick="window.location.href='fotos.html'" style="background: #3182ce;">📸 Fotos</button>
-            <button onclick="window.location.href='ranking-geral.html'" style="background: #b7791f;">🏆 Ranking
+            <button onclick="window.location.href='ranking-geral.html'" style="background: #b7791f;">🏆 Ranking Final</button>
+        </div>
+
+        <div class="button-group">
+            <select id="carSelector"><option value="">Carregando carros...</option></select>
+            <button onclick="excluirCarro()" style="background: #e53e3e;">Excluir</button>  
+            <button onclick="resetar()" style="background: #000; color: red;">Reset Total</button>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
+    <script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
+        authDomain: "cronometro-rally.firebaseapp.com",
+        databaseURL: "https://cronometro-rally-default-rtdb.firebaseio.com",
+        projectId: "cronometro-rally",
+        appId: "1:341731891354:web:d0c34265be68015e98a723"
+    };
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.database(app);
+
+    let map, drawnItems, pontosTemporarios = [], linhaTemporaria;
+
+    // Inicialização do Mapa
+    function initMap() {
+        map = L.map('map').setView([-12.26, -38.96], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        
+        drawnItems = new L.FeatureGroup().addTo(map);
+        const drawControl = new L.Control.Draw({
+            edit: { featureGroup: drawnItems },
+            draw: { polyline: true, polygon: true, circle: true, rectangle: false, marker: false }
+        });
+        map.addControl(drawControl);
+
+        linhaTemporaria = L.polyline([], {color: 'yellow', dashArray: '5, 5'}).addTo(map);
+
+        // Força o mapa a aparecer corretamente
+        setTimeout(() => { map.invalidateSize(); }, 500);
+
+        carregarTrajeto();
+        carregarCarrosNoMapa();
+        carregarListaCarros();
+        monitorarStatus();
+    }
+
+    // Funções de Dados
+    function carregarListaCarros() {
+        db.ref('competidores').on('value', snap => {
+            const select = document.getElementById('carSelector');
+            select.innerHTML = '<option value="">Selecionar Carro...</option>';
+            snap.forEach(child => {
+                select.innerHTML += `<option value="${child.key}">Carro ${child.key}</option>`;
+            });
+        });
+    }
+
+    function monitorarStatus() {
+        db.ref('configuracoes/provaAberta').on('value', snap => {
+            const btn = document.getElementById('btnStatusProva');
+            btn.innerText = snap.val() ? "🔓 PROVA ABERTA" : "🔒 PROVA FECHADA";
+            btn.style.background = snap.val() ? "#38a169" : "#e53e3e";
+        });
+    }
+
+    window.alternarStatusProva = function() {
+        db.ref('configuracoes/provaAberta').once('value', snap => {
+            db.ref('configuracoes/provaAberta').set(!snap.val());
+        });
+    };
+
+    // FUNÇÕES DE LIMPEZA
+    window.encerrarProvaGeral = function() {
+        if(confirm("Expulsar todos os pilotos agora?")) {
+            const senha = prompt("Senha:");
+            if(senha === "261291") {
+                db.ref('configuracoes').update({ comandoEncerramento: Date.now(), provaAberta: false });
+                alert("Enviado!");
+            }
+        }
+    };
+
+    window.limparTodosCarros = function() {
+        if(confirm("APAGAR TODOS OS CARROS DO BANCO?")) {
+            const senha = prompt("Senha:");
+            if(senha === "261291") {
+                db.ref('competidores').remove();
+                db.ref('posicoes').remove();
+                db.ref('rastros').remove();
+                db.ref('tempos').remove();
+                alert("Banco limpo!");
+            }
+        }
+    };
+
+    // Restante das funções originais
+    function carregarCarrosNoMapa() {
+        const markers = {};
+        db.ref('posicoes').on('value', snap => {
+            snap.forEach(c => {
+                const id = c.key, p = c.val();
+                if(markers[id]) markers[id].setLatLng([p.lat, p.lng]);
+                else markers[id] = L.marker([p.lat, p.lng], { icon: L.divIcon({className:'marker-label', html:id}) }).addTo(map);
+            });
+        });
+    }
+
+    window.salvar = function() {
+        const data = drawnItems.toGeoJSON();
+        db.ref('configuracoes/percurso').set(data).then(() => alert("Trajeto salvo!"));
+    };
+
+    function carregarTrajeto() {
+        db.ref('configuracoes/percurso').once('value', snap => {
+            if(snap.exists()) L.geoJSON(snap.val(), { onEachFeature: (f,l) => drawnItems.addLayer(l) });
+        });
+    }
+
+    window.excluirCarro = function() {
+        const id = document.getElementById('carSelector').value;
+        if(id && confirm(`Excluir ${id}?`)) {
+            db.ref(`competidores/${id}`).remove();
+            db.ref(`posicoes/${id}`).remove();
+        }
+    };
+
+    window.resetar = function() {
+        if(prompt("Senha:") === "261291") db.ref('/').remove().then(() => location.reload());
+    };
+
+    window.onload = initMap;
+    </script>
+</body>
+</html>
