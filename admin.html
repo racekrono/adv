@@ -360,12 +360,19 @@
     };
 
     window.logoffGeral = function() {
-        if (confirm("Deseja desconectar todos os pilotos agora? (Forçará o recarregamento da página deles)")) {
+    const senha = prompt("DIGITE A SENHA PARA LOGOFF GERAL:");
+    
+    if (senha === "261291") {
+        if (confirm("Isso forçará a saída de todos os pilotos agora. Continuar?")) {
+            // Define uma flag de comando no banco com o timestamp atual
             db.ref('configuracoes/comandoLogoff').set(Date.now()).then(() => {
-                alert("Sinal de logoff enviado!");
+                alert("Sinal de logoff enviado para todos os dispositivos!");
             });
         }
-    };
+    } else if (senha !== null) {
+        alert("Senha incorreta!");
+    }
+};
 </script>
 </body>
 </html>
