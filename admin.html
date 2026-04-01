@@ -20,7 +20,6 @@
         border-bottom: 1px solid #4a5568;
     }
 
-    /* Grupos de botões */
     .button-group {
         display: flex;
         flex-wrap: wrap;
@@ -33,77 +32,77 @@
 
     #map { flex-grow: 1; width: 100%; background: #a0aec0; }
 
-    button {
-        padding: 8px 12px;
-        background: #4a5568;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-weight: bold;
+    button { 
+        padding: 10px 14px; 
+        background: #4a5568; 
+        color: white; 
+        border: none; 
+        border-radius: 4px; 
+        cursor: pointer; 
+        font-weight: bold; 
         font-size: 11px;
+        white-space: nowrap;
     }
 
     button:hover { filter: brightness(1.2); }
-
-    input, select {
-        padding: 8px;
-        border-radius: 4px;
-        border: none;
-        background: #1a202c;
-        color: white;
-        font-size: 11px;
+    
+    input, select { 
+        padding: 8px; 
+        border-radius: 4px; 
+        border: none; 
+        background: #1a202c; 
+        color: white; 
+        font-size: 12px;
     }
 
-    .marker-label {
-        background: #ed8936;
-        border: 2px solid white;
-        border-radius: 50%;
-        color: white;
-        font-weight: bold;
-        text-align: center;
-        line-height: 26px;
-        width: 30px;
-        height: 30px;
+    .marker-label { background: #ed8936; border: 2px solid white; border-radius: 50%; color: white; font-weight: bold; text-align: center; line-height: 26px; width: 30px; height: 30px; font-size: 12px; }
+
+    @media (max-width: 600px) {
+        .button-group { width: 100%; justify-content: center; }
+        input { width: 100%; }
     }
-    </style>
+</style>
 </head>
 <body>
-
     <div id="toolbar">
         <div class="button-group">
-            <input type="text" id="coordsInput" placeholder="Lat, Lng">
-            <button onclick="adicionarPontoNaLinha()">📍 Add Ponto</button>
+            <input type="text" id="coordsInput" placeholder="Lat, Lng (ex: -12.2,-38.9)">
+            <button onclick="adicionarPontoNaLinha()" style="background: #4a5568;">📍 Add Ponto</button>
             <button onclick="finalizarLinhaManual()" style="background: #2b6cb0;">✏️ Criar Linha</button>
-            <button onclick="limparTemporarios()">🗑️ Limpar</button>
+            <button onclick="limparTemporarios()" style="background: #718096;">🗑️ Limpar</button>
         </div>
-
         <div class="button-group">
-            <input type="text" id="cityInput" placeholder="Buscar Cidade...">
-            <button onclick="buscar()">🔍</button>
+            <input type="text" id="cityInput" placeholder="Cidade...">
+            <button onclick="buscar()">🔍 Buscar</button>
             <button onclick="salvar()" style="background: #38a169;">💾 Salvar Trajeto</button>
-            <button id="btnStatusProva" onclick="alternarStatusProva()">Carregando...</button>
-            <button onclick="logoffGeral()" style="background: #742a2a;">🚫 Logoff Geral</button>
-            <button onclick="excluirTodosCarros()" style="background: #e53e3e;">💀 Excluir Todos</button>
+            <button id="btnStatusProva" onclick="alternarStatusProva()">Aguardando...</button>
         </div>
 
         <div class="button-group">
             <button onclick="window.location.href='rastro.html'" style="background: #805ad5;">🗺️ Rastro</button>
-            <button onclick="processarPenalidadesGeral()" style="background: #dd6b20;">🏁 Rodar Apuração</button>
-            <button onclick="window.location.href='tempos.html'" style="background: #2c7a7b;">⏱️ Tempos de Prova</button>
-            <button onclick="window.location.href='ranking-tempo.html'" style="background: #2c7a7b;">📊 Ranking Tempos</button>
-            <button onclick="window.location.href='fotos.html'" style="background: #3182ce;">📸 Pontuação Fotos</button>
-            <button onclick="window.location.href='ranking-fotos.html'" style="background: #4a5568;">🖼️ Ranking Fotos</button>
-            <button onclick="window.location.href='ranking-geral.html'" style="background: #b7791f;">🏆 RANKING FINAL</button>
+            <button onclick="apurar()" style="background: #dd6b20;">🏁 Rodar Apuração</button>
+            <button onclick="window.location.href='tempos.html'" style="background: #d69e2e;">⏱️ Chegada</button>
+            <button onclick="window.location.href='fotos.html'" style="background: #3182ce;">📸 Fotos</button>
         </div>
 
         <div class="button-group">
-            <select id="carSelector"><option value="">Selecionar Carro...</option></select>
-            <button onclick="excluirCarro()">🗑️</button>  
-            <button onclick="resetarTudo()" style="background: #000; color: red;">⚠️ RESET TOTAL</button>
+            <button onclick="window.location.href='resultados.html'" style="background: #3182ce;">📊 Pontos</button>
+            <button onclick="window.location.href='ranking-tempo.html'" style="background: #2c7a7b;">⏱️ Tempos</button>
+            <button onclick="window.location.href='ranking-fotos.html'" style="background: #2b6cb0;">📊 Rank Fotos</button>
+            <button onclick="window.location.href='ranking-geral.html'" style="background: #b7791f; border: 1px solid #f6e05e;">🏆 RANKING FINAL</button>
+        </div>
+
+        <div class="button-group">
+            <select id="carSelector">
+                <option value="">Carro...</option>
+            </select>
+            <button onclick="excluirCarro()" style="background: #e53e3e;">🗑️ Excluir</button>  
+            <button onclick="resetar()" style="background: #e53e3e;">⚠️ Reset</button>
+            <button onclick="excluirTodosCarros()" style="background: #c53030; border: 1px solid white;">💀 APAGAR TODOS</button>
+            <button onclick="logoffGeral()" style="background: #2d3748; border: 1px solid #a0aec0;">🚪 LOGOFF GERAL</button>
         </div>
     </div>
-
+    
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -113,68 +112,54 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 
     <script>
-    // Configuração Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
         authDomain: "cronometro-rally.firebaseapp.com",
         databaseURL: "https://cronometro-rally-default-rtdb.firebaseio.com",
         projectId: "cronometro-rally",
+        storageBucket: "cronometro-rally.firebasestorage.app",
+        messagingSenderId: "341731891354",
         appId: "1:341731891354:web:d0c34265be68015e98a723"
     };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
 
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.database(app);
+    
     let map, drawnItems;
     let pontosTemporarios = [];
-    let linhaTemporaria;
+    let linhaTemporaria; 
 
     function initMap() {
-        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
-        const satelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
-
-        map = L.map('map', {
-            center: [-12.26, -38.96],
-            zoom: 13,
-            layers: [osm]
+        const camadaRuas = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+        const camadaSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
+        
+        map = L.map('map', { 
+            center: [-12.26, -38.96], 
+            zoom: 13, 
+            layers: [camadaRuas] 
         });
 
-        const baseMaps = { "Ruas": osm, "Satélite": satelite };
-        L.control.layers(baseMaps).addTo(map);
-
-        drawnItems = new L.FeatureGroup();
-        map.addLayer(drawnItems);
-
+        linhaTemporaria = L.polyline([], {color: 'yellow', dashArray: '5, 5'}).addTo(map);
+        L.control.layers({ "Mapa": camadaRuas, "Satélite": camadaSat }).addTo(map);
+        drawnItems = new L.FeatureGroup().addTo(map);
+        
         const drawControl = new L.Control.Draw({
             edit: { featureGroup: drawnItems },
-            draw: { 
-                polyline: true, 
-                polygon: true, 
-                circle: true, // Habilitado para Checkpoints
-                rectangle: false, 
-                marker: false, 
-                circlemarker: false 
-            }
+            draw: { polyline: true, polygon: true, circle: true, rectangle: false, marker: false, circlemarker: false }
         });
         map.addControl(drawControl);
 
-        linhaTemporaria = L.polyline([], {color: 'yellow', dashArray: '5, 5'}).addTo(map);
-
-        map.on(L.Draw.Event.CREATED, function (event) {
-            const layer = event.layer;
-            layer.feature = layer.feature || {type: "Feature", properties: {}}; // Garante que feature e propriedades existam
-            
-            if (event.layerType === 'polygon') {
-                const vel = prompt("Velocidade Máxima do Radar (km/h):", "60");
-                layer.feature.properties.velocidade = parseInt(vel) || 60;
-                layer.feature.properties.tipo = 'radar';
+        map.on(L.Draw.Event.CREATED, (e) => {
+            const layer = e.layer;
+            layer.feature = layer.feature || { type: "Feature", properties: {} };
+            if (e.layerType === 'polygon') {
+                const v = prompt("Velocidade Máxima Radar (KM/H):", "60");
+                layer.feature.properties.velocidade = parseInt(v) || 60;
             }
-            
-            // --- CORREÇÃO: Trata a criação de Círculos (Checkpoints) ---
-            if (event.layerType === 'circle') {
-                layer.feature.properties.tipo = 'checkpoint';
-                layer.feature.properties.radius = layer.getRadius(); // Salva o raio explicitamente
+            if (e.layerType === 'circle') {
+                layer.feature.properties.type = 'circle';
+                layer.feature.properties.radius = layer.getRadius();
             }
-
             drawnItems.addLayer(layer);
         });
 
@@ -182,181 +167,158 @@
         rastrearCarros();
         atualizarSeletorCarros();
         monitorarStatusProva();
+        
+        setTimeout(() => { map.invalidateSize(); }, 500);
     }
 
-    // --- FUNÇÕES DE UTILITÁRIO (MANTIDAS) ---
-    window.logoffGeral = function() {
-        if (confirm("Deseja desconectar todos os competidores agora?")) {
-            const senha = prompt("Senha de segurança:");
-            if (senha === "261291") {
-                db.ref('configuracoes').update({ 
-                    comandoEncerramento: Date.now(),
-                    provaAberta: false 
-                });
-                alert("Comando de Logoff enviado com sucesso!");
-            }
-        }
+    window.adicionarPontoNaLinha = function() {
+        const input = document.getElementById('coordsInput').value;
+        const partes = input.split(',');
+        if (partes.length !== 2) { alert("Formato inválido!"); return; }
+        const lat = parseFloat(partes[0].trim());
+        const lng = parseFloat(partes[1].trim());
+        if (isNaN(lat) || isNaN(lng)) { alert("Coordenadas inválidas."); return; }
+        pontosTemporarios.push([lat, lng]);
+        linhaTemporaria.setLatLngs(pontosTemporarios);
+        map.setView([lat, lng], 15);
+        document.getElementById('coordsInput').value = "";
     };
 
-    window.excluirTodosCarros = function() {
-        if (confirm("ATENÇÃO: Isso apagará TODOS os carros e dados de rastro. Confirmar?")) {
-            const senha = prompt("Senha de segurança:");
-            if (senha === "261291") {
-                Promise.all([
-                    db.ref('competidores').remove(),
-                    db.ref('posicoes').remove(),
-                    db.ref('rastros').remove(),
-                    db.ref('tempos').remove()
-                ]).then(() => {
-                    alert("Todos os carros foram removidos.");
-                    location.reload();
-                });
-            }
-        }
+    window.finalizarLinhaManual = function() {
+        if (pontosTemporarios.length < 2) { alert("Adicione pelo menos 2 pontos."); return; }
+        const novaLinha = L.polyline(pontosTemporarios, { color: '#FF007F' });
+        novaLinha.addTo(drawnItems);
+        limparTemporarios();
+        alert("Linha criada! Clique em SALVAR TRAJETO para gravar.");
     };
 
-    // --- APURAÇÃO ATUALIZADA (Radar + Checkpoint) ---
-    window.processarPenalidadesGeral = async function() {
-        if (!confirm("Deseja processar radares e penalidades de todos os carros agora?")) return;
-        const percursoSnap = await db.ref('configuracoes/percurso').once('value');
-        if (!percursoSnap.exists()) return alert("Trajeto não definido!");
-        const features = percursoSnap.val().features;
-        
-        // Separa Radares (Polígonos) e Checkpoints (Pontos com Raio)
-        const radares = features.filter(f => f.geometry.type === 'Polygon');
-        const checkpoints = features.filter(f => f.properties && f.properties.radius);
-        
-        const rastrosSnap = await db.ref('rastros').once('value');
-        const rastros = rastrosSnap.val() || {};
-
-        for (let carId in rastros) {
-            let pontosPenalidadeRadar = 0;
-            let pontosPenalidadeCheckpoint = 0;
-            let excessosPorRadar = {}; 
-            const carPoints = Object.values(rastros[carId]);
-
-            // 1. Processar Radares (Lógica de Tempo do Admin2)
-            for (let radarFeature of radares) {
-                const velMax = radarFeature.properties.velocidade || 60;
-                const poly = turf.polygon(radarFeature.geometry.coordinates);
-
-                carPoints.forEach(p => {
-                    const pt = turf.point([p.lng, p.lat]);
-                    if (turf.booleanPointInPolygon(pt, poly) && p.vel > velMax) {
-                        const radarId = JSON.stringify(radarFeature.geometry.coordinates[0][0]);
-                        if (!excessosPorRadar[radarId]) excessosPorRadar[radarId] = [];
-                        excessosPorRadar[radarId].push(p.ts);
-                    }
-                });
-            }
-
-            // Cálculo penalidade radar (Admin2 style: 500pts a cada 10s extras)
-            for (let rid in excessosPorRadar) {
-                const tempos = excessosPorRadar[rid].sort((a, b) => a - b);
-                if (tempos.length > 0) {
-                    const duracaoSegundos = (tempos[tempos.length - 1] - tempos[0]) / 1000;
-                    if (duracaoSegundos > 10) {
-                        const extra10s = Math.floor((duracaoSegundos - 10) / 10);
-                        pontosPenalidadeRadar += 500 + (extra10s * 500);
-                    }
-                }
-            }
-
-            // 2. Processar Checkpoints (Lógica de Proximidade do Admin.html)
-            checkpoints.forEach(cp => {
-                const centro = cp.geometry.coordinates; // [lng, lat]
-                const raioKm = cp.properties.radius / 1000; // Converte metros para km para o Turf
-                
-                // Verifica se *algum* ponto do rastro está dentro do raio do checkpoint
-                const passouNoCheckpoint = carPoints.some(p => {
-                    const dist = turf.distance(turf.point([p.lng, p.lat]), turf.point(centro));
-                    return dist <= raioKm;
-                });
-
-                if (!passouNoCheckpoint) {
-                    pontosPenalidadeCheckpoint += 2000; // Penalidade fixa por perder checkpoint
-                }
-            });
-
-            // Atualiza o competidor com a soma das penalidades (negativo para diminuir do ranking)
-            await db.ref(`competidores/${carId}`).update({ 
-                penalidadeRadar: pontosPenalidadeRadar,
-                penalidadeCheckpoint: pontosPenalidadeCheckpoint,
-                pontos: 0 - (pontosPenalidadeRadar + pontosPenalidadeCheckpoint) 
-            });
-        }
-        alert("Apuração completa: Radares e Checkpoints processados!");
+    window.limparTemporarios = function() {
+        pontosTemporarios = [];
+        if(linhaTemporaria) linhaTemporaria.setLatLngs([]);
     };
 
-    // --- CORREÇÃO NO CARREGAMENTO (Renderiza Círculos Novamente) ---
-    function carregarTrajeto() {
-        db.ref('configuracoes/percurso').once('value', snap => {
-            if (snap.exists()) {
-                L.geoJSON(snap.val(), {
-                    pointToLayer: (feature, latlng) => {
-                        // Se o GeoJSON tiver raio nas propriedades, recria como Círculo Leaflet
-                        if (feature.properties && feature.properties.radius) {
-                            return L.circle(latlng, { radius: feature.properties.radius });
-                        }
-                    },
-                    onEachFeature: (feature, layer) => {
-                        drawnItems.addLayer(layer);
-                    }
-                });
-            }
-        });
-    }
+    window.onload = initMap;
 
-    // --- CORREÇÃO NO SALVAMENTO (Salva o Raio do Círculo) ---
+    window.buscar = async function() {
+        const q = document.getElementById('cityInput').value;
+        if(!q) return;
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}`);
+            const data = await res.json();
+            if(data[0]) map.setView([data[0].lat, data[0].lon], 14);
+        } catch(e) { alert("Erro na busca."); }
+    };
+
     window.salvar = function() {
         const data = { type: "FeatureCollection", features: [] };
-        
         drawnItems.eachLayer(layer => {
-            const geojson = layer.toGeoJSON();
-            geojson.properties = geojson.properties || {};
-            
-            // Se for um círculo, precisamos anexar o raio manualmente pois o GeoJSON padrão não suporta círculos
+            const gj = layer.toGeoJSON();
+            gj.properties = gj.properties || {};
             if (layer instanceof L.Circle) {
-                geojson.properties.radius = layer.getRadius();
-                geojson.properties.tipo = 'checkpoint';
+                gj.properties.type = 'circle';
+                gj.properties.radius = layer.getRadius();
             }
-            data.features.push(geojson);
+            data.features.push(gj);
         });
-
-        db.ref('configuracoes/percurso').set(data).then(() => alert("Trajeto e Radares salvos com sucesso!"));
+        db.ref('configuracoes/percurso').set(data).then(() => alert("✅ Trajeto salvo!"));
     };
 
-    // --- FUNÇÕES DE MAPA (MANTIDAS) ---
+    function carregarTrajeto() {
+        db.ref('configuracoes/percurso').once('value', snap => {
+            if(snap.exists()) {
+                L.geoJSON(snap.val(), {
+                    pointToLayer: (f, latlng) => f.properties?.type === 'circle' ? L.circle(latlng, { radius: f.properties.radius }) : null,
+                    onEachFeature: (f, l) => { drawnItems.addLayer(l); }
+                });
+            }
+        });
+    }
+
     function rastrearCarros() {
         const markers = {};
         db.ref('posicoes').on('value', snap => {
-            snap.forEach(child => {
-                const carId = child.key;
-                const p = child.val();
-                if (markers[carId]) {
-                    markers[carId].setLatLng([p.lat, p.lng]);
+            snap.forEach(c => {
+                const id = c.key; 
+                const p = c.val();
+                if(markers[id]) {
+                    markers[id].setLatLng([p.lat, p.lng]);
                 } else {
-                    markers[carId] = L.marker([p.lat, p.lng], {
-                        icon: L.divIcon({ className: 'marker-label', html: carId, iconSize: [30, 30] })
+                    markers[id] = L.marker([p.lat, p.lng], { 
+                        icon: L.divIcon({ className:'marker-label', html: id, iconSize:[30,30] }) 
                     }).addTo(map);
+                    markers[id].on('click', function() {
+                        db.ref(`competidores/${id}/nome`).once('value', nomeSnap => {
+                            const nomeComp = nomeSnap.val() || "Não cadastrado";
+                            const velocidade = p.vel ? `<br>Velocidade: ${p.vel} km/h` : "";
+                            markers[id].bindPopup(`<b>Carro: ${id}</b><br>Piloto: ${nomeComp}${velocidade}`).openPopup();
+                        });
+                    });
                 }
             });
         });
     }
 
+    window.apurar = async function() {
+        if(!confirm("Rodar apuração?")) return;
+        const config = (await db.ref('configuracoes/percurso').once('value')).val();
+        const rastros = (await db.ref('rastros').once('value')).val();
+        const comps = (await db.ref('competidores').once('value')).val();
+        if(!config || !rastros) return alert("Erro: Dados insuficientes.");
+
+        for(let id in comps) {
+            let pen = 0;
+            const rastroArr = Object.values(rastros[id] || {}).sort((a, b) => a.ts - b.ts);
+            if(rastroArr.length === 0) continue;
+
+            config.features.forEach(feat => {
+                if(feat.geometry.type === 'Polygon') {
+                    const vMax = (feat.properties.velocidade || 60) * 1.1;
+                    let tempoExcessoMs = 0;
+                    for(let i = 1; i < rastroArr.length; i++) {
+                        const p = rastroArr[i];
+                        const duration = p.ts - rastroArr[i-1].ts;
+                        if (duration > 30000) continue; 
+                        if(p.vel > 2 && turf.booleanPointInPolygon(turf.point([p.lng, p.lat]), feat)) {
+                            if(p.vel > vMax) tempoExcessoMs += duration;
+                        }
+                    }
+                    if(tempoExcessoMs > 10000) {
+                        pen += (Math.floor((tempoExcessoMs - 10000) / 10000) + 1) * 500;
+                    }
+                } else if(feat.properties?.type === 'circle') {
+                    const centro = feat.geometry.coordinates;
+                    const raio = feat.properties.radius / 1000;
+                    if(!rastroArr.some(pt => turf.distance(turf.point([pt.lng, pt.lat]), turf.point(centro)) <= raio)) {
+                        pen += 2000;
+                    }
+                }
+            });
+            db.ref(`competidores/${id}`).update({ pontos: 0 - pen });
+        }
+        alert("✅ Apuração concluída!");
+    };
+
+    window.resetar = function() {
+        if(prompt("Senha de Segurança:") === "261291") db.ref('/').remove().then(() => location.reload());
+    };
+
     function atualizarSeletorCarros() {
+        const selector = document.getElementById('carSelector');
         db.ref('competidores').on('value', snap => {
-            const selector = document.getElementById('carSelector');
             selector.innerHTML = '<option value="">Selecionar Carro...</option>';
             snap.forEach(child => {
-                selector.innerHTML += `<option value="${child.key}">Carro ${child.key}</option>`;
+                const carId = child.key;
+                const option = document.createElement('option');
+                option.value = carId;
+                option.textContent = `Carro ${carId}`;
+                selector.appendChild(option);
             });
         });
     }
 
     window.excluirCarro = async function() {
         const carId = document.getElementById('carSelector').value;
-        if (!carId) return alert("Selecione um carro.");
+        if (!carId) { alert("Selecione um carro."); return; }
         if (confirm(`Excluir Carro ${carId}?`)) {
             await Promise.all([
                 db.ref(`competidores/${carId}`).remove(),
@@ -382,39 +344,28 @@
         ref.once('value', snap => { ref.set(!snap.val()); });
     };
 
-    window.adicionarPontoNaLinha = function() {
-        const val = document.getElementById('coordsInput').value;
-        const coords = val.split(',');
-        if (coords.length === 2) {
-            const lat = parseFloat(coords[0]), lng = parseFloat(coords[1]);
-            pontosTemporarios.push([lat, lng]);
-            linhaTemporaria.setLatLngs(pontosTemporarios);
-            map.setView([lat, lng], 15);
+    // NOVAS FUNÇÕES ADICIONADAS CONFORME SOLICITADO
+    window.excluirTodosCarros = async function() {
+        const senha = prompt("SENHA PARA DELETAR TODOS OS CARROS:");
+        if (senha === "261291") {
+            if (confirm("ATENÇÃO: Isso apagará TODOS os competidores, rastros e tempos. Confirmar?")) {
+                const paths = ['competidores', 'posicoes', 'rastros', 'tempos'];
+                await Promise.all(paths.map(path => db.ref(path).remove()));
+                alert("🔥 Todos os dados de carros foram removidos!");
+                location.reload();
+            }
+        } else if (senha !== null) {
+            alert("Senha incorreta!");
         }
     };
 
-    window.finalizarLinhaManual = function() {
-        if (pontosTemporarios.length < 2) return alert("Mínimo 2 pontos.");
-        drawnItems.addLayer(L.polyline(pontosTemporarios, {color: '#FF007F'}));
-        pontosTemporarios = []; linhaTemporaria.setLatLngs([]);
+    window.logoffGeral = function() {
+        if (confirm("Deseja desconectar todos os pilotos agora? (Forçará o recarregamento da página deles)")) {
+            db.ref('configuracoes/comandoLogoff').set(Date.now()).then(() => {
+                alert("Sinal de logoff enviado!");
+            });
+        }
     };
-
-    window.limparTemporarios = function() {
-        pontosTemporarios = []; linhaTemporaria.setLatLngs([]); document.getElementById('coordsInput').value = "";
-    };
-
-    window.resetarTudo = function() {
-        if (confirm("Reset total?") && prompt("Senha:") === "261291") db.ref('/').remove().then(() => location.reload());
-    };
-
-    window.buscar = async function() {
-        const query = document.getElementById('cityInput').value;
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`);
-        const data = await res.json();
-        if (data && data.length > 0) map.setView([data[0].lat, data[0].lon], 14);
-    };
-
-    window.onload = initMap;
-    </script>
+</script>
 </body>
 </html>
