@@ -91,15 +91,20 @@
         const app = firebase.initializeApp(firebaseConfig);
         const db = firebase.database(app);
 
-        // OUVINTE PARA LOGOFF REMOTO (ADICIONADO)
+        // --- CORREÇÃO DA TRAVA DE SEGURANÇA ---
+        const horaAberturaApp = Date.now(); 
+
         db.ref('configuracoes/comandoLogoff').on('value', (snap) => {
-            if (snap.exists() && localStorage.getItem('rally_carro_ativo')) {
+            const timestampLogoff = snap.val();
+            // Só executa o logoff se houver um carro ativo E o comando no banco for MAIS NOVO que o momento em que o app abriu
+            if (timestampLogoff && timestampLogoff > horaAberturaApp && localStorage.getItem('rally_carro_ativo')) {
                 if (watchID) navigator.geolocation.clearWatch(watchID);
                 localStorage.removeItem('rally_carro_ativo');
                 alert("A organização encerrou sua sessão remotamente.");
                 location.reload();
             }
         });
+        // --------------------------------------
 
         let wakeLock = null;
         let watchID = null;
