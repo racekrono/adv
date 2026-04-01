@@ -68,12 +68,10 @@
         <div class="button-group">
             <input type="text" id="coordsInput" placeholder="Lat, Lng (ex: -12.2,-38.9)">
             <button onclick="adicionarPontoNaLinha()" style="background: #4a5568;">📍 Add Ponto</button>
-            <button onclick="finalizarLinhaManual()" style="background: #2b6cb0;">✏️ Criar Linha</button>
-            <button onclick="limparTemporarios()" style="background: #718096;">🗑️ Limpar</button>
-        </div>
+            </div>
         <div class="button-group">
             <input type="text" id="cityInput" placeholder="Cidade...">
-            <button onclick="buscar()">🔍 Buscar</button>
+            <button onclick="buscar()">🔍 Buscar Cidade</button>
             <button onclick="salvar()" style="background: #38a169;">💾 Salvar Trajeto</button>
             <button id="btnStatusProva" onclick="alternarStatusProva()">Aguardando...</button>
         </div>
@@ -81,14 +79,13 @@
         <div class="button-group">
             <button onclick="window.location.href='rastro.html'" style="background: #805ad5;">🗺️ Rastro</button>
             <button onclick="apurar()" style="background: #dd6b20;">🏁 Rodar Apuração</button>
-            <button onclick="window.location.href='tempos.html'" style="background: #d69e2e;">⏱️ Chegada</button>
-            <button onclick="window.location.href='fotos.html'" style="background: #3182ce;">📸 Fotos</button>
+            <button onclick="window.location.href='tempos.html'" style="background: #d69e2e;">⏱️ Tempo de Prova</button>
+            <button onclick="window.location.href='fotos.html'" style="background: #3182ce;">📸 Pontuação Fotos</button>
         </div>
 
         <div class="button-group">
-            <button onclick="window.location.href='resultados.html'" style="background: #3182ce;">📊 Pontos</button>
-            <button onclick="window.location.href='ranking-tempo.html'" style="background: #2c7a7b;">⏱️ Tempos</button>
-            <button onclick="window.location.href='ranking-fotos.html'" style="background: #2b6cb0;">📊 Rank Fotos</button>
+            <button onclick="window.location.href='ranking-tempo.html'" style="background: #2c7a7b;">⏱️ Ranking Tempos</button>
+            <button onclick="window.location.href='ranking-fotos.html'" style="background: #2b6cb0;">📊 Ranking Fotos</button>
             <button onclick="window.location.href='ranking-geral.html'" style="background: #b7791f; border: 1px solid #f6e05e;">🏆 RANKING FINAL</button>
         </div>
 
@@ -97,8 +94,8 @@
                 <option value="">Carro...</option>
             </select>
             <button onclick="excluirCarro()" style="background: #e53e3e;">🗑️ Excluir</button>  
-            <button onclick="resetar()" style="background: #e53e3e;">⚠️ Reset</button>
-            <button onclick="excluirTodosCarros()" style="background: #c53030; border: 1px solid white;">💀 APAGAR TODOS</button>
+            <button onclick="resetar()" style="background: #e53e3e;">⚠️ Resetar Tudo</button>
+            <button onclick="excluirTodosCarros()" style="background: #c53030; border: 1px solid white;">💀 APAGAR TODOS OS CARROS</button>
             <button onclick="logoffGeral()" style="background: #2d3748; border: 1px solid #a0aec0;">🚪 LOGOFF GERAL</button>
         </div>
     </div>
