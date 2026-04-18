@@ -27,18 +27,17 @@
             <option value="">Carregando pilotos...</option>
         </select>
 
-        <label>Pontos a Adicionar (Penalidade):</label>
-        <input type="number" id="pontosPenal" placeholder="Ex: 500">
+        <label>Pontos (Use "-" para bônus/desconto):</label>
+        <input type="number" id="pontosPenal" placeholder="Ex: 500 ou -500">
 
         <label>Motivo:</label>
-        <textarea id="motivoPenal" placeholder="Ex: Direção Perigosa"></textarea>
+        <textarea id="motivoPenal" placeholder="Ex: Direção Perigosa ou Ajuste de Mesa"></textarea>
 
-        <button onclick="salvarPenalidade()">APLICAR PENALIDADE</button>
+        <button onclick="salvarPenalidade()">APLICAR PONTOS</button>
         <button class="btn-voltar" onclick="location.href='admin.html'">VOLTAR AO ADMIN</button>
     </div>
 
     <script>
-        // Configuração idêntica ao seu admin.html
         const firebaseConfig = {
             apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
             authDomain: "cronometro-rally.firebaseapp.com",
@@ -48,50 +47,6 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // Carrega a lista de competidores cadastrados
         db.ref('competidores').on('value', snap => {
             const select = document.getElementById('carSelect');
-            if (!snap.exists()) {
-                select.innerHTML = '<option value="">Nenhum piloto encontrado</option>';
-                return;
-            }
-            
-            let opt = '<option value="">Selecione o piloto...</option>';
-            snap.forEach(c => { 
-                const dados = c.val();
-                opt += `<option value="${c.key}">Carro ${c.key} - ${dados.nome}</option>`; 
-            });
-            select.innerHTML = opt;
-        });
-
-        async function salvarPenalidade() {
-            const id = document.getElementById('carSelect').value;
-            const pontosNovos = parseInt(document.getElementById('pontosPenal').value) || 0;
-            const motivo = document.getElementById('motivoPenal').value;
-
-            if(!id) { alert("Selecione um competidor!"); return; }
-            if(pontosNovos <= 0) { alert("Insira um valor de pontos válido!"); return; }
-
-            if(confirm(`Confirmar penalidade para o Carro ${id}?`)) {
-                try {
-                    // Busca pontos de penalidade já existentes para não apagar os anteriores
-                    const snap = await db.ref(`competidores/${id}/pontosPenalidadeManual`).once('value');
-                    const pontosAtuais = snap.val() || 0;
-
-                    // Salva no banco
-                    await db.ref(`competidores/${id}`).update({
-                        pontosPenalidadeManual: pontosAtuais + pontosNovos,
-                        ultimoMotivoPenal: motivo
-                    });
-
-                    alert("Penalização registrada!");
-                    document.getElementById('pontosPenal').value = "";
-                    document.getElementById('motivoPenal').value = "";
-                } catch (error) {
-                    alert("Erro ao salvar: " + error.message);
-                }
-            }
-        }
-    </script>
-</body>
-</html>
+            let opt = '<option value="">Selecione o piloto...</
