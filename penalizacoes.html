@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Penalização Manual - Race Krono</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #1a202c; color: white; display: flex; justify-content: center; padding: 20px; }
+        .card { background: #2d3748; padding: 25px; border-radius: 12px; width: 100%; max-width: 450px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        h2 { color: #e53e3e; text-align: center; margin-top: 0; }
+        label { display: block; margin-bottom: 5px; font-size: 14px; color: #a0aec0; }
+        select, input, textarea, button { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #4a5568; background: #1a202c; color: white; box-sizing: border-box; }
+        textarea { height: 80px; resize: none; }
+        button { background: #e53e3e; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        button:hover { background: #c53030; }
+        .btn-voltar { background: #4a5568; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>⚠️ Aplicar Penalização</h2>
+        
+        <label>Competidor</label>
+        <select id="carSelect">
+            <option value="">Carregando pilotos...</option>
+        </select>
+
+        <label>Pontos de Penalidade</label>
+        <input type="number" id="pontosPenal" placeholder="Ex: 500 (use positivo para somar)">
+
+        <label>Motivo da Infração</label>
+        <textarea id="motivoPenal" placeholder="Ex: Corte de caminho no trecho B"></textarea>
+
+        <button onclick="aplicarPenalizacao()">APLICAR PONTOS</button>
+        <button class="btn-voltar" onclick="location.href='admin.html'">VOLTAR AO ADMIN</button>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
+            databaseURL: "https://cronometro-rally-default-rtdb.firebaseio.com",
+            projectId: "cronometro-rally"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // Carrega a lista de competidores do seu banco
+        db.ref('competidores').on('value', snap => {
+            let opt = '<option value="">Selecione o piloto...</option>';
+            snap.forEach(c => { 
+                opt += `<option value="${c.key}">${c.key} - ${c.val().nome}</option>`; 
+            });
+            document.getElementById('carSelect').innerHTML = opt;
+        });
+
+        async function aplicarPenalizacao() {
+            const id = document.getElementById('carSelect').value;
+            const pontos = parseInt(document.getElementById('pontosPenal').value) || 0;
+            const motivo = document.getElementById('motivoPenal').value;
+
+            if(!id) return alert("Selecione um competidor!");
+            if(pontos === 0) return alert("Insira a pontuação!");
+
+            if(confirm(`Confirmar penalidade de ${pontos} pontos para o carro ${id}?`)) {
+                try {
+                    // Recupera pontos atuais para somar
+                    const snap = await db.ref(`competidores/${id}/pontosPenalidade`).once('
