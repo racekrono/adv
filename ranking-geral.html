@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório de Prova - Race Krono</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #1a202c; color: white; padding: 20px; margin: 0; }
+        .container { max-width: 1150px; margin: auto; }
+        .header-ranking { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #4a5568; padding-bottom: 20px; }
+        h1 { color: #e67e22; margin: 0; }
+        .cat-card { background: #2d3748; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        h2 { color: #fbd38d; margin-top: 0; border-left: 5px solid #e67e22; padding-left: 15px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: #1a202c; border-radius: 8px; overflow: hidden; }
+        th { background: #4a5568; color: #fbd38d; padding: 12px; text-align: center; font-size: 13px; text-transform: uppercase; }
+        td { padding: 12px; text-align: center; border-bottom: 1px solid #2d3748; font-size: 14px; }
+        tr:last-child td { border: none; }
+        .col-piloto { text-align: left; }
+        .btn-pdf { background: #e67e22; color: white; border: none; padding: 12px 25px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-bottom: 20px; }
+        .btn-pdf:hover { background: #d35400; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-ranking">
+        <h1>🏆 Resultado Oficial</h1>
+        <p>Race Krono - Sistema de Cronometragem</p>
+        <button class="btn-pdf" onclick="gerarPDF()">BAIXAR RELATÓRIO PDF</button>
+    </div>
+
+    <div id="rankingContent">Carregando resultados...</div>
+</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
+        authDomain: "cronometro-rally.firebaseapp.com",
+        databaseURL: "https://cronometro-rally-default-rtdb.firebaseio.com",
+        projectId: "cronometro-rally"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const categorias = ["GRADUADO", "TURISMO", "MOTO", "INICIANTE"];
+
+    function tempoParaSegundos(tempo) {
+        if (!tempo || tempo === "00:00:00") return 999999;
+        const partes = tempo.split(':');
+        return (+partes[0]) * 3600 + (+partes[1]) * 60 + (+partes[2]);
+    }
+
+    db.ref('competidores').on('value', snap => {
+        const data = snap.val();
+        if(!data) return document.getElementById('rankingContent').innerHTML = "Sem dados.";
+
+        let html = "";
+        categorias.forEach(cat => {
+            let list = [];
+            for(let id in data) {
+                if(data[id].categoria === cat) {
+                    const p = data[id];
+                    const ptsGPS = parseInt(p.pontos || 0); 
+                    const bonusFotos = parseInt(p.pontosFotos || 0);
+                    const penalManual = parseInt(p.pontosPenalidadeManual || 0); 
+                    
+                    const penalizacaoExibida = ptsGPS + penalManual;
+                    const totalPts = ptsGPS + bonusFotos + penalManual;
+                    const tempoStr = p.tempoFormatado || p.tempo || "00:00:00";
+
+                    list.push({ 
+                        id, ...p, 
+                        tempoStr,
+                        tSeg: tempoParaSegundos(tempoStr),
+                        bonusFotos,
+                        penalizacaoExibida,
+                        totalPts
+                    });
+                }
+            }
+            
+            // Ordenação: Maior pontuação primeiro (Padrão Prova), desempate por menor tempo
+            list.sort((a, b) => {
+                if (a.totalPts !== b.totalPts) return b.totalPts - a.totalPts; 
+                return a.tSeg - b.tSeg;
+            });
+
+            if(list.length > 0) {
+                html += `
+                <div class="cat-card">
+                    <h2>Categoria: ${cat}</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Pos</th>
+                                <th>Nº</th>
+                                <th class="col-piloto">Piloto</th>
+                                <th>Tempo</th>
+                                <th>Fotos</th>
+                                <th>Penalização</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+                list.forEach((p, i) => {
+                    html += `
+                    <tr>
+                        <td>${i + 1}º</td>
+                        <td><b>${p.id}</b></td>
+                        <td class="col-piloto">${p.nome}</td>
+                        <td>${p.tempoStr}</td>
+                        <td>${p.bonusFotos}</td>
+                        <td>${p.penalizacaoExibida}</td>
+                        <td><b>${p.totalPts.toLocaleString('pt-BR')} pts</b></td>
+                    </tr>`;
+                });
+                html += `</tbody></table></div>`;
+            }
+        });
+        document.getElementById('rankingContent').innerHTML = html;
+    });
+
+    window.gerarPDF = function() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        doc.setFontSize(18);
+        doc.setTextColor(230, 126, 34); 
+        doc.text("Resultado Oficial de Prova - Race Krono", 105, 20, { align: "center" });
+
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text("Relatório gerado em: " + new Date().toLocaleString('pt-BR'), 105, 28, { align: "center" });
+
+        let finalY = 40;
+
+        document.querySelectorAll('.cat-card').forEach((card) => {
+            const tituloCat = card.querySelector('h2').innerText;
+            const tabela = card.querySelector('table');
+
+            if (finalY > 240) { doc.addPage(); finalY = 20; }
+
+            doc.setFontSize(14);
+            doc.setTextColor(0, 0, 0);
+            doc.text(tituloCat, 14, finalY);
+
+            doc.autoTable({
+                html: tabela,
+                startY: finalY + 5,
+                theme: 'striped',
+                headStyles: { fillColor: [230, 126, 34], halign: 'center' },
+                styles: { fontSize: 8 },
+                columnStyles: {
+                    0: { cellWidth: 10, halign: 'center' }, // Pos
+                    1: { cellWidth: 10, halign: 'center' }, // Nº
+                    3: { cellWidth: 25, halign: 'center' }, // Tempo
+                    4: { cellWidth: 20, halign: 'center' }, // Fotos
+                    5: { cellWidth: 25, halign: 'center' }, // Penalização
+                    6: { cellWidth: 25, halign: 'center' }  // Total
+                }
+            });
+
+            finalY = doc.lastAutoTable.finalY + 15;
+        });
+
+        doc.save(`Resultado_oficial_${Date.now()}.pdf`);
+    };
+</script>
+
+</body>
+</html>
