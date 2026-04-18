@@ -19,16 +19,14 @@
         th { text-align: left; color: #a0aec0; padding: 12px 10px; border-bottom: 1px solid #4a5568; font-size: 13px; text-transform: uppercase; }
         td { padding: 12px 10px; border-bottom: 1px solid #3e4b5f; vertical-align: middle; }
 
-        /* Ajuste de Larguras de Coluna */
         .col-pos { width: 60px; font-weight: bold; color: #e67e22; }
         .col-num { width: 60px; }
         .col-piloto { width: auto; }
-        .col-tempo { width: 130px; font-family: monospace; color: #fbd38d; font-weight: bold; }
-        .col-penal { width: 110px; text-align: center; color: #fc8181; font-weight: bold; } /* Nova Coluna */
-        .col-pontos { width: 150px; text-align: center; font-weight: bold; color: #48bb78; font-size: 1.1rem; }
+        .col-tempo { width: 110px; font-family: monospace; color: #fbd38d; font-weight: bold; }
+        .col-fotos { width: 90px; text-align: center; color: #63b3ed; font-weight: bold; }
+        .col-penal { width: 110px; text-align: center; color: #fc8181; font-weight: bold; }
+        .col-pontos { width: 140px; text-align: center; font-weight: bold; color: #48bb78; font-size: 1.1rem; }
 
-        .text-center { text-align: center; }
-        
         #logoInvisivel { display: none; }
         .btn { border-radius: 5px; font-weight: bold; transition: 0.3s; padding: 10px 20px; border: none; cursor: pointer; color: white; }
         .btn-voltar { background: #4a5568; }
@@ -65,9 +63,11 @@
         projectId: "cronometro-rally",
         appId: "1:341731891354:web:d0c34265be68015e98a723"
     };
+    
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
+    // Categorias conforme o seu original
     const categorias = ["UTV", "BAIANO 4x2", "BAIANO 4x4", "INICIANTE 4x2", "INICIANTE 4x4", "ANTIGOS"];
 
     function tempoParaSegundos(tempo) {
@@ -77,76 +77,77 @@
     }
 
     db.ref('competidores').on('value', snap => {
-    const data = snap.val();
-    if(!data) return document.getElementById('rankingContent').innerHTML = "Sem dados.";
+        const data = snap.val();
+        if(!data) {
+            document.getElementById('rankingContent').innerHTML = "Sem dados no banco.";
+            return;
+        }
 
-    let html = "";
-    categorias.forEach(cat => {
-        let list = [];
-        for(let id in data) {
-            if(data[id].categoria === cat) {
+        let html = "";
+        categorias.forEach(cat => {
+            let list = [];
+            for(let id in data) {
                 const p = data[id];
-                
-                // Mantendo sua estrutura original e somando a penalidade manual
-                const ptsGPS = parseInt(p.pontos || 0); 
-                const bonus = parseInt(p.pontosFotos || 0);
-                const penalManual = parseInt(p.pontosPenalidadeManual || 0); // Captura a manual
-                
-                // O campo penalização agora é a soma do GPS + Manual
-                const penalizacaoTotalmostrada = ptsGPS + penalManual;
-                
-                // O total final soma tudo (GPS + Fotos + Manual)
-                const totalPts = ptsGPS + bonus + penalManual;
-                
-                const tempoStr = p.tempoFormatado || p.tempo || "00:00:00";
+                if(p.categoria === cat) {
+                    const ptsGPS = parseInt(p.pontos || 0); 
+                    const bonusFotos = parseInt(p.pontosFotos || 0);
+                    const penalManual = parseInt(p.pontosPenalidadeManual || 0); 
+                    
+                    const penalizacaoExibida = ptsGPS + penalManual;
+                    const totalPts = ptsGPS + bonusFotos + penalManual;
+                    const tempoStr = p.tempoFormatado || p.tempo || "00:00:00";
 
-                list.push({ 
-                    id, ...p, 
-                    tempoStr,
-                    tSeg: (typeof tempoParaSegundos === 'function') ? tempoParaSegundos(tempoStr) : 0,
-                    penalizacaoExibida: penalizacaoTotalmostrada, // GPS + Manual
-                    totalPts: totalPts
-                });
+                    list.push({ 
+                        id, 
+                        nome: p.nome || "Sem Nome",
+                        tempoStr,
+                        tSeg: tempoParaSegundos(tempoStr),
+                        bonusFotos,
+                        penalizacaoExibida,
+                        totalPts
+                    });
+                }
             }
-        }
-        
-        list.sort((a, b) => {
-            if (a.totalPts !== b.totalPts) return b.totalPts - a.totalPts; 
-            return a.tSeg - b.tSeg;
-        });
-
-        if(list.length > 0) {
-            html += `
-            <div class="cat-card">
-                <h2>Categoria: ${cat}</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th class="col-pos">Pos</th>
-                            <th class="col-num">Nº</th>
-                            <th class="col-piloto">Piloto</th>
-                            <th class="col-tempo">Tempo</th>
-                            <th class="col-penal" style="text-align:center;">Penalização</th>
-                            <th class="col-pontos">Pontuação Final</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-            list.forEach((p, i) => {
-                html += `
-                <tr>
-                    <td class="col-pos">${i + 1}º</td>
-                    <td class="col-num"><b>${p.id}</b></td>
-                    <td class="col-piloto">${p.nome}</td>
-                    <td class="col-tempo">${p.tempoStr}</td>
-                    <td class="col-penal">${p.penalizacaoExibida.toLocaleString('pt-BR')}</td>
-                    <td class="col-pontos">${p.totalPts.toLocaleString('pt-BR')} pts</td>
-                </tr>`;
+            
+            list.sort((a, b) => {
+                if (a.totalPts !== b.totalPts) return b.totalPts - a.totalPts; 
+                return a.tSeg - b.tSeg;
             });
-            html += `</tbody></table></div>`;
-        }
+
+            if(list.length > 0) {
+                html += `
+                <div class="cat-card">
+                    <h2>Categoria: ${cat}</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="col-pos">Pos</th>
+                                <th class="col-num">Nº</th>
+                                <th class="col-piloto">Piloto</th>
+                                <th class="col-tempo">Tempo</th>
+                                <th class="col-fotos" style="text-align:center;">Fotos</th>
+                                <th class="col-penal" style="text-align:center;">Penalização</th>
+                                <th class="col-pontos" style="text-align:center;">Final</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+                list.forEach((p, i) => {
+                    html += `
+                    <tr>
+                        <td class="col-pos">${i + 1}º</td>
+                        <td class="col-num"><b>${p.id}</b></td>
+                        <td class="col-piloto">${p.nome}</td>
+                        <td class="col-tempo">${p.tempoStr}</td>
+                        <td class="col-fotos" style="text-align:center;">${p.bonusFotos}</td>
+                        <td class="col-penal" style="text-align:center;">${p.penalizacaoExibida}</td>
+                        <td class="col-pontos" style="text-align:center;">${p.totalPts.toLocaleString('pt-BR')} pts</td>
+                    </tr>`;
+                });
+                html += `</tbody></table></div>`;
+            }
+        });
+        document.getElementById('rankingContent').innerHTML = html || "Nenhum competidor encontrado para as categorias listadas.";
     });
-    document.getElementById('rankingContent').innerHTML = html;
-});
 
     async function exportarPDF() {
         const { jsPDF } = window.jspdf;
@@ -165,8 +166,9 @@
 
         let finalY = 65;
         document.querySelectorAll('.cat-card').forEach((card) => {
-            if(card.querySelector('h2')) {
-                const titulo = card.querySelector('h2').innerText;
+            const h2 = card.querySelector('h2');
+            if(h2) {
+                const titulo = h2.innerText;
                 const tabela = card.querySelector('table');
                 if (finalY > 240) { doc.addPage(); finalY = 20; }
                 doc.setFontSize(14);
@@ -177,22 +179,21 @@
                     html: tabela, 
                     startY: finalY + 5, 
                     theme: 'striped',
-                    headStyles: { 
-                        fillColor: [230, 126, 34],
-                        halign: 'center' 
-                    },
+                    headStyles: { fillColor: [230, 126, 34], halign: 'center' },
+                    styles: { fontSize: 8 },
                     columnStyles: {
-                        0: { cellWidth: 12, halign: 'center' }, // Pos
-                        1: { cellWidth: 12, halign: 'center' }, // Nº
-                        3: { cellWidth: 35, halign: 'center' }, // Tempo
-                        4: { cellWidth: 35, halign: 'center' }, // Penalização (Nova)
-                        5: { halign: 'center' }                // Pontos Final
+                        0: { cellWidth: 10, halign: 'center' }, // Pos
+                        1: { cellWidth: 10, halign: 'center' }, // Nº
+                        3: { cellWidth: 25, halign: 'center' }, // Tempo
+                        4: { cellWidth: 20, halign: 'center' }, // Fotos
+                        5: { cellWidth: 25, halign: 'center' }, // Penalização
+                        6: { cellWidth: 30, halign: 'center' }  // Final
                     }
                 });
                 finalY = doc.lastAutoTable.finalY + 15;
             }
         });
-        doc.save(`Ranking_Final_${cidade.replace(/\s+/g, '_')}.pdf`);
+        doc.save(`Ranking_${cidade.replace(/\s+/g, '_')}.pdf`);
     }
 </script>
 </body>
