@@ -77,78 +77,67 @@
     }
 
     db.ref('competidores').on('value', snap => {
-    const data = snap.val();
-    if(!data) return document.getElementById('rankingContent').innerHTML = "Sem dados.";
+        const data = snap.val();
+        if(!data) return document.getElementById('rankingContent').innerHTML = "Sem dados.";
 
-    let html = "";
-    categorias.forEach(cat => {
-        let list = [];
-        for(let id in data) {
-            if(data[id].categoria === cat) {
-                const p = data[id];
-                
-                // Captura das três origens de pontos
-                const ptsGPS = parseInt(p.pontos || 0); 
-                const bonusFotos = parseInt(p.pontosFotos || 0);
-                const ptsManual = parseInt(p.pontosPenalidadeManual || 0); // NOVO CAMPO
-                
-                // Soma total (Ajuste a lógica se as fotos forem bônus/subtração)
-                const totalPts = ptsGPS + bonusFotos + ptsManual;
-                
-                const tempoStr = p.tempoFormatado || p.tempo || "00:00:00";
+        let html = "";
+        categorias.forEach(cat => {
+            let list = [];
+            for(let id in data) {
+                if(data[id].categoria === cat) {
+                    const p = data[id];
+                    const ptsGPS = p.pontos || 0; 
+                    const bonus = p.pontosFotos || 0;
+                    const totalPts = ptsGPS + bonus;
+                    const tempoStr = p.tempoFormatado || p.tempo || "00:00:00";
 
-                list.push({ 
-                    id, 
-                    ...p, 
-                    tempoStr,
-                    tSeg: (typeof tempoParaSegundos === 'function') ? tempoParaSegundos(tempoStr) : 0,
-                    ptsGPS,
-                    ptsManual, // Guardado para exibir na tabela
-                    totalPts
-                });
+                    list.push({ 
+                        id, ...p, 
+                        tempoStr,
+                        tSeg: tempoParaSegundos(tempoStr),
+                        ptsGPS,
+                        totalPts
+                    });
+                }
             }
-        }
-        
-        // Ordenação: Maior pontuação total primeiro (ajuste para menor se for padrão Rally puro)
-        list.sort((a, b) => {
-            if (a.totalPts !== b.totalPts) return b.totalPts - a.totalPts; 
-            return a.tSeg - b.tSeg;
-        });
-
-        if(list.length > 0) {
-            html += `
-            <div class="cat-card">
-                <h2>Categoria: ${cat}</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th class="col-pos">Pos</th>
-                            <th class="col-num">Nº</th>
-                            <th class="col-piloto">Piloto</th>
-                            <th class="col-tempo">Tempo</th>
-                            <th style="text-align:center;">GPS/Fotos</th>
-                            <th style="text-align:center;">Manual</th>
-                            <th class="col-pontos">Pontuação Final</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-            list.forEach((p, i) => {
-                html += `
-                <tr>
-                    <td class="col-pos">${i + 1}º</td>
-                    <td class="col-num"><b>${p.id}</b></td>
-                    <td class="col-piloto">${p.nome}</td>
-                    <td class="col-tempo">${p.tempoStr}</td>
-                    <td style="text-align:center;">${(p.ptsGPS + p.bonusFotos || p.ptsGPS).toLocaleString('pt-BR')}</td>
-                    <td style="text-align:center; color: #e53e3e;">+${p.ptsManual.toLocaleString('pt-BR')}</td>
-                    <td class="col-pontos"><b>${p.totalPts.toLocaleString('pt-BR')} pts</b></td>
-                </tr>`;
-            });
-            html += `</tbody></table></div>`;
-        }
-    });
-    document.getElementById('rankingContent').innerHTML = html;
+            
+            list.sort((a, b) => {
+    if (a.totalPts !== b.totalPts) return b.totalPts - a.totalPts; // Pontos primeiro (maior para menor)
+    return a.tSeg - b.tSeg;                                       // Tempo depois (menor para menor)
 });
+
+            if(list.length > 0) {
+                html += `
+                <div class="cat-card">
+                    <h2>Categoria: ${cat}</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="col-pos">Pos</th>
+                                <th class="col-num">Nº</th>
+                                <th class="col-piloto">Piloto</th>
+                                <th class="col-tempo">Tempo</th>
+                                <th class="col-penal" style="text-align:center;">Penalização</th>
+                                <th class="col-pontos">Pontuação Final</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+                list.forEach((p, i) => {
+                    html += `
+                    <tr>
+                        <td class="col-pos">${i + 1}º</td>
+                        <td class="col-num"><b>${p.id}</b></td>
+                        <td class="col-piloto">${p.nome}</td>
+                        <td class="col-tempo">${p.tempoStr}</td>
+                        <td class="col-penal">${p.ptsGPS.toLocaleString('pt-BR')}</td>
+                        <td class="col-pontos">${p.totalPts.toLocaleString('pt-BR')} pts</td>
+                    </tr>`;
+                });
+                html += `</tbody></table></div>`;
+            }
+        });
+        document.getElementById('rankingContent').innerHTML = html;
+    });
 
     async function exportarPDF() {
         const { jsPDF } = window.jspdf;
