@@ -77,67 +77,76 @@
     }
 
     db.ref('competidores').on('value', snap => {
-        const data = snap.val();
-        if(!data) return document.getElementById('rankingContent').innerHTML = "Sem dados.";
+    const data = snap.val();
+    if(!data) return document.getElementById('rankingContent').innerHTML = "Sem dados.";
 
-        let html = "";
-        categorias.forEach(cat => {
-            let list = [];
-            for(let id in data) {
-                if(data[id].categoria === cat) {
-                    const p = data[id];
-                    const ptsGPS = p.pontos || 0; 
-                    const bonus = p.pontosFotos || 0;
-                    const totalPts = ptsGPS + bonus;
-                    const tempoStr = p.tempoFormatado || p.tempo || "00:00:00";
+    let html = "";
+    categorias.forEach(cat => {
+        let list = [];
+        for(let id in data) {
+            if(data[id].categoria === cat) {
+                const p = data[id];
+                
+                // Mantendo sua estrutura original e somando a penalidade manual
+                const ptsGPS = parseInt(p.pontos || 0); 
+                const bonus = parseInt(p.pontosFotos || 0);
+                const penalManual = parseInt(p.pontosPenalidadeManual || 0); // Captura a manual
+                
+                // O campo penalização agora é a soma do GPS + Manual
+                const penalizacaoTotalmostrada = ptsGPS + penalManual;
+                
+                // O total final soma tudo (GPS + Fotos + Manual)
+                const totalPts = ptsGPS + bonus + penalManual;
+                
+                const tempoStr = p.tempoFormatado || p.tempo || "00:00:00";
 
-                    list.push({ 
-                        id, ...p, 
-                        tempoStr,
-                        tSeg: tempoParaSegundos(tempoStr),
-                        ptsGPS,
-                        totalPts
-                    });
-                }
-            }
-            
-            list.sort((a, b) => {
-    if (a.totalPts !== b.totalPts) return b.totalPts - a.totalPts; // Pontos primeiro (maior para menor)
-    return a.tSeg - b.tSeg;                                       // Tempo depois (menor para menor)
-});
-
-            if(list.length > 0) {
-                html += `
-                <div class="cat-card">
-                    <h2>Categoria: ${cat}</h2>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th class="col-pos">Pos</th>
-                                <th class="col-num">Nº</th>
-                                <th class="col-piloto">Piloto</th>
-                                <th class="col-tempo">Tempo</th>
-                                <th class="col-penal" style="text-align:center;">Penalização</th>
-                                <th class="col-pontos">Pontuação Final</th>
-                            </tr>
-                        </thead>
-                        <tbody>`;
-                list.forEach((p, i) => {
-                    html += `
-                    <tr>
-                        <td class="col-pos">${i + 1}º</td>
-                        <td class="col-num"><b>${p.id}</b></td>
-                        <td class="col-piloto">${p.nome}</td>
-                        <td class="col-tempo">${p.tempoStr}</td>
-                        <td class="col-penal">${p.ptsGPS.toLocaleString('pt-BR')}</td>
-                        <td class="col-pontos">${p.totalPts.toLocaleString('pt-BR')} pts</td>
-                    </tr>`;
+                list.push({ 
+                    id, ...p, 
+                    tempoStr,
+                    tSeg: (typeof tempoParaSegundos === 'function') ? tempoParaSegundos(tempoStr) : 0,
+                    penalizacaoExibida: penalizacaoTotalmostrada, // GPS + Manual
+                    totalPts: totalPts
                 });
-                html += `</tbody></table></div>`;
             }
+        }
+        
+        list.sort((a, b) => {
+            if (a.totalPts !== b.totalPts) return b.totalPts - a.totalPts; 
+            return a.tSeg - b.tSeg;
         });
-        document.getElementById('rankingContent').innerHTML = html;
+
+        if(list.length > 0) {
+            html += `
+            <div class="cat-card">
+                <h2>Categoria: ${cat}</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="col-pos">Pos</th>
+                            <th class="col-num">Nº</th>
+                            <th class="col-piloto">Piloto</th>
+                            <th class="col-tempo">Tempo</th>
+                            <th class="col-penal" style="text-align:center;">Penalização</th>
+                            <th class="col-pontos">Pontuação Final</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+            list.forEach((p, i) => {
+                html += `
+                <tr>
+                    <td class="col-pos">${i + 1}º</td>
+                    <td class="col-num"><b>${p.id}</b></td>
+                    <td class="col-piloto">${p.nome}</td>
+                    <td class="col-tempo">${p.tempoStr}</td>
+                    <td class="col-penal">${p.penalizacaoExibida.toLocaleString('pt-BR')}</td>
+                    <td class="col-pontos">${p.totalPts.toLocaleString('pt-BR')} pts</td>
+                </tr>`;
+            });
+            html += `</tbody></table></div>`;
+        }
     });
+    document.getElementById('rankingContent').innerHTML = html;
+});
 
     async function exportarPDF() {
         const { jsPDF } = window.jspdf;
