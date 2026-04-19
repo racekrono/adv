@@ -435,19 +435,37 @@ window.importarBackup = function() {
         const file = e.target.files[0];
         const reader = new FileReader();
         
-        reader.onload = readerEvent => {
+        reader.onload = async readerEvent => {
             try {
                 const json = JSON.parse(readerEvent.target.result);
                 
-                if (confirm("⚠️ ATENÇÃO: Isso substituirá TODOS os dados atuais do banco pelo arquivo de backup. Confirma?")) {
-                    const senha = prompt("Digite a senha de segurança para restaurar:");
+                if (confirm("⚠️ O arquivo é grande. Vamos importar por partes para evitar erros. Confirma?")) {
+                    const senha = prompt("Digite a senha de segurança:");
                     if (senha === "261291") {
-                        db.ref('/').set(json)
-                            .then(() => {
-                                alert("✅ Backup restaurado com sucesso!");
-                                location.reload();
-                            })
-                            .catch(err => alert("Erro ao gravar no banco: " + err));
+                        
+                        // IMPORTAÇÃO POR PARTES (Fatiada)
+                        try {
+                            // 1. Importa configurações e competidores (leves)
+                            if (json.configuracoes) await db.ref('configuracoes').set(json.configuracoes);
+                            if (json.competidores) await db.ref('competidores').set(json.competidores);
+                            
+                            // 2. Importa os rastros carro por carro (pesados)
+                            if (json.rastros) {
+                                const carros = Object.keys(json.rastros);
+                                for (let i = 0; i < carros.length; i++) {
+                                    const carroId = carros[i];
+                                    console.log(`Importando rastro do carro ${carroId}...`);
+                                    await db.ref(`rastros/${carroId}`).set(json.rastros[carroId]);
+                                }
+                            }
+
+                            alert("✅ Backup restaurado com sucesso (em partes)!");
+                            location.reload();
+                            
+                        } catch (err) {
+                            alert("Erro durante a importação fatiada: " + err);
+                        }
+
                     } else {
                         alert("Senha incorreta!");
                     }
@@ -460,7 +478,7 @@ window.importarBackup = function() {
     };
 
     input.click();
-};     
+};    
 </script>
 </body>
 </html>
