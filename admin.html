@@ -270,44 +270,66 @@
     }
 
     window.apurar = async function() {
-        if(!confirm("Rodar apuração?")) return;
-        const config = (await db.ref('configuracoes/percurso').once('value')).val();
-        const rastros = (await db.ref('rastros').once('value')).val();
-        const comps = (await db.ref('competidores').once('value')).val();
-        if(!config || !rastros) return alert("Erro: Dados insuficientes.");
+    if(!confirm("Rodar apuração?")) return;
+    const config = (await db.ref('configuracoes/percurso').once('value')).val();
+    const rastros = (await db.ref('rastros').once('value')).val();
+    const comps = (await db.ref('competidores').once('value')).val();
+    if(!config || !rastros) return alert("Erro: Dados insuficientes.");
 
-        for(let id in comps) {
-            let pen = 0;
-            const rastroArr = Object.values(rastros[id] || {}).sort((a, b) => a.ts - b.ts);
-            if(rastroArr.length === 0) continue;
+    for(let id in comps) {
+        let pen = 0;
+        let tempoOficialChegada = null;
+        const rastroArr = Object.values(rastros[id] || {}).sort((a, b) => a.ts - b.ts);
+        if(rastroArr.length === 0) continue;
 
-            config.features.forEach(feat => {
-                if(feat.geometry.type === 'Polygon') {
-                    const vMax = (feat.properties.velocidade || 60) * 1.1;
-                    let tempoExcessoMs = 0;
-                    for(let i = 1; i < rastroArr.length; i++) {
-                        const p = rastroArr[i];
-                        const duration = p.ts - rastroArr[i-1].ts;
-                        if (duration > 30000) continue; 
-                        if(p.vel > 2 && turf.booleanPointInPolygon(turf.point([p.lng, p.lat]), feat)) {
-                            if(p.vel > vMax) tempoExcessoMs += duration;
-                        }
-                    }
-                    if(tempoExcessoMs > 10000) {
-                        pen += (Math.floor((tempoExcessoMs - 10000) / 10000) + 1) * 500;
-                    }
-                } else if(feat.properties?.type === 'circle') {
-                    const centro = feat.geometry.coordinates;
-                    const raio = feat.properties.radius / 1000;
-                    if(!rastroArr.some(pt => turf.distance(turf.point([pt.lng, pt.lat]), turf.point(centro)) <= raio)) {
-                        pen += 2000;
+        config.features.forEach(feat => {
+            // LÓGICA DE RADAR (POLYGON) - Mantida conforme seu código
+            if(feat.geometry.type === 'Polygon') {
+                const vMax = (feat.properties.velocidade || 60) * 1.1;
+                let tempoExcessoMs = 0;
+                for(let i = 1; i < rastroArr.length; i++) {
+                    const p = rastroArr[i];
+                    const duration = p.ts - rastroArr[i-1].ts;
+                    if (duration > 30000) continue; 
+                    if(p.vel > 2 && turf.booleanPointInPolygon(turf.point([p.lng, p.lat]), feat)) {
+                        if(p.vel > vMax) tempoExcessoMs += duration;
                     }
                 }
-            });
-            db.ref(`competidores/${id}`).update({ pontos: 0 - pen });
-        }
-        alert("✅ Apuração concluída!");
-    };
+                if(tempoExcessoMs > 10000) {
+                    pen += (Math.floor((tempoExcessoMs - 10000) / 10000) + 1) * 500;
+                }
+            } 
+            
+            // LÓGICA DE CÍRCULOS (WAYPOINT OU CHEGADA)
+            else if(feat.properties?.type === 'circle') {
+                const centro = feat.geometry.coordinates;
+                const raio = feat.properties.radius / 1000;
+
+                // Encontra o primeiro ponto do rastro que entrou no círculo
+                const pontoEntrada = rastroArr.find(pt => 
+                    turf.distance(turf.point([pt.lng, pt.lat]), turf.point(centro)) <= raio
+                );
+
+                if (feat.properties.subType === 'chegada') {
+                    if (pontoEntrada) {
+                        tempoOficialChegada = pontoEntrada.ts;
+                    }
+                } else {
+                    // Se for waypoint comum e não passou, penaliza
+                    if(!pontoEntrada) pen += 2000;
+                }
+            }
+        });
+
+        // Salva os resultados no competidor
+        const updates = { 
+            pontos: 0 - pen,
+            horaChegada: tempoOficialChegada || "Não finalizou"
+        };
+        db.ref(`competidores/${id}`).update(updates);
+    }
+    alert("✅ Apuração concluída!");
+};
 
     window.resetar = function() {
         if(prompt("Senha de Segurança:") === "261291") db.ref('/').remove().then(() => location.reload());
