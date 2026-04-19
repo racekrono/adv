@@ -51,11 +51,12 @@
     .btn-backup { background: #2b6cb0; }
     .btn-restore { background: #805ad5; }
 
-    #status-indicador {
-        padding: 5px 10px;
-        border-radius: 20px;
-        font-size: 12px;
-        text-transform: uppercase;
+    select {
+        padding: 8px;
+        border-radius: 5px;
+        background: #1a202c;
+        color: white;
+        border: 1px solid #4a5568;
     }
     </style>
 </head>
@@ -71,14 +72,21 @@
     </div>
 
     <div class="button-group">
+        <select id="filtro-categoria" onchange="atualizarFiltro()">
+            <option value="TODOS">Todas Categorias</option>
+            <option value="GRADUADO">Graduado</option>
+            <option value="TURISMO">Turismo</option>
+            <option value="EXPEDICAO">Expedição</option>
+            <option value="MOTO">Moto</option>
+        </select>
         <button id="btn-status-prova" class="btn-success" onclick="alternarStatusProva()">Carregando...</button>
         <button class="btn-danger" onclick="logoffGeral()">🔴 Logoff Geral</button>
         <button class="btn-danger" onclick="excluirTodosCarros()">🔥 Limpar Banco</button>
     </div>
 
     <div class="button-group">
-        <button class="btn-backup" onclick="exportarBackup()">📤 Exportar Backup</button>
-        <button class="btn-restore" onclick="document.getElementById('importFile').click()">📥 Importar Backup</button>
+        <button class="btn-backup" onclick="exportarBackup()">📤 Exportar</button>
+        <button class="btn-restore" onclick="document.getElementById('importFile').click()">📥 Importar</button>
         <input type="file" id="importFile" style="display: none;" onchange="importarBackup(event)" accept=".json">
     </div>
 </div>
@@ -99,11 +107,73 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // Inicialização do Mapa
     const map = L.map('map').setView([-12.25, -38.95], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-    // Controle de Status da Prova
+    const markers = {};
+    const radares = {};
+    let categoriaFiltro = "TODOS";
+
+    // Ícone personalizado
+    const carIcon = L.divIcon({
+        className: 'custom-div-icon',
+        html: "<div style='background-color:#e67e22; width:12px; height:12px; border:2px solid white; border-radius:50%;'></div>",
+        iconSize: [12, 12],
+        iconAnchor: [6, 6]
+    });
+
+    // Monitorar Competidores e Posições (Original)
+    db.ref('competidores').on('value', snapComp => {
+        const dadosComp = snapComp.val() || {};
+        db.ref('posicoes').on('value', snapPos => {
+            const dadosPos = snapPos.val() || {};
+            
+            Object.keys(dadosPos).forEach(id => {
+                const p = dadosPos[id];
+                const info = dadosComp[id] || { nome: "Piloto", categoria: "N/A" };
+
+                if (categoriaFiltro !== "TODOS" && info.categoria !== categoriaFiltro) {
+                    if (markers[id]) { map.removeLayer(markers[id]); delete markers[id]; }
+                    return;
+                }
+
+                if (!markers[id]) {
+                    markers[id] = L.marker([p.lat, p.lng], {icon: carIcon}).addTo(map);
+                }
+                markers[id].setLatLng([p.lat, p.lng])
+                           .bindPopup(`<b>Carro ${id}</b><br>${info.nome}<br>${info.categoria}<br>Vel: ${p.vel} km/h`);
+            });
+        });
+    });
+
+    // Desenho de Radares (Original)
+    const drawnItems = new L.FeatureGroup().addTo(map);
+    const drawControl = new L.Control.Draw({
+        draw: { polygon: false, polyline: false, rectangle: false, marker: false, circlemarker: false, circle: true },
+        edit: { featureGroup: drawnItems }
+    });
+    map.addControl(drawControl);
+
+    map.on(L.Draw.Event.CREATED, e => {
+        const layer = e.layer;
+        const center = layer.getLatLng();
+        const radius = layer.getRadius();
+        const id = "radar_" + Date.now();
+        db.ref('configuracoes/radares/' + id).set({ lat: center.lat, lng: center.lng, radius: radius });
+    });
+
+    db.ref('configuracoes/radares').on('value', snap => {
+        drawnItems.clearLayers();
+        const data = snap.val();
+        for (let id in data) {
+            L.circle([data[id].lat, data[id].lng], { radius: data[id].radius, color: 'red' }).addTo(drawnItems);
+        }
+    });
+
+    window.atualizarFiltro = function() {
+        categoriaFiltro = document.getElementById('filtro-categoria').value;
+    };
+
     function monitorarStatus() {
         db.ref('configuracoes/provaAberta').on('value', snap => {
             const aberta = snap.val();
@@ -120,80 +190,57 @@
     };
 
     window.excluirTodosCarros = async function() {
-        const senha = prompt("SENHA PARA DELETAR TODOS OS CARROS:");
+        const senha = prompt("SENHA PARA DELETAR TUDO:");
         if (senha === "261291") {
-            if (confirm("ATENÇÃO: Isso apagará TODOS os competidores, rastros e tempos. Confirmar?")) {
+            if (confirm("Apagar competidores, posições, rastros e tempos?")) {
                 const paths = ['competidores', 'posicoes', 'rastros', 'tempos'];
                 await Promise.all(paths.map(path => db.ref(path).remove()));
-                alert("🔥 Todos os dados foram removidos!");
+                alert("Limpeza concluída!");
                 location.reload();
             }
-        } else if (senha !== null) {
-            alert("Senha incorreta!");
         }
     };
 
     window.logoffGeral = function() {
-        const senha = prompt("DIGITE A SENHA PARA LOGOFF GERAL:");
+        const senha = prompt("SENHA LOGOFF GERAL:");
         if (senha === "261291") {
-            if (confirm("Isso forçará a saída de todos os pilotos agora. Continuar?")) {
-                db.ref('configuracoes/comandoLogoff').set(Date.now()).then(() => {
-                    alert("Sinal de logoff enviado!");
-                });
-            }
-        } else if (senha !== null) {
-            alert("Senha incorreta!");
+            db.ref('configuracoes/comandoLogoff').set(Date.now()).then(() => alert("Logoff enviado!"));
         }
     };
 
-    // --- FUNÇÕES DE BACKUP ---
-
+    // FUNÇÕES DE BACKUP (Adicionadas ao final para não quebrar o resto)
     window.exportarBackup = function() {
         db.ref('/').once('value').then(snapshot => {
-            const data = snapshot.val();
-            const jsonStr = JSON.stringify(data, null, 2);
+            const jsonStr = JSON.stringify(snapshot.val(), null, 2);
             const blob = new Blob([jsonStr], { type: "application/json" });
             const url = URL.createObjectURL(blob);
-            
             const a = document.createElement('a');
-            const dataAtual = new Date().toISOString().split('T')[0];
             a.href = url;
-            a.download = `backup_racekrono_${dataAtual}.json`;
-            document.body.appendChild(a);
+            a.download = `backup_rally_${new Date().toISOString().split('T')[0]}.json`;
             a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }).catch(err => alert("Erro ao exportar: " + err));
+        });
     };
 
     window.importarBackup = function(event) {
         const file = event.target.files[0];
         if (!file) return;
-
         const reader = new FileReader();
         reader.onload = function(e) {
             try {
                 const json = JSON.parse(e.target.result);
-                const confirmacao = confirm("⚠️ ATENÇÃO: Isso irá SOBRESCREVER todos os dados atuais do banco pelo arquivo de backup. Deseja continuar?");
-                
-                if (confirmacao) {
-                    const senha = prompt("Digite a senha de administrador para confirmar a restauração:");
+                if (confirm("SOBRESCREVER BANCO ATUAL?")) {
+                    const senha = prompt("Senha de Admin:");
                     if (senha === "261291") {
                         db.ref('/').set(json).then(() => {
-                            alert("✅ Backup restaurado com sucesso! A página será recarregada.");
+                            alert("Sucesso!");
                             location.reload();
                         });
-                    } else {
-                        alert("Senha incorreta!");
                     }
                 }
-            } catch (err) {
-                alert("Erro ao ler o arquivo JSON: " + err);
-            }
+            } catch (err) { alert("Erro no arquivo!"); }
         };
         reader.readAsText(file);
     };
 </script>
-
 </body>
 </html>
