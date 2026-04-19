@@ -372,6 +372,60 @@
         alert("Senha incorreta!");
     }
 };
+   // FUNÇÃO PARA EXPORTAR (BACKUP)
+window.exportarBackup = function() {
+    db.ref('/').once('value').then(snapshot => {
+        const data = JSON.stringify(snapshot.val(), null, 2);
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        const dataAtual = new Date().toISOString().slice(0,10);
+        a.href = url;
+        a.download = `backup_rally_${dataAtual}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }).catch(err => alert("Erro ao gerar backup: " + err));
+};
+
+// FUNÇÃO PARA IMPORTAR (RESTAURAR)
+window.importarBackup = function() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+
+    input.onchange = e => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        
+        reader.onload = readerEvent => {
+            try {
+                const json = JSON.parse(readerEvent.target.result);
+                
+                if (confirm("⚠️ ATENÇÃO: Isso substituirá TODOS os dados atuais do banco pelo arquivo de backup. Confirma?")) {
+                    const senha = prompt("Digite a senha de segurança para restaurar:");
+                    if (senha === "261291") {
+                        db.ref('/').set(json)
+                            .then(() => {
+                                alert("✅ Backup restaurado com sucesso!");
+                                location.reload();
+                            })
+                            .catch(err => alert("Erro ao gravar no banco: " + err));
+                    } else {
+                        alert("Senha incorreta!");
+                    }
+                }
+            } catch (err) {
+                alert("Erro ao ler o arquivo JSON: " + err);
+            }
+        };
+        reader.readAsText(file);
+    };
+
+    input.click();
+};     
 </script>
 </body>
 </html>
