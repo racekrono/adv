@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Cronometragem Automática - Race Krono</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #1a202c; color: white; padding: 20px; }
+        .container { max-width: 800px; margin: auto; }
+        .card { background: #2d3748; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); margin-bottom: 20px; }
+        h2 { color: #48bb78; margin-top: 0; }
+        label { display: block; margin-bottom: 8px; color: #a0aec0; }
+        input, button { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #4a5568; background: #1a202c; color: white; box-sizing: border-box; }
+        button { background: #38a169; border: none; font-weight: bold; cursor: pointer; font-size: 16px; }
+        button:hover { background: #2f855a; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #1a202c; border-radius: 8px; overflow: hidden; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #2d3748; font-size: 14px; }
+        th { background: #2d3748; color: #a0aec0; }
+        .status-ready { color: #4299e1; }
+        .status-done { color: #48bb78; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <h2>🏁 Cronometragem Automática</h2>
+        <p>Define a hora base e o sistema calcula: <br>
+           <strong>Largada:</strong> Hora Base + Número do Carro em minutos.<br>
+           <strong>Chegada:</strong> Primeiro ponto GPS no rastro que entrou na linha de chegada.</p>
+        
+        <label>Hora de Início da Prova (Hora Base):</label>
+        <input type="time" id="horaBase" step="1" value="10:00:00">
+        
+        <button onclick="processarTudo()">Processar Tempos de Todos os Carros</button>
+    </div>
+
+    <div class="card">
+        <h3>Resultados Processados</h3>
+        <table id="tabelaResultados">
+            <thead>
+                <tr>
+                    <th>Nº</th>
+                    <th>Piloto</th>
+                    <th>Largada Calc.</th>
+                    <th>Chegada GPS</th>
+                    <th>Tempo Total</th>
+                </tr>
+            </thead>
+            <tbody id="corpoTabela">
+                </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
+        databaseURL: "https://cronometro-rally-default-rtdb.firebaseio.com",
+        projectId: "cronometro-rally"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    async function processarTudo() {
+        const horaBaseStr = document.getElementById('horaBase').value;
+        if(!horaBaseStr) return alert("Defina a hora base!");
+
+        const btn = document.querySelector('button');
+        btn.innerText = "Processando... aguarde";
+        btn.disabled = true;
+
+        try {
+            // 1. Carregar Dados Necessários
+            const [snapConfig, snapComps, snapRastros] = await Promise.all([
+                db.ref('configuracoes/percurso').once('value'),
+                db.ref('competidores').once('value'),
+                db.ref('rastros').once('value')
+            ]);
+
+            const percurso = snapConfig.val();
+            const competidores = snapComps.val();
+            const rastros = snapRastros.val();
+            const linhaChegada = percurso?.features?.find(f => f.properties?.subType === 'chegada');
+
+            if(!linhaChegada) throw new Error("Linha de chegada não definida no mapa!");
+
+            const centroChegada = linhaChegada.geometry.coordinates;
+            const raioChegadaKm = linhaChegada.properties.radius / 1000;
+            let html = '';
+
+            // 2. Iterar sobre cada carro
+            for (let num in competidores) {
+                const comp = competidores[num];
+                
+                // --- Lógica de Largada: Hora Base + Minuto do Carro ---
+                const [h, m, s] = horaBaseStr.split(':').map(Number);
+                const dataLargada = new Date();
+                dataLargada.setHours(h, m + parseInt(num), s || 0, 0);
+                const horaLargadaFormatada = dataLargada.toTimeString().split(' ')[0];
+
+                // --- Lógica de Chegada: Cruzamento de Rastro ---
+                let tempoChegadaMs = null;
+                let horaChegadaFormatada = "---";
+                
+                if (rastros && rastros[num]) {
+                    const rastroArr = Object.values(rastros[num]).sort((a, b) => a.ts - b.ts);
+                    const pontoEntrada = rastroArr.find(pt => {
+                        return turf.distance(
+                            turf.point([pt.lng, pt.lat]), 
+                            turf.point([centroChegada[0], centroChegada[1]])
+                        ) <= raioChegadaKm;
+                    });
+
+                    if (pontoEntrada) {
+                        tempoChegadaMs = pontoEntrada.ts;
+                        horaChegadaFormatada = new Date(tempoChegadaMs).toTimeString().split(' ')[0];
+                    }
+                }
+
+                // --- Cálculo de Tempo Total ---
+                let tempoTotalFormatado = "N/A";
+                let diffMs = 0;
+                if (tempoChegadaMs) {
+                    diffMs = tempoChegadaMs - dataLargada.getTime();
+                    if (diffMs > 0) {
+                        tempoTotalFormatado = new Date(diffMs).toISOString().substr(11, 8);
+                    }
+                }
+
+                // 3. Atualizar no Firebase
+                await db.ref(`competidores/${num}`).update({
+                    horaLargada: horaLargadaFormatada,
+                    horaChegada: horaChegadaFormatada,
+                    tempoTotalMs: diffMs > 0 ? diffMs : 0,
+                    tempoFormatado: tempoTotalFormatado
+                });
+
+                html += `<tr>
+                    <td>${num}</td>
+                    <td>${comp.nome}</td>
+                    <td>${horaLargadaFormatada}</td>
+                    <td class="${tempoChegadaMs ? 'status-done' : ''}">${horaChegadaFormatada}</td>
+                    <td><strong>${tempoTotalFormatado}</strong></td>
+                </tr>`;
+            }
+
+            document.getElementById('corpoTabela').innerHTML = html;
+            alert("✅ Todos os tempos foram calculados e salvos!");
+
+        } catch (error) {
+            alert("Erro: " + error.message);
+        } finally {
+            btn.innerText = "Processar Tempos de Todos os Carros";
+            btn.disabled = false;
+        }
+    }
+</script>
+</body>
+</html>
