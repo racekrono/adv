@@ -149,18 +149,33 @@
         map.addControl(drawControl);
 
         map.on(L.Draw.Event.CREATED, (e) => {
-            const layer = e.layer;
-            layer.feature = layer.feature || { type: "Feature", properties: {} };
-            if (e.layerType === 'polygon') {
-                const v = prompt("Velocidade Máxima Radar (KM/H):", "60");
-                layer.feature.properties.velocidade = parseInt(v) || 60;
-            }
-            if (e.layerType === 'circle') {
-                layer.feature.properties.type = 'circle';
-                layer.feature.properties.radius = layer.getRadius();
-            }
-            drawnItems.addLayer(layer);
-        });
+    const layer = e.layer;
+    layer.feature = layer.feature || { type: "Feature", properties: {} };
+    
+    // DIFERENÇA 1: RETÂNGULO = CHEGADA
+    if (e.layerType === 'rectangle') {
+        layer.feature.properties.kind = 'chegada'; // Marca como chegada
+        layer.setStyle({ color: '#ffffff', weight: 4, fillColor: '#2d3748', fillOpacity: 0.7 });
+        alert("🏁 Linha de Chegada definida!");
+    }
+    
+    // DIFERENÇA 2: POLÍGONO = RADAR
+    if (e.layerType === 'polygon') {
+        const v = prompt("Velocidade Máxima Radar (KM/H):", "60");
+        layer.feature.properties.kind = 'radar'; // Marca como radar
+        layer.feature.properties.velocidade = parseInt(v) || 60;
+        layer.setStyle({ color: '#e53e3e' }); // Radar fica vermelho
+    }
+    
+    // Círculos continuam sendo Waypoints
+    if (e.layerType === 'circle') {
+        layer.feature.properties.kind = 'waypoint';
+        layer.feature.properties.type = 'circle';
+        layer.feature.properties.radius = layer.getRadius();
+    }
+    
+    drawnItems.addLayer(layer);
+});
 
         carregarTrajeto();
         rastrearCarros();
