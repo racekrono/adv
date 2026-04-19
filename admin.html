@@ -158,17 +158,17 @@
     }
     
     if (e.layerType === 'circle') {
-        // Pergunta ao admin o que é este círculo
-        const tipo = confirm("Clique em OK para WAYPOINT ou CANCELAR para LINHA DE CHEGADA");
+        // Pergunta se é um Waypoint ou Chegada
+        const ehChegada = confirm("OK para CHEGADA ou CANCELAR para WAYPOINT (Radar)");
         layer.feature.properties.type = 'circle';
         layer.feature.properties.radius = layer.getRadius();
         
-        if (tipo) {
-            layer.feature.properties.subType = 'waypoint';
-            layer.setStyle({color: '#3182ce'}); // Azul para waypoint
-        } else {
+        if (ehChegada) {
             layer.feature.properties.subType = 'chegada';
-            layer.setStyle({color: '#e53e3e', dashArray: '5, 10'}); // Vermelho tracejado para chegada
+            layer.setStyle({color: '#f1c40f', weight: 5, fillOpacity: 0.4}); // Amarelo para Chegada
+        } else {
+            layer.feature.properties.subType = 'waypoint';
+            layer.setStyle({color: '#3182ce'}); // Azul para Waypoint
         }
     }
     drawnItems.addLayer(layer);
