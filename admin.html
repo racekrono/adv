@@ -32,163 +32,316 @@
 
     #map { flex-grow: 1; width: 100%; background: #a0aec0; }
 
-    button {
-        padding: 8px 15px;
-        border: none;
-        border-radius: 5px;
-        color: white;
-        cursor: pointer;
-        font-weight: bold;
-        font-size: 13px;
-        transition: opacity 0.2s;
+    button { 
+        padding: 10px 14px; 
+        background: #4a5568; 
+        color: white; 
+        border: none; 
+        border-radius: 4px; 
+        cursor: pointer; 
+        font-weight: bold; 
+        font-size: 11px;
+        white-space: nowrap;
     }
 
-    button:hover { opacity: 0.8; }
-
-    .btn-danger { background: #e53e3e; }
-    .btn-success { background: #38a169; }
-    .btn-nav { background: #4a5568; }
-
-    select {
-        padding: 8px;
-        border-radius: 5px;
-        background: #1a202c;
-        color: white;
-        border: 1px solid #4a5568;
-        outline: none;
+    button:hover { filter: brightness(1.2); }
+    
+    input, select { 
+        padding: 8px; 
+        border-radius: 4px; 
+        border: none; 
+        background: #1a202c; 
+        color: white; 
+        font-size: 12px;
     }
 
-    .custom-div-icon div {
-        box-shadow: 0 0 5px rgba(0,0,0,0.5);
+    .marker-label { background: #ed8936; border: 2px solid white; border-radius: 50%; color: white; font-weight: bold; text-align: center; line-height: 26px; width: 30px; height: 30px; font-size: 12px; }
+
+    @media (max-width: 600px) {
+        .button-group { width: 100%; justify-content: center; }
+        input { width: 100%; }
     }
-    </style>
+</style>
 </head>
 <body>
+    <div id="toolbar">
+        <div class="button-group">
+            <input type="text" id="coordsInput" placeholder="Lat, Lng (ex: -12.2,-38.9)">
+            <button onclick="adicionarPontoNaLinha()" style="background: #4a5568;">📍 Add Ponto</button>
+            </div>
+        <div class="button-group">
+            <input type="text" id="cityInput" placeholder="Cidade...">
+            <button onclick="buscar()">🔍 Buscar Cidade</button>
+            <button onclick="salvar()" style="background: #38a169;">💾 Salvar Trajeto</button>
+            <button id="btnStatusProva" onclick="alternarStatusProva()">Aguardando...</button>
+        </div>
 
-<div id="toolbar">
-    <div class="button-group">
-        <button class="btn-nav" onclick="window.location.href='index.html'">🏠 Início</button>
-        <button class="btn-nav" onclick="window.location.href='resultados.html'">🏆 Ranking</button>
-        <button class="btn-nav" onclick="window.location.href='tempos.html'">⏱️ Tempos</button>
-        <button class="btn-nav" onclick="window.location.href='fotos.html'">📸 Fotos</button>
-        <button class="btn-nav" onclick="window.location.href='penalizacoes.html'">⚠️ Penalizar</button>
+        <div class="button-group">
+            <button onclick="window.location.href='rastro.html'" style="background: #805ad5;">🗺️ Rastro</button>
+            <button onclick="apurar()" style="background: #dd6b20;">🏁 Rodar Apuração</button>
+            <button onclick="window.location.href='tempos.html'" style="background: #d69e2e;">⏱️ Tempo de Prova</button>
+            <button onclick="window.location.href='fotos.html'" style="background: #3182ce;">📸 Pontuação Fotos</button>
+            <button onclick="window.location.href='penalizacoes.html'" style="background: #38a169;">🚨​​ Penalização</button>
+            <button onclick="window.location.href='gestao.html'" style="background: #3182ce;">🧏​ Gestão Pilotos</button>
+        </div>
+
+        <div class="button-group">
+            <button onclick="window.location.href='ranking-geral.html'" style="background: #b7791f; border: 1px solid #f6e05e;">🏆 RESULTADO </button>
+        </div>
+
+        <div class="button-group">
+            <select id="carSelector">
+                <option value="">Carro...</option>
+            </select>
+            <button onclick="excluirCarro()" style="background: #e53e3e;">🗑️ Excluir</button>  
+            <button onclick="resetar()" style="background: #38a169;">⚠️ Resetar Tudo</button>
+            <button onclick="excluirTodosCarros()" style="background: #c53030; border: 1px solid white;">💀 APAGAR TODOS OS CARROS</button>
+            <button onclick="logoffGeral()" style="background: #2d3748; border: 1px solid #a0aec0;">🚪 LOGOFF GERAL</button>
+        </div>
     </div>
+    
+    <div id="map"></div>
 
-    <div class="button-group">
-        <select id="filtro-categoria" onchange="atualizarFiltro()">
-            <option value="TODOS">Todas Categorias</option>
-            <option value="GRADUADO">Graduado</option>
-            <option value="TURISMO">Turismo</option>
-            <option value="EXPEDICAO">Expedição</option>
-            <option value="MOTO">Moto</option>
-        </select>
-        <button id="btn-status-prova" class="btn-success" onclick="alternarStatusProva()">Carregando...</button>
-        <button class="btn-danger" onclick="logoffGeral()">🔴 Logoff Geral</button>
-        <button class="btn-danger" onclick="excluirTodosCarros()">🔥 Limpar Banco</button>
-    </div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 
-    <div class="button-group">
-        <button onclick="exportarBackup()" style="background: #2b6cb0;">📤 Exportar</button>
-        <button onclick="document.getElementById('importFile').click()" style="background: #805ad5;">📥 Importar</button>
-        <input type="file" id="importFile" style="display: none;" onchange="importarBackup(event)" accept=".json">
-    </div>
-</div>
-
-<div id="map"></div>
-
-<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-
-<script>
+    <script>
     const firebaseConfig = {
         apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
+        authDomain: "cronometro-rally.firebaseapp.com",
         databaseURL: "https://cronometro-rally-default-rtdb.firebaseio.com",
-        projectId: "cronometro-rally"
+        projectId: "cronometro-rally",
+        storageBucket: "cronometro-rally.firebasestorage.app",
+        messagingSenderId: "341731891354",
+        appId: "1:341731891354:web:d0c34265be68015e98a723"
     };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
 
-    const map = L.map('map').setView([-12.25, -38.95], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.database(app);
+    
+    let map, drawnItems;
+    let pontosTemporarios = [];
+    let linhaTemporaria; 
 
-    const markers = {};
-    const radares = {};
-    let categoriaFiltro = "TODOS";
+    function initMap() {
+        const camadaRuas = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+        const camadaSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
+        
+        map = L.map('map', { 
+            center: [-12.26, -38.96], 
+            zoom: 13, 
+            layers: [camadaRuas] 
+        });
 
-    const carIcon = L.divIcon({
-        className: 'custom-div-icon',
-        html: "<div style='background-color:#e67e22; width:12px; height:12px; border:2px solid white; border-radius:50%;'></div>",
-        iconSize: [12, 12],
-        iconAnchor: [6, 6]
-    });
+        linhaTemporaria = L.polyline([], {color: 'yellow', dashArray: '5, 5'}).addTo(map);
+        L.control.layers({ "Mapa": camadaRuas, "Satélite": camadaSat }).addTo(map);
+        drawnItems = new L.FeatureGroup().addTo(map);
+        
+        const drawControl = new L.Control.Draw({
+            edit: { featureGroup: drawnItems },
+            draw: { polyline: true, polygon: true, circle: true, rectangle: false, marker: false, circlemarker: false }
+        });
+        map.addControl(drawControl);
 
-    db.ref('competidores').on('value', snapComp => {
-        const dadosComp = snapComp.val() || {};
-        db.ref('posicoes').on('value', snapPos => {
-            const dadosPos = snapPos.val() || {};
-            
-            Object.keys(dadosPos).forEach(id => {
-                const p = dadosPos[id];
-                const info = dadosComp[id] || { nome: "Piloto", categoria: "N/A" };
+        map.on(L.Draw.Event.CREATED, (e) => {
+            const layer = e.layer;
+            layer.feature = layer.feature || { type: "Feature", properties: {} };
+            if (e.layerType === 'polygon') {
+                const v = prompt("Velocidade Máxima Radar (KM/H):", "60");
+                layer.feature.properties.velocidade = parseInt(v) || 60;
+            }
+            if (e.layerType === 'circle') {
+                layer.feature.properties.type = 'circle';
+                layer.feature.properties.radius = layer.getRadius();
+            }
+            drawnItems.addLayer(layer);
+        });
 
-                if (categoriaFiltro !== "TODOS" && info.categoria !== categoriaFiltro) {
-                    if (markers[id]) { map.removeLayer(markers[id]); delete markers[id]; }
-                    return;
+        carregarTrajeto();
+        rastrearCarros();
+        atualizarSeletorCarros();
+        monitorarStatusProva();
+        
+        setTimeout(() => { map.invalidateSize(); }, 500);
+    }
+
+    window.adicionarPontoNaLinha = function() {
+        const input = document.getElementById('coordsInput').value;
+        const partes = input.split(',');
+        if (partes.length !== 2) { alert("Formato inválido!"); return; }
+        const lat = parseFloat(partes[0].trim());
+        const lng = parseFloat(partes[1].trim());
+        if (isNaN(lat) || isNaN(lng)) { alert("Coordenadas inválidas."); return; }
+        pontosTemporarios.push([lat, lng]);
+        linhaTemporaria.setLatLngs(pontosTemporarios);
+        map.setView([lat, lng], 15);
+        document.getElementById('coordsInput').value = "";
+    };
+
+    window.finalizarLinhaManual = function() {
+        if (pontosTemporarios.length < 2) { alert("Adicione pelo menos 2 pontos."); return; }
+        const novaLinha = L.polyline(pontosTemporarios, { color: '#FF007F' });
+        novaLinha.addTo(drawnItems);
+        limparTemporarios();
+        alert("Linha criada! Clique em SALVAR TRAJETO para gravar.");
+    };
+
+    window.limparTemporarios = function() {
+        pontosTemporarios = [];
+        if(linhaTemporaria) linhaTemporaria.setLatLngs([]);
+    };
+
+    window.onload = initMap;
+
+    window.buscar = async function() {
+        const q = document.getElementById('cityInput').value;
+        if(!q) return;
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}`);
+            const data = await res.json();
+            if(data[0]) map.setView([data[0].lat, data[0].lon], 14);
+        } catch(e) { alert("Erro na busca."); }
+    };
+
+    window.salvar = function() {
+        const data = { type: "FeatureCollection", features: [] };
+        drawnItems.eachLayer(layer => {
+            const gj = layer.toGeoJSON();
+            gj.properties = gj.properties || {};
+            if (layer instanceof L.Circle) {
+                gj.properties.type = 'circle';
+                gj.properties.radius = layer.getRadius();
+            }
+            data.features.push(gj);
+        });
+        db.ref('configuracoes/percurso').set(data).then(() => alert("✅ Trajeto salvo!"));
+    };
+
+    function carregarTrajeto() {
+        db.ref('configuracoes/percurso').once('value', snap => {
+            if(snap.exists()) {
+                L.geoJSON(snap.val(), {
+                    pointToLayer: (f, latlng) => f.properties?.type === 'circle' ? L.circle(latlng, { radius: f.properties.radius }) : null,
+                    onEachFeature: (f, l) => { drawnItems.addLayer(l); }
+                });
+            }
+        });
+    }
+
+    function rastrearCarros() {
+        const markers = {};
+        db.ref('posicoes').on('value', snap => {
+            snap.forEach(c => {
+                const id = c.key; 
+                const p = c.val();
+                if(markers[id]) {
+                    markers[id].setLatLng([p.lat, p.lng]);
+                } else {
+                    markers[id] = L.marker([p.lat, p.lng], { 
+                        icon: L.divIcon({ className:'marker-label', html: id, iconSize:[30,30] }) 
+                    }).addTo(map);
+                    markers[id].on('click', function() {
+                        db.ref(`competidores/${id}/nome`).once('value', nomeSnap => {
+                            const nomeComp = nomeSnap.val() || "Não cadastrado";
+                            const velocidade = p.vel ? `<br>Velocidade: ${p.vel} km/h` : "";
+                            markers[id].bindPopup(`<b>Carro: ${id}</b><br>Piloto: ${nomeComp}${velocidade}`).openPopup();
+                        });
+                    });
                 }
-
-                if (!markers[id]) {
-                    markers[id] = L.marker([p.lat, p.lng], {icon: carIcon}).addTo(map);
-                }
-                markers[id].setLatLng([p.lat, p.lng])
-                           .bindPopup(`<b>Carro ${id}</b><br>${info.nome}<br>${info.categoria}<br>Vel: ${p.vel} km/h`);
             });
         });
-    });
+    }
 
-    const drawnItems = new L.FeatureGroup().addTo(map);
-    const drawControl = new L.Control.Draw({
-        draw: { polygon: false, polyline: false, rectangle: false, marker: false, circlemarker: false, circle: true },
-        edit: { featureGroup: drawnItems }
-    });
-    map.addControl(drawControl);
+    window.apurar = async function() {
+        if(!confirm("Rodar apuração?")) return;
+        const config = (await db.ref('configuracoes/percurso').once('value')).val();
+        const rastros = (await db.ref('rastros').once('value')).val();
+        const comps = (await db.ref('competidores').once('value')).val();
+        if(!config || !rastros) return alert("Erro: Dados insuficientes.");
 
-    map.on(L.Draw.Event.CREATED, e => {
-        const layer = e.layer;
-        const center = layer.getLatLng();
-        const radius = layer.getRadius();
-        const id = "radar_" + Date.now();
-        db.ref('configuracoes/radares/' + id).set({ lat: center.lat, lng: center.lng, radius: radius });
-    });
+        for(let id in comps) {
+            let pen = 0;
+            const rastroArr = Object.values(rastros[id] || {}).sort((a, b) => a.ts - b.ts);
+            if(rastroArr.length === 0) continue;
 
-    db.ref('configuracoes/radares').on('value', snap => {
-        drawnItems.clearLayers();
-        const data = snap.val();
-        for (let id in data) {
-            L.circle([data[id].lat, data[id].lng], { radius: data[id].radius, color: 'red' }).addTo(drawnItems);
+            config.features.forEach(feat => {
+                if(feat.geometry.type === 'Polygon') {
+                    const vMax = (feat.properties.velocidade || 60) * 1.1;
+                    let tempoExcessoMs = 0;
+                    for(let i = 1; i < rastroArr.length; i++) {
+                        const p = rastroArr[i];
+                        const duration = p.ts - rastroArr[i-1].ts;
+                        if (duration > 30000) continue; 
+                        if(p.vel > 2 && turf.booleanPointInPolygon(turf.point([p.lng, p.lat]), feat)) {
+                            if(p.vel > vMax) tempoExcessoMs += duration;
+                        }
+                    }
+                    if(tempoExcessoMs > 10000) {
+                        pen += (Math.floor((tempoExcessoMs - 10000) / 10000) + 1) * 500;
+                    }
+                } else if(feat.properties?.type === 'circle') {
+                    const centro = feat.geometry.coordinates;
+                    const raio = feat.properties.radius / 1000;
+                    if(!rastroArr.some(pt => turf.distance(turf.point([pt.lng, pt.lat]), turf.point(centro)) <= raio)) {
+                        pen += 2000;
+                    }
+                }
+            });
+            db.ref(`competidores/${id}`).update({ pontos: 0 - pen });
         }
-    });
-
-    window.atualizarFiltro = function() {
-        categoriaFiltro = document.getElementById('filtro-categoria').value;
+        alert("✅ Apuração concluída!");
     };
 
-    function monitorarStatus() {
+    window.resetar = function() {
+        if(prompt("Senha de Segurança:") === "261291") db.ref('/').remove().then(() => location.reload());
+    };
+
+    function atualizarSeletorCarros() {
+        const selector = document.getElementById('carSelector');
+        db.ref('competidores').on('value', snap => {
+            selector.innerHTML = '<option value="">Selecionar Carro...</option>';
+            snap.forEach(child => {
+                const carId = child.key;
+                const option = document.createElement('option');
+                option.value = carId;
+                option.textContent = `Carro ${carId}`;
+                selector.appendChild(option);
+            });
+        });
+    }
+
+    window.excluirCarro = async function() {
+        const carId = document.getElementById('carSelector').value;
+        if (!carId) { alert("Selecione um carro."); return; }
+        if (confirm(`Excluir Carro ${carId}?`)) {
+            await Promise.all([
+                db.ref(`competidores/${carId}`).remove(),
+                db.ref(`posicoes/${carId}`).remove(),
+                db.ref(`rastros/${carId}`).remove(),
+                db.ref(`tempos/${carId}`).remove()
+            ]);
+            location.reload(); 
+        }
+    };
+
+    function monitorarStatusProva() {
+        const btn = document.getElementById('btnStatusProva');
         db.ref('configuracoes/provaAberta').on('value', snap => {
             const aberta = snap.val();
-            const btn = document.getElementById('btn-status-prova');
-            btn.innerText = aberta ? "🟢 PROVA ABERTA" : "🔴 PROVA FECHADA";
+            btn.innerText = aberta ? "🔓 PROVA ABERTA" : "🔒 PROVA FECHADA";
             btn.style.background = aberta ? "#38a169" : "#e53e3e";
         });
     }
-    monitorarStatus();
 
     window.alternarStatusProva = function() {
         const ref = db.ref('configuracoes/provaAberta');
         ref.once('value', snap => { ref.set(!snap.val()); });
     };
 
+    // NOVAS FUNÇÕES ADICIONADAS CONFORME SOLICITADO
     window.excluirTodosCarros = async function() {
         const senha = prompt("SENHA PARA DELETAR TODOS OS CARROS:");
         if (senha === "261291") {
@@ -204,52 +357,19 @@
     };
 
     window.logoffGeral = function() {
-        const senha = prompt("DIGITE A SENHA PARA LOGOFF GERAL:");
-        if (senha === "261291") {
-            if (confirm("Isso forçará a saída de todos os pilotos agora. Continuar?")) {
-                db.ref('configuracoes/comandoLogoff').set(Date.now()).then(() => {
-                    alert("Sinal de logoff enviado!");
-                });
-            }
-        } else if (senha !== null) {
-            alert("Senha incorreta!");
+    const senha = prompt("DIGITE A SENHA PARA LOGOFF GERAL:");
+    
+    if (senha === "261291") {
+        if (confirm("Isso forçará a saída de todos os pilotos agora. Continuar?")) {
+            // Define uma flag de comando no banco com o timestamp atual
+            db.ref('configuracoes/comandoLogoff').set(Date.now()).then(() => {
+                alert("Sinal de logoff enviado para todos os dispositivos!");
+            });
         }
-    };
-
-    // NOVAS FUNÇÕES DE BACKUP INSERIDAS AO FINAL DO SCRIPT
-    window.exportarBackup = function() {
-        db.ref('/').once('value').then(snapshot => {
-            const data = snapshot.val();
-            const jsonStr = JSON.stringify(data, null, 2);
-            const blob = new Blob([jsonStr], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `backup_racekrono_${new Date().toISOString().split('T')[0]}.json`;
-            a.click();
-        }).catch(err => alert("Erro ao exportar: " + err));
-    };
-
-    window.importarBackup = function(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const json = JSON.parse(e.target.result);
-                if (confirm("⚠️ Isso irá SOBRESCREVER o banco atual. Continuar?")) {
-                    const senha = prompt("Confirme a senha de admin:");
-                    if (senha === "261291") {
-                        db.ref('/').set(json).then(() => {
-                            alert("✅ Backup restaurado!");
-                            location.reload();
-                        });
-                    }
-                }
-            } catch (err) { alert("Erro no arquivo JSON!"); }
-        };
-        reader.readAsText(file);
-    };
+    } else if (senha !== null) {
+        alert("Senha incorreta!");
+    }
+};
 </script>
 </body>
 </html>
