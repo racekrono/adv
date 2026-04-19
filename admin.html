@@ -48,8 +48,6 @@
     .btn-danger { background: #e53e3e; }
     .btn-success { background: #38a169; }
     .btn-nav { background: #4a5568; }
-    .btn-backup { background: #2b6cb0; }
-    .btn-restore { background: #805ad5; }
 
     select {
         padding: 8px;
@@ -57,6 +55,11 @@
         background: #1a202c;
         color: white;
         border: 1px solid #4a5568;
+        outline: none;
+    }
+
+    .custom-div-icon div {
+        box-shadow: 0 0 5px rgba(0,0,0,0.5);
     }
     </style>
 </head>
@@ -85,8 +88,8 @@
     </div>
 
     <div class="button-group">
-        <button class="btn-backup" onclick="exportarBackup()">📤 Exportar</button>
-        <button class="btn-restore" onclick="document.getElementById('importFile').click()">📥 Importar</button>
+        <button onclick="exportarBackup()" style="background: #2b6cb0;">📤 Exportar</button>
+        <button onclick="document.getElementById('importFile').click()" style="background: #805ad5;">📥 Importar</button>
         <input type="file" id="importFile" style="display: none;" onchange="importarBackup(event)" accept=".json">
     </div>
 </div>
@@ -114,7 +117,6 @@
     const radares = {};
     let categoriaFiltro = "TODOS";
 
-    // Ícone personalizado
     const carIcon = L.divIcon({
         className: 'custom-div-icon',
         html: "<div style='background-color:#e67e22; width:12px; height:12px; border:2px solid white; border-radius:50%;'></div>",
@@ -122,7 +124,6 @@
         iconAnchor: [6, 6]
     });
 
-    // Monitorar Competidores e Posições (Original)
     db.ref('competidores').on('value', snapComp => {
         const dadosComp = snapComp.val() || {};
         db.ref('posicoes').on('value', snapPos => {
@@ -146,7 +147,6 @@
         });
     });
 
-    // Desenho de Radares (Original)
     const drawnItems = new L.FeatureGroup().addTo(map);
     const drawControl = new L.Control.Draw({
         draw: { polygon: false, polyline: false, rectangle: false, marker: false, circlemarker: false, circle: true },
@@ -190,35 +190,44 @@
     };
 
     window.excluirTodosCarros = async function() {
-        const senha = prompt("SENHA PARA DELETAR TUDO:");
+        const senha = prompt("SENHA PARA DELETAR TODOS OS CARROS:");
         if (senha === "261291") {
-            if (confirm("Apagar competidores, posições, rastros e tempos?")) {
+            if (confirm("ATENÇÃO: Isso apagará TODOS os competidores, rastros e tempos. Confirmar?")) {
                 const paths = ['competidores', 'posicoes', 'rastros', 'tempos'];
                 await Promise.all(paths.map(path => db.ref(path).remove()));
-                alert("Limpeza concluída!");
+                alert("🔥 Todos os dados de carros foram removidos!");
                 location.reload();
             }
+        } else if (senha !== null) {
+            alert("Senha incorreta!");
         }
     };
 
     window.logoffGeral = function() {
-        const senha = prompt("SENHA LOGOFF GERAL:");
+        const senha = prompt("DIGITE A SENHA PARA LOGOFF GERAL:");
         if (senha === "261291") {
-            db.ref('configuracoes/comandoLogoff').set(Date.now()).then(() => alert("Logoff enviado!"));
+            if (confirm("Isso forçará a saída de todos os pilotos agora. Continuar?")) {
+                db.ref('configuracoes/comandoLogoff').set(Date.now()).then(() => {
+                    alert("Sinal de logoff enviado!");
+                });
+            }
+        } else if (senha !== null) {
+            alert("Senha incorreta!");
         }
     };
 
-    // FUNÇÕES DE BACKUP (Adicionadas ao final para não quebrar o resto)
+    // NOVAS FUNÇÕES DE BACKUP INSERIDAS AO FINAL DO SCRIPT
     window.exportarBackup = function() {
         db.ref('/').once('value').then(snapshot => {
-            const jsonStr = JSON.stringify(snapshot.val(), null, 2);
+            const data = snapshot.val();
+            const jsonStr = JSON.stringify(data, null, 2);
             const blob = new Blob([jsonStr], { type: "application/json" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `backup_rally_${new Date().toISOString().split('T')[0]}.json`;
+            a.download = `backup_racekrono_${new Date().toISOString().split('T')[0]}.json`;
             a.click();
-        });
+        }).catch(err => alert("Erro ao exportar: " + err));
     };
 
     window.importarBackup = function(event) {
@@ -228,16 +237,16 @@
         reader.onload = function(e) {
             try {
                 const json = JSON.parse(e.target.result);
-                if (confirm("SOBRESCREVER BANCO ATUAL?")) {
-                    const senha = prompt("Senha de Admin:");
+                if (confirm("⚠️ Isso irá SOBRESCREVER o banco atual. Continuar?")) {
+                    const senha = prompt("Confirme a senha de admin:");
                     if (senha === "261291") {
                         db.ref('/').set(json).then(() => {
-                            alert("Sucesso!");
+                            alert("✅ Backup restaurado!");
                             location.reload();
                         });
                     }
                 }
-            } catch (err) { alert("Erro no arquivo!"); }
+            } catch (err) { alert("Erro no arquivo JSON!"); }
         };
         reader.readAsText(file);
     };
