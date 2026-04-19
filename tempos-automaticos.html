@@ -2,108 +2,150 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cronometragem Automática - Race Krono</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
-    
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a202c; color: white; padding: 20px; margin: 0; }
-        .container { max-width: 900px; margin: auto; }
-        
-        .card { 
-            background: #2d3748; 
-            padding: 25px; 
-            border-radius: 12px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
-            margin-bottom: 25px;
-            border-top: 4px solid #48bb78;
-        }
-
-        h2 { color: #48bb78; margin-top: 0; display: flex; align-items: center; gap: 10px; }
-        p { color: #a0aec0; font-size: 0.95rem; line-height: 1.5; }
-        
-        .setup-group { display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap; }
-        .input-box { flex: 1; min-width: 200px; }
-        
-        label { display: block; margin-bottom: 8px; color: #cbd5e0; font-weight: bold; font-size: 14px; }
-        
-        input[type="time"] { 
-            width: 100%; 
-            padding: 12px; 
-            border-radius: 6px; 
-            border: 1px solid #4a5568; 
-            background: #1a202c; 
-            color: #48bb78; 
-            font-size: 18px; 
-            font-weight: bold;
-            box-sizing: border-box;
-        }
-
-        button { 
-            background: #38a169; 
-            color: white; 
-            border: none; 
-            padding: 15px 25px; 
-            border-radius: 6px; 
-            font-weight: bold; 
-            cursor: pointer; 
-            transition: 0.2s;
-            font-size: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        button:hover { background: #2f855a; transform: translateY(-1px); }
-        button:disabled { background: #4a5568; cursor: not-allowed; }
-
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: #1a202c; border-radius: 8px; overflow: hidden; }
-        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #2d3748; }
-        th { background: #2d3748; color: #a0aec0; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; }
-        
-        .val-num { font-weight: bold; color: #63b3ed; }
-        .val-time { font-family: 'Courier New', Courier, monospace; color: #cbd5e0; }
-        .val-total { font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #f6ad55; font-size: 1.1rem; }
-        
-        .badge-gps { background: rgba(72, 187, 120, 0.2); color: #48bb78; padding: 4px 8px; border-radius: 4px; font-size: 11px; }
-        .no-gps { color: #e53e3e; font-size: 11px; }
-
-        .back-link { display: inline-block; margin-bottom: 20px; color: #a0aec0; text-decoration: none; font-size: 14px; }
-        .back-link:hover { color: white; }
+        body { font-family: sans-serif; background: #1a202c; color: white; padding: 20px; }
+        .container { max-width: 800px; margin: auto; }
+        .card { background: #2d3748; padding: 25px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        h2 { color: #48bb78; margin-top: 0; }
+        label { display: block; margin-bottom: 8px; color: #a0aec0; }
+        input, button { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #4a5568; background: #1a202c; color: white; box-sizing: border-box; }
+        button { background: #38a169; border: none; font-weight: bold; cursor: pointer; font-size: 16px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #1a202c; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #2d3748; }
+        th { background: #2d3748; color: #a0aec0; font-size: 12px; }
+        .tempo-total { font-weight: bold; color: #f6ad55; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <a href="admin.html" class="back-link">← Voltar ao Painel Admin</a>
-    
     <div class="card">
         <h2>🏁 Cronometragem Automática</h2>
-        <p>
-            Esta página calcula os tempos oficiais cruzando a <strong>Hora de Largada Escolona</strong> (Hora Base + Nº do Carro em minutos) 
-            com o <strong>Rastro de GPS</strong> enviado pelos pilotos.
-        </p>
-        
-        <div class="setup-group">
-            <div class="input-box">
-                <label>Hora Base da Prova (Início):</label>
-                <input type="time" id="horaBase" step="1" value="08:00:00">
-            </div>
-            <button id="btnProcessar" onclick="processarTudo()">
-                🚀 Processar e Salvar Resultados
-            </button>
-        </div>
+        <label>Hora de Início da Prova (Hora Base):</label>
+        <input type="time" id="horaBase" step="1" value="08:00:00">
+        <button onclick="processarTudo()">Processar Tempos de Todos os Carros</button>
     </div>
 
-    <div class="card" style="border-top-color: #3182ce;">
-        <h3>Resultados da Apuração</h3>
+    <div class="card">
+        <h3>Resultados Processados</h3>
         <table>
             <thead>
                 <tr>
                     <th>Nº</th>
-                    <th>Piloto / Categoria</th>
-                    <th>Largada (Calc)</th>
-                    <th>
+                    <th>Piloto</th>
+                    <th>Largada Calc.</th>
+                    <th>Chegada GPS</th>
+                    <th>Tempo Total</th>
+                </tr>
+            </thead>
+            <tbody id="corpoTabela"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
+        databaseURL: "https://cronometro-rally-default-rtdb.firebaseio.com",
+        projectId: "cronometro-rally"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    async function processarTudo() {
+        const horaBaseStr = document.getElementById('horaBase').value;
+        if(!horaBaseStr) return alert("Defina a hora base!");
+
+        try {
+            const [snapConfig, snapComps, snapRastros] = await Promise.all([
+                db.ref('configuracoes/percurso').once('value'),
+                db.ref('competidores').once('value'),
+                db.ref('rastros').once('value')
+            ]);
+
+            const percurso = snapConfig.val();
+            const competidores = snapComps.val();
+            const rastros = snapRastros.val();
+            const linhaChegada = percurso?.features?.find(f => f.properties?.subType === 'chegada');
+
+            if(!linhaChegada) return alert("Crie a Linha de Chegada no Admin!");
+
+            const centro = linhaChegada.geometry.coordinates;
+            const raio = linhaChegada.properties.radius / 1000;
+            let html = '';
+
+            for (let num in competidores) {
+                const comp = competidores[num];
+                
+                // 1. LARGADA (Calculada: Hora Base + Nº do Carro em Minutos)
+                const [hB, mB, sB] = horaBaseStr.split(':').map(Number);
+                let mTotal = mB + parseInt(num);
+                let hTotal = hB + Math.floor(mTotal / 60);
+                mTotal = mTotal % 60;
+                
+                // Texto formatado da largada (HH:mm:ss)
+                const txtLargada = `${String(hTotal).padStart(2,'0')}:${String(mTotal).padStart(2,'0')}:${String(sB || 0).padStart(2,'0')}`;
+
+                // 2. CHEGADA (Do GPS)
+                let txtChegada = "---";
+                let diffMs = 0;
+                
+                if (rastros && rastros[num]) {
+                    const rastroArr = Object.values(rastros[num]).sort((a, b) => a.ts - b.ts);
+                    const ponto = rastroArr.find(pt => 
+                        turf.distance(turf.point([pt.lng, pt.lat]), turf.point(centro)) <= raio
+                    );
+
+                    if (ponto) {
+                        const dChegada = new Date(ponto.ts);
+                        txtChegada = dChegada.toTimeString().split(' ')[0];
+
+                        // --- CÁLCULO DO TEMPO TOTAL ---
+                        // Criamos duas datas no mesmo dia de referência para subtrair apenas as horas/min/seg
+                        const ref = "2000-01-01T";
+                        const t1 = new Date(`${ref}${txtLargada}`);
+                        const t2 = new Date(`${ref}${txtChegada}`);
+                        
+                        diffMs = t2 - t1;
+                        if (diffMs < 0) diffMs += 86400000; // Caso passe de meia-noite
+                    }
+                }
+
+                // 3. FORMATAÇÃO DO TEMPO TOTAL
+                let txtTotal = "---";
+                if (diffMs > 0) {
+                    txtTotal = new Date(diffMs).toISOString().substr(11, 8);
+                }
+
+                // 4. SALVAR NO FIREBASE
+                await db.ref(`competidores/${num}`).update({
+                    horaLargada: txtLargada,
+                    horaChegada: txtChegada,
+                    tempoTotalMs: diffMs,
+                    tempoFormatado: txtTotal
+                });
+
+                html += `<tr>
+                    <td>${num}</td>
+                    <td>${comp.nome}</td>
+                    <td>${txtLargada}</td>
+                    <td>${txtChegada}</td>
+                    <td class="tempo-total">${txtTotal}</td>
+                </tr>`;
+            }
+
+            document.getElementById('corpoTabela').innerHTML = html;
+            alert("Processado com sucesso!");
+
+        } catch (e) {
+            console.error(e);
+            alert("Erro: " + e.message);
+        }
+    }
+</script>
+</body>
+</html>
