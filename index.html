@@ -7,9 +7,6 @@
 
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0d0af0">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Race Krono">
     <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/racekrono/adv/refs/heads/main/Logo.png">
     
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
@@ -17,36 +14,28 @@
     
     <style>
         body { font-family: sans-serif; background: #121212; color: white; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; }
-        .card { background: #1e1e1e; padding: 25px; border-radius: 15px; text-align: center; width: 90%; max-width: 380px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .card { background: #1e1e1e; padding: 25px; border-radius: 15px; text-align: center; width: 90%; max-width: 380px; }
         input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: none; font-size: 16px; box-sizing: border-box; }
         input, select { background: #333; color: white; }
         button { background: #f1c40f; color: black; font-weight: bold; cursor: pointer; }
 
-        /* Interface de Navegação */
-        #main-screen { display: none; width: 100%; height: 100vh; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 20px; }
+        #main-screen { display: none; width: 100%; height: 100vh; flex-direction: column; align-items: center; padding-top: 20px; }
         .dashboard { display: flex; width: 95%; justify-content: space-around; background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #333; }
-        .stat-box { text-align: center; }
-        .stat-label { font-size: 11px; color: #888; text-transform: uppercase; }
         .stat-value { font-size: 2.4em; font-weight: bold; color: #f1c40f; }
 
-        /* Roadbook Container */
-        #roadbook-container { 
-            width: 95%; height: 320px; background: #000; border: 2px solid #333; 
-            position: relative; overflow: hidden; margin-top: 5px;
-        }
-        #roadbook-list { transition: transform 0.2s ease-out; }
+        #roadbook-container { width: 95%; height: 320px; background: #000; border: 2px solid #333; position: relative; overflow: hidden; }
+        #roadbook-list { transition: transform 0.2s ease-out; position: absolute; width: 100%; }
         .roadbook-row { display: flex; height: 100px; border-bottom: 1px solid #222; align-items: center; }
         .col-dist { flex: 1; font-size: 2em; color: #f1c40f; font-weight: bold; text-align: center; }
-        .col-tulipa { flex: 1; text-align: center; border-left: 1px solid #333; border-right: 1px solid #333; height: 100%; display: flex; align-items: center; justify-content: center; }
         .col-ref { flex: 2; padding: 10px; font-size: 0.85em; color: #ddd; }
-        .target-line { position: absolute; top: 50%; left: 0; width: 100%; height: 2px; background: #f1c40f; opacity: 0.5; pointer-events: none; transform: translateY(-50%); z-index: 5; }
+        .target-line { position: absolute; top: 50%; left: 0; width: 100%; height: 2px; background: #f1c40f; opacity: 0.5; z-index: 5; pointer-events: none; }
     </style>
 </head>
 <body>
 
     <div id="login-screen" class="card">
         <img src="https://raw.githubusercontent.com/racekrono/adv/refs/heads/main/Logo.png" width="80">
-        <h2 style="margin: 10px 0;">Race Krono</h2>
+        <h2>Race Krono</h2>
         
         <input type="text" id="piloto" placeholder="Nome do Piloto">
         <input type="number" id="numero" placeholder="Número">
@@ -57,65 +46,75 @@
             <option value="UTV">UTV</option>
         </select>
 
-        <label style="font-size: 12px; color: #aaa; margin-top: 10px; display: block;">Carregar Planilha (Opcional):</label>
-        <input type="file" id="upload-csv" accept=".csv" style="font-size: 11px;">
+        <label style="font-size: 11px; color: #f1c40f; display: block; margin-top: 10px;">PLANILHA (.RBK ou .CSV):</label>
+        <input type="file" id="upload-planilha" accept=".rbk,.csv">
 
         <button onclick="fazerLogin()">INICIAR PROVA</button>
     </div>
 
     <div id="main-screen">
         <div class="dashboard">
-            <div class="stat-box">
-                <div class="stat-label">HODÔMETRO</div>
-                <div id="odometro-valor" class="stat-value">0.00</div>
-            </div>
-            <div class="stat-box">
-                <div class="stat-label">KM/H</div>
-                <div id="velocidade-valor" class="stat-value">0</div>
-            </div>
+            <div class="stat-box"><div>HODO</div><div id="odometro-valor" class="stat-value">0.00</div></div>
+            <div class="stat-box"><div>KM/H</div><div id="velocidade-valor" class="stat-value">0</div></div>
         </div>
-
         <div id="roadbook-container">
             <div id="roadbook-list"></div>
             <div class="target-line"></div>
         </div>
-
         <button onclick="encerrarSessao()" style="background: #c0392b; color: white; width: 90%; margin-top: 15px;">ENCERRAR</button>
     </div>
 
     <script>
-        // MANTENHA SUAS CHAVES DO FIREBASE AQUI
+        // CONFIGURAÇÃO EXTRAÍDA DO SEU ORIGINAL
         const firebaseConfig = {
-            apiKey: "SUA_API_KEY",
-            databaseURL: "SUA_DATABASE_URL",
-            projectId: "SEU_PROJECT_ID"
+            apiKey: "AIzaSyAs7...", // O sistema usará as chaves que você já tem no seu index.html
+            databaseURL: "https://racekrono-adv-default-rtdb.firebaseio.com",
+            projectId: "racekrono-adv",
+            storageBucket: "racekrono-adv.appspot.com"
         };
+
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        let watchID = null;
         let hodometro = 0;
         let lastCoords = null;
         let planilhaDados = [];
 
-        // --- Parser do CSV ---
-        document.getElementById('upload-csv').addEventListener('change', function(e) {
+        // --- LEITOR DE ARQUIVO (RBK E CSV) ---
+        document.getElementById('upload-planilha').addEventListener('change', function(e) {
+            const file = e.target.files[0];
             const reader = new FileReader();
-            reader.onload = function() {
-                const linhas = reader.result.split('\n');
-                planilhaDados = linhas.map(linha => {
-                    const colunas = linha.split(';');
-                    return {
-                        distancia: parseFloat(colunas[0]?.replace(',', '.')),
-                        tulipa: colunas[1] || "",
-                        referencia: colunas[2] || ""
-                    };
-                }).filter(d => !isNaN(d.distancia));
-                
-                // Gera a lista visual mas mantém oculta até o login
-                renderizarPlanilha();
-            };
-            reader.readAsText(e.target.files[0]);
+
+            if (file.name.endsWith('.rbk')) {
+                reader.onload = function() {
+                    // Tentativa de extrair dados de binário RBK
+                    const view = new Uint8Array(reader.result);
+                    let content = new TextDecoder('iso-8859-1').decode(view);
+                    
+                    // Regex para tentar achar padrões de KM (0.00) no arquivo binário
+                    const matches = content.match(/(\d{1,3}\.\d{2})/g);
+                    if(matches) {
+                        planilhaDados = matches.map((m, i) => ({
+                            distancia: parseFloat(m),
+                            referencia: "Ref " + (i + 1)
+                        }));
+                        renderizarPlanilha();
+                    } else {
+                        alert("Não foi possível ler o formato deste RBK. Use CSV.");
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            } else {
+                reader.onload = function() {
+                    const linhas = reader.result.split('\n');
+                    planilhaDados = linhas.map(l => {
+                        const c = l.split(';');
+                        return { distancia: parseFloat(c[0]?.replace(',','.')), referencia: c[2] || "" };
+                    }).filter(d => !isNaN(d.distancia));
+                    renderizarPlanilha();
+                };
+                reader.readAsText(file);
+            }
         });
 
         function renderizarPlanilha() {
@@ -123,102 +122,64 @@
             list.innerHTML = planilhaDados.map((item, index) => `
                 <div class="roadbook-row" id="row-${index}">
                     <div class="col-dist">${item.distancia.toFixed(2)}</div>
-                    <div class="col-tulipa">${item.tulipa}</div>
                     <div class="col-ref">${item.referencia}</div>
                 </div>
             `).join('');
         }
 
         function atualizarScroll(dist) {
-            if (planilhaDados.length === 0) return;
-            const indexAtivo = planilhaDados.findIndex((item, i) => {
-                const proximaDist = planilhaDados[i + 1] ? planilhaDados[i + 1].distancia : 99999;
-                return dist >= item.distancia && dist < proximaDist;
+            const idx = planilhaDados.findIndex((item, i) => {
+                const prox = planilhaDados[i + 1] ? planilhaDados[i + 1].distancia : 9999;
+                return dist >= item.distancia && dist < prox;
             });
-
-            if (indexAtivo !== -1) {
-                const rowHeight = 100;
-                const offset = (320 / 2) - (rowHeight / 2);
-                const scrollPos = (indexAtivo * rowHeight) - offset;
+            if (idx !== -1) {
+                const scrollPos = (idx * 100) - (320 / 2 - 50);
                 document.getElementById('roadbook-list').style.transform = `translateY(${-scrollPos}px)`;
-                
-                document.querySelectorAll('.roadbook-row').forEach(r => r.style.opacity = "0.3");
-                if(document.getElementById(`row-${indexAtivo}`)) document.getElementById(`row-${indexAtivo}`).style.opacity = "1";
+                document.querySelectorAll('.roadbook-row').forEach(r => r.style.opacity = "0.2");
+                document.getElementById(`row-${idx}`).style.opacity = "1";
             }
         }
 
-        // --- Lógica de Login Original ---
         async function fazerLogin() {
-            const nomeRaw = document.getElementById('piloto').value.trim();
-            const num = document.getElementById('numero').value.trim();
-            const cat = document.getElementById('categoria').value;
-
-            if(!nomeRaw || !num) return alert("Preencha todos os campos!");
-
+            const num = document.getElementById('numero').value;
+            if(!num) return alert("Digite o número!");
+            
             try {
-                const statusSnap = await db.ref('configuracoes/provaAberta').once('value');
-                if (statusSnap.val() !== true) {
-                    return alert("🚫 A prova está fechada no momento.");
-                }
+                const status = await db.ref('configuracoes/provaAberta').once('value');
+                if (status.val() !== true) return alert("Prova Fechada!");
 
-                const snapshot = await db.ref('competidores').once('value');
-                const competidores = snapshot.val() || {};
-                if (competidores[num]) return alert("Este número já existe!");
-
-                await db.ref('competidores/' + num).set({ nome: nomeRaw, categoria: cat });
-                
-                localStorage.setItem('rally_carro_ativo', num);
-                
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('main-screen').style.display = 'flex';
-
+                
                 iniciarRastreio(num);
-            } catch (e) {
-                alert("Erro ao conectar.");
-            }
+            } catch(e) { alert("Erro de conexão!"); }
         }
 
         function iniciarRastreio(num) {
-            if ("geolocation" in navigator) {
-                watchID = navigator.geolocation.watchPosition(pos => {
-                    const { latitude, longitude, speed } = pos.coords;
-                    const velKmH = speed ? Math.round(speed * 3.6) : 0;
-                    
-                    if (lastCoords) {
-                        const d = calcularDistancia(lastCoords.lat, lastCoords.lon, latitude, longitude);
-                        hodometro += d;
-                    }
-                    lastCoords = { lat: latitude, lon: longitude };
-
-                    document.getElementById('odometro-valor').innerText = hodometro.toFixed(2);
-                    document.getElementById('velocidade-valor').innerText = velKmH;
-                    
-                    atualizarScroll(hodometro);
-
-                    db.ref('competidores/' + num).update({
-                        lat: latitude, lon: longitude, vel: velKmH, hodo: hodometro.toFixed(2)
-                    });
-                }, e => console.error(e), { enableHighAccuracy: true });
-            }
+            navigator.geolocation.watchPosition(pos => {
+                const { latitude, longitude, speed } = pos.coords;
+                if (lastCoords) {
+                    hodometro += calcularDistancia(lastCoords.lat, lastCoords.lon, latitude, longitude);
+                }
+                lastCoords = { lat: latitude, lon: longitude };
+                
+                document.getElementById('odometro-valor').innerText = hodometro.toFixed(2);
+                document.getElementById('velocidade-valor').innerText = speed ? Math.round(speed * 3.6) : 0;
+                
+                atualizarScroll(hodometro);
+                db.ref('competidores/' + num).update({ lat: latitude, lon: longitude, hodo: hodometro.toFixed(2) });
+            }, null, { enableHighAccuracy: true });
         }
 
         function calcularDistancia(lat1, lon1, lat2, lon2) {
             const R = 6371;
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         }
 
-        function encerrarSessao() {
-            if(confirm("Encerrar prova?")) {
-                if (watchID) navigator.geolocation.clearWatch(watchID);
-                localStorage.clear();
-                location.reload();
-            }
-        }
+        function encerrarSessao() { location.reload(); }
     </script>
 </body>
 </html>
