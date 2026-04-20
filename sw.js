@@ -5,7 +5,7 @@ const ASSETS_TO_CACHE = [
   './index.html',
   './manifest.json',
   './NoSleep.min.js',
-  'https://raw.githubusercontent.com/racekrono/adv/refs/heads/main/Logo.jpg',
+  'https://raw.githubusercontent.com/racekrono/adv/refs/heads/main/Logo.png',
   'https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js'
 ];
@@ -32,7 +32,11 @@ self.addEventListener('activate', (event) => {
   );
   self.claim();
 });
-
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'sync-posicoes') {
+    console.log('Sincronizando posições de rally em segundo plano...');
+  }
+});
 // Interceção de pedidos (Fetch)
 self.addEventListener('fetch', (event) => {
   // Para o Firebase (Realtime DB), não tentamos cachear via Service Worker 
