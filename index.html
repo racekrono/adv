@@ -11,47 +11,47 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Race Krono">
     <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/racekrono/adv/refs/heads/main/Logo.png">
-    
+    <meta name="mobile-web-app-capable" content="yes">
+
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     
     <style>
-        body { font-family: sans-serif; background: #000000; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; overflow: hidden; }
-        .card { background: #1a1a1a; padding: 25px; border-radius: 12px; width: 90%; max-width: 380px; box-shadow: 0 8px 32px rgba(0,0,0,0.8); border-top: 5px solid #ffffff; z-index: 10; }
+        body { font-family: sans-serif; background: #121212; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; overflow: hidden; }
+        .card { background: #1e1e1e; padding: 25px; border-radius: 12px; width: 90%; max-width: 380px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border-top: 5px solid #ffffff; z-index: 10; }
         .logo { display: block; margin: 0 auto 20px auto; max-width: 150px; height: auto; }
         input, select, button { width: 100%; padding: 14px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #333; background: #252525; color: white; font-size: 16px; box-sizing: border-box; }
         button { background: #f80303; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        button:active { transform: scale(0.98); }
         #setup { display: block; } 
         .tracking { text-align: center; display: none; }
-        .status-container { margin-top: 15px; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.5); border: 1px solid #333; }
+        .status-container { margin-top: 15px; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid #333; }
         .status-gps { color: #2ecc71; font-weight: bold; font-size: 14px; }
         .status-offline { color: #f1c40f !important; }
-        .wake-lock-status { color: #2ecc71; font-size: 10px; margin-top: 10px; text-transform: uppercase; font-weight: bold; }
-        .odo-box { margin-top: 15px; padding: 15px 10px; border-top: 1px solid #333; background: rgba(0,0,0,0.4); border-radius: 10px; }
-        .odo-val { font-size: 5rem; font-weight: bold; color: #f1c40f; margin: 2px 0; font-family: monospace; }
+        .aviso-offline { display: none; font-size: 11px; color: #f1c40f; margin-top: 5px; text-transform: uppercase; font-weight: bold; }
+        .wake-lock-status { color: #666; font-size: 10px; margin-top: 10px; text-transform: uppercase; }
+        .btn-sair { background: transparent; color: #444; font-size: 11px; margin-top: 20px; text-decoration: underline; cursor: pointer; border: none; width: 100%; }
+        .odo-box { margin-top: 15px; padding: 15px 10px; border-top: 1px solid #333; background: rgba(0,0,0,0.2); border-radius: 10px; }
+        .odo-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+        .odo-val { font-size: 5rem; font-weight: bold; color: #f1c40f; margin: 2px 0; cursor: pointer; font-family: monospace; }
+        .odo-btns { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
         .btn-mini { padding: 10px; font-size: 14px; background: #333; margin-bottom: 0; width: auto; flex: 1; border: 1px solid #444; }
-        /* Esconder o vídeo de suporte */
-        #videoWakeLock { position: absolute; width: 1px; height: 1px; opacity: 0.01; pointer-events: none; }
     </style>
 </head>
 <body>
-
-    <video id="videoWakeLock" playsinline loop muted>
-        <source src="https://raw.githubusercontent.com/bower-media-samples/big-buck-bunny-1080p-30s/master/video.mp4" type="video/mp4">
-    </video>
 
     <div class="card">
         <div id="setup">
             <img src="https://raw.githubusercontent.com/racekrono/adv/refs/heads/main/Logo.png" class="logo">
             <h2 style="color:#ffffff; text-align:center; margin-top: 0;">Rally de Aventura</h2>
-            <input type="text" id="nome" placeholder="Nome do Piloto">
+            <input type="text" id="nome" placeholder="Nome do Piloto" oninput="this.value = this.value.replace(/[0-9]/g, '')">
             <select id="categoria">
                 <option>UTV</option>
                 <option>BAIANO 4x2</option><option>BAIANO 4x4</option>
                 <option>INICIANTE 4x2</option><option>INICIANTE 4x4</option>
                 <option>ANTIGOS</option>
             </select>
-            <input type="number" id="carro" placeholder="Nº do Carro">
+            <input type="number" id="carro" placeholder="Nº do Carro" min="1" max="100">
             <button id="btnIniciar">INICIAR PROVA</button>
         </div>
 
@@ -61,20 +61,22 @@
             <p style="margin-top: 5px; color: #888; font-size: 12px;">KM/H</p>
 
             <div class="odo-box">
-                <div id="displayOdo" class="odo-val">0.000</div>
-                <div style="display:flex; gap:8px;">
+                <span class="odo-label">Odômetro Parcial</span>
+                <div id="displayOdo" class="odo-val" onclick="ajusteManualOdo()">0.000</div>
+                <div class="odo-btns">
                     <button class="btn-mini" onclick="alterarOdo(-0.001)">-1m</button>
-                    <button class="btn-mini" onclick="zerarOdo()" style="background:#b30000;">ZERAR</button>
+                    <button class="btn-mini" onclick="zerarOdo()" style="background:#b30000; color: white;">ZERAR</button>
                     <button class="btn-mini" onclick="alterarOdo(0.001)">+1m</button>
                 </div>
             </div>
             
             <div class="status-container">
                 <div id="msgGps" class="status-gps">● CONECTANDO...</div>
-                <div id="statusTela" class="wake-lock-status">PROTEÇÃO DE TELA ATIVA</div>
+                <div id="detalheOffline" class="aviso-offline">DADOS PROTEGIDOS NO CELULAR.</div>
             </div>
 
-            <button class="btn-sair" onclick="location.reload()" style="background:none; color:#555; text-decoration:underline; border:none; margin-top:15px;">Sair</button>
+            <div id="statusTela" class="wake-lock-status">Tela Bloqueada (Sempre Acesa)</div>
+            <button class="btn-sair" onclick="encerrarSessao()">Encerrar Sessão / Sair</button>
         </div>
     </div>
 
@@ -86,68 +88,190 @@
             projectId: "cronometro-rally",
             appId: "1:341731891354:web:d0c34265be68015e98a723"
         };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.database(app);
+
+        // --- LÓGICA DE PERSISTÊNCIA E LOGOFF REMOTO ---
+        window.onload = async function() {
+            const salvo = localStorage.getItem('rally_carro_ativo');
+            const tempoLogin = localStorage.getItem('rally_timestamp_login') || 0;
+
+            if (salvo) {
+                // Verifica se houve um comando de logoff geral após o login deste aparelho
+                const snapLogoff = await db.ref('configuracoes/comandoLogoff').once('value');
+                const timestampLogoff = snapLogoff.val() || 0;
+
+                if (timestampLogoff > parseInt(tempoLogin)) {
+                    // Logoff detectado: limpa os dados e recarrega para a tela de login
+                    localStorage.removeItem('rally_carro_ativo');
+                    localStorage.removeItem('rally_timestamp_login');
+                    location.reload();
+                } else {
+                    iniciarFluxoRastreio(salvo);
+                }
+            }
+        };
+
+        // Ouvinte em tempo real para quem está com a página aberta
+        db.ref('configuracoes/comandoLogoff').on('value', (snap) => {
+            const timestampLogoff = snap.val();
+            const tempoLogin = localStorage.getItem('rally_timestamp_login') || 0;
+            
+            if (timestampLogoff && timestampLogoff > parseInt(tempoLogin) && localStorage.getItem('rally_carro_ativo')) {
+                if (watchID) navigator.geolocation.clearWatch(watchID);
+                localStorage.removeItem('rally_carro_ativo');
+                localStorage.removeItem('rally_timestamp_login');
+                alert("A organização encerrou todas as sessões remotamente.");
+                location.reload();
+            }
+        });
 
         let wakeLock = null;
         let watchID = null;
         let odoTotal = 0;
         let ultimaPos = null;
 
-        // Recurso 2: Wake Lock API com auto-reativação
-        async function solicitarWakeLock() {
-            if ('wakeLock' in navigator) {
-                try {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                    document.getElementById('statusTela').innerText = "TELA SEMPRE ACESA";
-                    document.getElementById('statusTela').style.color = "#2ecc71";
-                    
-                    wakeLock.addEventListener('release', () => {
-                        console.log('Wake Lock foi liberado');
-                    });
-                } catch (err) {
-                    document.getElementById('statusTela').innerText = "ERRO NA PROTEÇÃO DE TELA";
-                    document.getElementById('statusTela').style.color = "#e74c3c";
+        function alterarOdo(v) { 
+            odoTotal = Math.max(0, odoTotal + v); 
+            atualizarTelaOdo(); 
+        }
+
+        function zerarOdo() { 
+            if(confirm("Zerar odômetro?")) { 
+                odoTotal = 0; 
+                atualizarTelaOdo(); 
+            } 
+        }
+
+        function atualizarTelaOdo() { 
+            document.getElementById('displayOdo').innerText = odoTotal.toFixed(3); 
+        }
+
+        function ajusteManualOdo() {
+            let n = prompt("Ajustar Odômetro (KM):", odoTotal.toFixed(3));
+            if(n !== null) { 
+                let val = parseFloat(n.replace(',','.'));
+                if(!isNaN(val)) {
+                    odoTotal = Math.max(0, val);
+                    atualizarTelaOdo();
                 }
             }
         }
 
-        // Recurso 3: Reativação ao voltar para a aba (Visibility Change)
-        document.addEventListener('visibilitychange', async () => {
-            if (wakeLock !== null && document.visibilityState === 'visible') {
-                await solicitarWakeLock();
+        function calcularDistancia(lat1, lon1, lat2, lon2) {
+            const R = 6371; 
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c; 
+        }
+
+        async function solicitarWakeLock() {
+            if ('wakeLock' in navigator) {
+                try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
             }
-        });
+        }
 
         function iniciarFluxoRastreio(num) {
             document.getElementById('setup').style.display = 'none';
             document.getElementById('ativo').style.display = 'block';
             document.getElementById('viewCarro').innerText = "Carro " + num;
             
-            // Ativa as duas camadas de proteção ao iniciar
             solicitarWakeLock();
-            document.getElementById('videoWakeLock').play().catch(() => console.log("Vídeo aguardando interação"));
+
+            db.ref(".info/connected").on("value", (snap) => {
+                const msg = document.getElementById('msgGps');
+                const detalhe = document.getElementById('detalheOffline');
+                if (snap.val() === true) {
+                    msg.innerText = "● TRANSMITINDO AO VIVO";
+                    msg.classList.remove('status-offline');
+                    detalhe.style.display = 'none';
+                } else {
+                    msg.innerText = "○ SEM SINAL DE INTERNET, NÃO FECHE A PÁGINA";
+                    msg.classList.add('status-offline');
+                    detalhe.style.display = 'block';
+                }
+            });
 
             watchID = navigator.geolocation.watchPosition(position => {
-                const { latitude: lat, longitude: lng, speed, accuracy } = position.coords;
-                const kmh = Math.round((speed || 0) * 3.6);
-                document.getElementById('viewVel').innerText = kmh.toFixed(1);
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                const accuracy = position.coords.accuracy;
+                const speedMS = position.coords.speed || 0;
+                const kmh = Math.round(speedMS * 3.6);
 
-                if (accuracy <= 20) {
-                    db.ref('posicoes/' + num).set({ lat, lng, vel: kmh, ts: Date.now() });
+                if (accuracy > 20) return;
+
+                if (ultimaPos) {
+                    const dist = calcularDistancia(ultimaPos.lat, ultimaPos.lng, lat, lng);
+                    if (dist > 0.005 && kmh > 7) { 
+                        odoTotal += dist;
+                        atualizarTelaOdo();
+                        ultimaPos = { lat, lng }; 
+                    }
+                } else {
+                    ultimaPos = { lat, lng };
                 }
-            }, null, { enableHighAccuracy: true });
+
+                document.getElementById('viewVel').innerText = kmh.toFixed(1);
+                
+                const timestamp = Date.now();
+                const dados = { lat, lng, vel: kmh, acc: accuracy, ts: timestamp };
+                
+                db.ref('posicoes/' + num).set(dados);
+                db.ref('rastros/' + num).push(dados);
+
+            }, (err) => {
+                console.error("Erro GPS:", err);
+            }, { 
+                enableHighAccuracy: true, 
+                maximumAge: 0, 
+                timeout: 10000 
+            });
         }
 
-        document.getElementById('btnIniciar').onclick = function() {
-            const num = document.getElementById('carro').value;
-            if(!num) return alert("Insira o número do carro");
-            iniciarFluxoRastreio(num);
+        document.getElementById('btnIniciar').onclick = async function() {
+            const numRaw = document.getElementById('carro').value;
+            const nomeRaw = document.getElementById('nome').value.trim();
+            const cat = document.getElementById('categoria').value;
+            const num = parseInt(numRaw);
+
+            if(!nomeRaw || !numRaw) return alert("Preencha todos os campos!");
+            
+            try {
+                const statusSnap = await db.ref('configuracoes/provaAberta').once('value');
+                if (statusSnap.val() !== true) {
+                    return alert("🚫 A prova está fechada no momento. Aguarde a liberação da organização.");
+                }
+
+                const snapshot = await db.ref('competidores').once('value');
+                const competidores = snapshot.val() || {};
+                if (competidores[num]) return alert("Este número de carro já existe!");
+
+                await db.ref('competidores/' + num).set({ nome: nomeRaw, categoria: cat });
+                
+                // Grava os dados e o momento do login para controle de logoff futuro
+                const agora = Date.now();
+                localStorage.setItem('rally_carro_ativo', num);
+                localStorage.setItem('rally_timestamp_login', agora);
+                
+                iniciarFluxoRastreio(num);
+            } catch (e) {
+                alert("Erro de conexão ou permissão.");
+            }
         };
 
-        function alterarOdo(v) { odoTotal = Math.max(0, odoTotal + v); atualizarTelaOdo(); }
-        function zerarOdo() { if(confirm("Zerar?")) { odoTotal = 0; atualizarTelaOdo(); } }
-        function atualizarTelaOdo() { document.getElementById('displayOdo').innerText = odoTotal.toFixed(3); }
+        function encerrarSessao() {
+            if(confirm("Encerrar prova?")) {
+                if (watchID) navigator.geolocation.clearWatch(watchID);
+                localStorage.removeItem('rally_carro_ativo');
+                localStorage.removeItem('rally_timestamp_login');
+                location.reload();
+            }
+        }
     </script>
 </body>
 </html>
