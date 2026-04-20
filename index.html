@@ -32,4 +32,231 @@
         #roadbook-container { width: 95%; flex-grow: 1; background: #000; border: 2px solid #333; position: relative; overflow: hidden; margin: 10px 0; }
         #roadbook-list { transition: transform 0.2s ease-out; position: absolute; width: 100%; top: 0; }
         .roadbook-row { display: flex; height: 100px; border-bottom: 1px solid #222; align-items: center; opacity: 0.2; transition: opacity 0.3s; }
-        .
+        .col-dist { flex: 1; font-size: 2.2em; color: #f1c40f; font-weight: bold; text-align: center; }
+        .col-ref { flex: 2; padding: 10px; font-size: 0.9em; color: #ddd; }
+        .target-line { position: absolute; top: 50%; left: 0; width: 100%; height: 3px; background: rgba(241, 196, 15, 0.4); z-index: 5; pointer-events: none; transform: translateY(-50%); }
+    </style>
+</head>
+<body>
+
+    <div id="login-screen" class="card">
+        <img src="https://raw.githubusercontent.com/racekrono/adv/refs/heads/main/Logo.png" width="80" alt="Logo">
+        <h2 style="margin: 10px 0;">Race Krono</h2>
+        
+        <input type="text" id="piloto" placeholder="Nome do Piloto">
+        <input type="number" id="numero" placeholder="Número do Veículo">
+        
+        <select id="categoria">
+            <option value="Motos">Motos</option>
+            <option value="Carros">Carros</option>
+            <option value="UTV">UTV</option>
+        </select>
+
+        <label style="font-size: 11px; color: #f1c40f; display: block; margin-top: 10px;">CARREGAR PLANILHA (.RBK ou .CSV):</label>
+        <input type="file" id="upload-planilha" accept=".rbk,.csv" style="font-size: 11px; color: #888;">
+
+        <button id="btn-iniciar" onclick="fazerLogin()">INICIAR PROVA</button>
+    </div>
+
+    <div id="main-screen">
+        <div class="dashboard">
+            <div style="text-align:center">
+                <div class="stat-label">HODÔMETRO</div>
+                <div id="odometro-valor" class="stat-value">0.00</div>
+            </div>
+            <div style="text-align:center">
+                <div class="stat-label">KM/H</div>
+                <div id="velocidade-valor" class="stat-value">0</div>
+            </div>
+        </div>
+
+        <div id="roadbook-container">
+            <div id="roadbook-list"></div>
+            <div class="target-line"></div>
+        </div>
+
+        <button onclick="encerrarSessao()" style="background: #c0392b; color: white; width: 90%; margin-bottom: 20px;">ENCERRAR PROVA</button>
+    </div>
+
+    <script>
+        // Configurações do seu Firebase original
+        const firebaseConfig = {
+            apiKey: "AIzaSyAs79S_X3C6Y8U0X1Z2A3B4C5D6E7F8G9H",
+            databaseURL: "https://racekrono-adv-default-rtdb.firebaseio.com",
+            projectId: "racekrono-adv",
+            storageBucket: "racekrono-adv.appspot.com"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const noSleep = new NoSleep();
+
+        let hodometro = 0;
+        let lastCoords = null;
+        let planilhaDados = [];
+        let watchID = null;
+        let wakeLock = null;
+
+        // --- Processamento de Planilha ---
+        document.getElementById('upload-planilha').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+
+            if (file.name.endsWith('.rbk')) {
+                reader.onload = function() {
+                    const content = new TextDecoder('iso-8859-1').decode(new Uint8Array(reader.result));
+                    const matches = content.match(/(\d{1,3}\.\d{2})/g);
+                    if(matches) {
+                        // Remove duplicados e ordena por KM
+                        planilhaDados = [...new Set(matches)].map(m => ({
+                            distancia: parseFloat(m), referencia: "Ponto de Referência"
+                        })).sort((a,b) => a.distancia - b.distancia);
+                        renderizarPlanilha();
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            } else {
+                reader.onload = function() {
+                    const linhas = reader.result.split('\n');
+                    planilhaDados = linhas.map(l => {
+                        const c = l.split(';');
+                        return { distancia: parseFloat(c[0]?.replace(',','.')), referencia: c[2] || "Referência" };
+                    }).filter(d => !isNaN(d.distancia));
+                    renderizarPlanilha();
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        function renderizarPlanilha() {
+            const list = document.getElementById('roadbook-list');
+            list.innerHTML = planilhaDados.map((item, index) => `
+                <div class="roadbook-row" id="row-${index}">
+                    <div class="col-dist">${item.distancia.toFixed(2)}</div>
+                    <div class="col-ref">${item.referencia}</div>
+                </div>
+            `).join('');
+        }
+
+        // --- Gestão de Login e Telas ---
+        async function fazerLogin() {
+            const nome = document.getElementById('piloto').value.trim();
+            const num = document.getElementById('numero').value.trim();
+            const cat = document.getElementById('categoria').value;
+
+            if(!nome || !num) return alert("Por favor, preencha nome e número.");
+
+            const btn = document.getElementById('btn-iniciar');
+            btn.innerText = "CONECTANDO...";
+            btn.disabled = true;
+
+            // Timeout de 5s para o Firebase
+            const timeout = setTimeout(() => {
+                if(btn.disabled) {
+                    alert("O servidor demorou a responder. Iniciando modo de segurança...");
+                    confirmarInicio(num, nome, cat);
+                }
+            }, 5000);
+
+            try {
+                const status = await db.ref('configuracoes/provaAberta').once('value');
+                if (status.val() !== true) {
+                    alert("🚫 A prova está fechada.");
+                    btn.innerText = "INICIAR PROVA";
+                    btn.disabled = false;
+                    clearTimeout(timeout);
+                    return;
+                }
+
+                await db.ref('competidores/' + num).set({ nome, categoria: cat, hodo: "0.00" });
+                clearTimeout(timeout);
+                confirmarInicio(num, nome, cat);
+
+            } catch (e) {
+                console.error(e);
+                if(confirm("Erro de conexão. Iniciar offline?")) {
+                    clearTimeout(timeout);
+                    confirmarInicio(num, nome, cat);
+                } else {
+                    btn.innerText = "INICIAR PROVA";
+                    btn.disabled = false;
+                }
+            }
+        }
+
+        async function confirmarInicio(num, nome, cat) {
+            // Ativa NoSleep e WakeLock
+            noSleep.enable();
+            if ('wakeLock' in navigator) {
+                try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+            }
+
+            localStorage.setItem('rally_carro_ativo', num);
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('main-screen').style.display = 'flex';
+            iniciarRastreio(num);
+        }
+
+        // --- GPS e Navegação ---
+        function iniciarRastreio(num) {
+            if ("geolocation" in navigator) {
+                watchID = navigator.geolocation.watchPosition(pos => {
+                    const { latitude, longitude, speed } = pos.coords;
+                    const vel = speed ? Math.round(speed * 3.6) : 0;
+
+                    if (lastCoords) {
+                        const d = calcularDistancia(lastCoords.lat, lastCoords.lon, latitude, longitude);
+                        hodometro += d;
+                    }
+                    lastCoords = { lat: latitude, lon: longitude };
+
+                    document.getElementById('odometro-valor').innerText = hodometro.toFixed(2);
+                    document.getElementById('velocidade-valor').innerText = vel;
+                    
+                    atualizarScroll(hodometro);
+
+                    db.ref('competidores/' + num).update({
+                        lat: latitude, lon: longitude, vel: vel, hodo: hodometro.toFixed(2)
+                    });
+                }, (err) => console.error(err), { enableHighAccuracy: true });
+            }
+        }
+
+        function atualizarScroll(dist) {
+            if (planilhaDados.length === 0) return;
+            const idx = planilhaDados.findIndex((item, i) => {
+                const prox = planilhaDados[i + 1] ? planilhaDados[i + 1].distancia : 9999;
+                return dist >= item.distancia && dist < prox;
+            });
+
+            if (idx !== -1) {
+                const rowHeight = 100;
+                const containerHeight = document.getElementById('roadbook-container').offsetHeight;
+                const scrollPos = (idx * rowHeight) - (containerHeight / 2 - rowHeight / 2);
+                document.getElementById('roadbook-list').style.transform = `translateY(${-scrollPos}px)`;
+                
+                document.querySelectorAll('.roadbook-row').forEach(r => r.style.opacity = "0.2");
+                const rowAtiva = document.getElementById(`row-${idx}`);
+                if(rowAtiva) rowAtiva.style.opacity = "1";
+            }
+        }
+
+        function calcularDistancia(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+
+        function encerrarSessao() {
+            if(confirm("Deseja encerrar a prova?")) {
+                noSleep.disable();
+                if (watchID) navigator.geolocation.clearWatch(watchID);
+                localStorage.clear();
+                location.reload();
+            }
+        }
+    </script>
+</body>
+</html>
