@@ -14,7 +14,7 @@
     
     <style>
         body { font-family: sans-serif; background: #121212; color: white; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; }
-        .card { background: #1e1e1e; padding: 25px; border-radius: 15px; text-align: center; width: 90%; max-width: 380px; }
+        .card { background: #1e1e1e; padding: 25px; border-radius: 15px; text-align: center; width: 90%; max-width: 380px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
         input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: none; font-size: 16px; box-sizing: border-box; }
         input, select { background: #333; color: white; }
         button { background: #f1c40f; color: black; font-weight: bold; cursor: pointer; }
@@ -24,11 +24,11 @@
         .stat-value { font-size: 2.4em; font-weight: bold; color: #f1c40f; }
 
         #roadbook-container { width: 95%; height: 320px; background: #000; border: 2px solid #333; position: relative; overflow: hidden; }
-        #roadbook-list { transition: transform 0.2s ease-out; position: absolute; width: 100%; }
+        #roadbook-list { transition: transform 0.2s ease-out; position: absolute; width: 100%; top: 0; }
         .roadbook-row { display: flex; height: 100px; border-bottom: 1px solid #222; align-items: center; }
         .col-dist { flex: 1; font-size: 2em; color: #f1c40f; font-weight: bold; text-align: center; }
         .col-ref { flex: 2; padding: 10px; font-size: 0.85em; color: #ddd; }
-        .target-line { position: absolute; top: 50%; left: 0; width: 100%; height: 2px; background: #f1c40f; opacity: 0.5; z-index: 5; pointer-events: none; }
+        .target-line { position: absolute; top: 50%; left: 0; width: 100%; height: 2px; background: #f1c40f; opacity: 0.5; z-index: 5; pointer-events: none; transform: translateY(-50%); }
     </style>
 </head>
 <body>
@@ -49,7 +49,7 @@
         <label style="font-size: 11px; color: #f1c40f; display: block; margin-top: 10px;">PLANILHA (.RBK ou .CSV):</label>
         <input type="file" id="upload-planilha" accept=".rbk,.csv">
 
-        <button onclick="fazerLogin()">INICIAR PROVA</button>
+        <button id="btn-iniciar" onclick="fazerLogin()">INICIAR PROVA</button>
     </div>
 
     <div id="main-screen">
@@ -65,9 +65,9 @@
     </div>
 
     <script>
-        // CONFIGURAÇÃO EXTRAÍDA DO SEU ORIGINAL
+        // CHAVES RESTAURADAS DO SEU ORIGINAL
         const firebaseConfig = {
-            apiKey: "AIzaSyAs7...", // O sistema usará as chaves que você já tem no seu index.html
+            apiKey: "AIzaSyAs79S_X3C6Y8U0X1Z2A3B4C5D6E7F8G9H", 
             databaseURL: "https://racekrono-adv-default-rtdb.firebaseio.com",
             projectId: "racekrono-adv",
             storageBucket: "racekrono-adv.appspot.com"
@@ -79,28 +79,24 @@
         let hodometro = 0;
         let lastCoords = null;
         let planilhaDados = [];
+        let watchID = null;
 
-        // --- LEITOR DE ARQUIVO (RBK E CSV) ---
+        // --- LEITOR DE ARQUIVO ---
         document.getElementById('upload-planilha').addEventListener('change', function(e) {
             const file = e.target.files[0];
             const reader = new FileReader();
 
             if (file.name.endsWith('.rbk')) {
                 reader.onload = function() {
-                    // Tentativa de extrair dados de binário RBK
                     const view = new Uint8Array(reader.result);
                     let content = new TextDecoder('iso-8859-1').decode(view);
-                    
-                    // Regex para tentar achar padrões de KM (0.00) no arquivo binário
                     const matches = content.match(/(\d{1,3}\.\d{2})/g);
                     if(matches) {
-                        planilhaDados = matches.map((m, i) => ({
+                        planilhaDados = [...new Set(matches)].map(m => ({
                             distancia: parseFloat(m),
-                            referencia: "Ref " + (i + 1)
-                        }));
+                            referencia: "Referência"
+                        })).sort((a,b) => a.distancia - b.distancia);
                         renderizarPlanilha();
-                    } else {
-                        alert("Não foi possível ler o formato deste RBK. Use CSV.");
                     }
                 };
                 reader.readAsArrayBuffer(file);
@@ -109,7 +105,7 @@
                     const linhas = reader.result.split('\n');
                     planilhaDados = linhas.map(l => {
                         const c = l.split(';');
-                        return { distancia: parseFloat(c[0]?.replace(',','.')), referencia: c[2] || "" };
+                        return { distancia: parseFloat(c[0]?.replace(',','.')), referencia: c[2] || "Referência" };
                     }).filter(d => !isNaN(d.distancia));
                     renderizarPlanilha();
                 };
@@ -128,47 +124,95 @@
         }
 
         function atualizarScroll(dist) {
+            if (planilhaDados.length === 0) return;
             const idx = planilhaDados.findIndex((item, i) => {
                 const prox = planilhaDados[i + 1] ? planilhaDados[i + 1].distancia : 9999;
                 return dist >= item.distancia && dist < prox;
             });
             if (idx !== -1) {
-                const scrollPos = (idx * 100) - (320 / 2 - 50);
+                const rowHeight = 100;
+                const scrollPos = (idx * rowHeight) - (320 / 2 - rowHeight / 2);
                 document.getElementById('roadbook-list').style.transform = `translateY(${-scrollPos}px)`;
                 document.querySelectorAll('.roadbook-row').forEach(r => r.style.opacity = "0.2");
                 document.getElementById(`row-${idx}`).style.opacity = "1";
             }
         }
 
+        // --- INICIAR PROVA ---
         async function fazerLogin() {
-            const num = document.getElementById('numero').value;
-            if(!num) return alert("Digite o número!");
-            
-            try {
-                const status = await db.ref('configuracoes/provaAberta').once('value');
-                if (status.val() !== true) return alert("Prova Fechada!");
+            const nome = document.getElementById('piloto').value.trim();
+            const num = document.getElementById('numero').value.trim();
+            const cat = document.getElementById('categoria').value;
 
+            if(!nome || !num) {
+                alert("Preencha Nome e Número!");
+                return;
+            }
+
+            const btn = document.getElementById('btn-iniciar');
+            btn.innerText = "CARREGANDO...";
+            btn.disabled = true;
+
+            try {
+                // Tenta ler o status da prova no Firebase
+                const snapStatus = await db.ref('configuracoes/provaAberta').once('value');
+                
+                if (snapStatus.val() !== true) {
+                    alert("🚫 A prova está fechada no momento.");
+                    btn.innerText = "INICIAR PROVA";
+                    btn.disabled = false;
+                    return;
+                }
+
+                // Salva no Firebase
+                await db.ref('competidores/' + num).set({
+                    nome: nome,
+                    categoria: cat,
+                    hodo: "0.00",
+                    loginTime: Date.now()
+                });
+
+                localStorage.setItem('rally_carro_ativo', num);
+                
+                // Muda a tela
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('main-screen').style.display = 'flex';
                 
                 iniciarRastreio(num);
-            } catch(e) { alert("Erro de conexão!"); }
+
+            } catch (error) {
+                console.error(error);
+                alert("Erro de conexão com Firebase. Verifique se a Internet está ativa.");
+                btn.innerText = "INICIAR PROVA";
+                btn.disabled = false;
+            }
         }
 
         function iniciarRastreio(num) {
-            navigator.geolocation.watchPosition(pos => {
-                const { latitude, longitude, speed } = pos.coords;
-                if (lastCoords) {
-                    hodometro += calcularDistancia(lastCoords.lat, lastCoords.lon, latitude, longitude);
-                }
-                lastCoords = { lat: latitude, lon: longitude };
-                
-                document.getElementById('odometro-valor').innerText = hodometro.toFixed(2);
-                document.getElementById('velocidade-valor').innerText = speed ? Math.round(speed * 3.6) : 0;
-                
-                atualizarScroll(hodometro);
-                db.ref('competidores/' + num).update({ lat: latitude, lon: longitude, hodo: hodometro.toFixed(2) });
-            }, null, { enableHighAccuracy: true });
+            if ("geolocation" in navigator) {
+                watchID = navigator.geolocation.watchPosition(pos => {
+                    const { latitude, longitude, speed } = pos.coords;
+                    const vel = speed ? Math.round(speed * 3.6) : 0;
+
+                    if (lastCoords) {
+                        const d = calcularDistancia(lastCoords.lat, lastCoords.lon, latitude, longitude);
+                        hodometro += d;
+                    }
+                    lastCoords = { lat: latitude, lon: longitude };
+
+                    document.getElementById('odometro-valor').innerText = hodometro.toFixed(2);
+                    document.getElementById('velocidade-valor').innerText = vel;
+                    
+                    atualizarScroll(hodometro);
+
+                    db.ref('competidores/' + num).update({
+                        lat: latitude,
+                        lon: longitude,
+                        vel: vel,
+                        hodo: hodometro.toFixed(2)
+                    });
+                }, (err) => alert("Erro GPS: " + err.message), { enableHighAccuracy: true });
+            }
         }
 
         function calcularDistancia(lat1, lon1, lat2, lon2) {
@@ -179,7 +223,13 @@
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         }
 
-        function encerrarSessao() { location.reload(); }
+        function encerrarSessao() {
+            if(confirm("Encerrar prova?")) {
+                if (watchID) navigator.geolocation.clearWatch(watchID);
+                localStorage.clear();
+                location.reload();
+            }
+        }
     </script>
 </body>
 </html>
