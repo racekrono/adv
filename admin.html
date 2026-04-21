@@ -481,7 +481,37 @@ window.importarBackup = function() {
     };
 
     input.click();
-};    
+};
+        window.importarPlanilhaParaFirebase = function(input) {
+    const arquivo = input.files[0];
+    if (!arquivo) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const dadosPlanilha = JSON.parse(e.target.result);
+            
+            if (!Array.isArray(dadosPlanilha)) {
+                alert("Erro: O arquivo não parece ser uma planilha válida (deve ser uma lista de pontos).");
+                return;
+            }
+
+            if (confirm(`Deseja publicar esta planilha com ${dadosPlanilha.length} pontos para todos os pilotos?`)) {
+                // Salvando na rota 'prova_atual' usando a instância db que você já tem
+                db.ref('prova_atual').set(dadosPlanilha)
+                .then(() => {
+                    alert("✅ Planilha (Tulipas) publicada com sucesso!");
+                    // Opcional: limpa o input para permitir importar o mesmo arquivo novamente se necessário
+                    input.value = ""; 
+                })
+                .catch(err => alert("Erro ao salvar no Firebase: " + err));
+            }
+        } catch (err) {
+            alert("Erro ao processar o arquivo JSON: " + err);
+        }
+    };
+    reader.readAsText(arquivo);
+};
 </script>
 </body>
 </html>
