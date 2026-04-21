@@ -335,10 +335,6 @@
     alert("✅ Apuração concluída!");
 };
 
-    window.resetar = function() {
-        if(prompt("Senha de Segurança:") === "261291") db.ref('/').remove().then(() => location.reload());
-    };
-
     function atualizarSeletorCarros() {
         const selector = document.getElementById('carSelector');
         db.ref('competidores').on('value', snap => {
@@ -381,21 +377,63 @@
         ref.once('value', snap => { ref.set(!snap.val()); });
     };
 
-    // NOVAS FUNÇÕES ADICIONADAS CONFORME SOLICITADO
-    window.excluirTodosCarros = async function() {
-        const senha = prompt("SENHA PARA DELETAR TODOS OS CARROS:");
-        if (senha === "261291") {
-            if (confirm("ATENÇÃO: Isso apagará TODOS os competidores, rastros e tempos. Confirmar?")) {
-                const paths = ['competidores', 'posicoes', 'rastros', 'tempos'];
-                await Promise.all(paths.map(path => db.ref(path).remove()));
-                alert("🔥 Todos os dados de carros foram removidos!");
-                location.reload();
-            }
-        } else if (senha !== null) {
-            alert("Senha incorreta!");
-        }
-    };
+    // --- FUNÇÃO RESETAR TUDO CORRIGIDA ---
+window.resetar = async function() {
+    const senha = prompt("Senha de Segurança para RESET TOTAL:");
+    if (senha === "261291") {
+        if (confirm("⚠️ ISSO APAGARÁ TUDO (inclusive a planilha). Confirma?")) {
+            try {
+                // Em vez de db.ref('/').remove(), limpamos os nós principais um por um
+                const caminhos = ['competidores', 'posicoes', 'tempos', 'rastros', 'prova_atual', 'configuracoes'];
+                
+                for (const path of caminhos) {
+                    console.log(`Limpando: ${path}...`);
+                    await db.ref(path).remove();
+                }
 
+                alert("✅ Sistema resetado com sucesso!");
+                location.reload();
+            } catch (err) {
+                alert("Erro ao resetar: " + err.message);
+                console.error(err);
+            }
+        }
+    } else if (senha !== null) {
+        alert("Senha incorreta!");
+    }
+};
+
+// --- FUNÇÃO EXCLUIR TODOS OS CARROS CORRIGIDA (FATIA OS RASTROS) ---
+window.excluirTodosCarros = async function() {
+    const senha = prompt("SENHA PARA DELETAR TODOS OS CARROS:");
+    if (senha === "261291") {
+        if (confirm("ATENÇÃO: Isso apagará rastros pesados. Confirmar?")) {
+            try {
+                // Apaga os dados leves primeiro
+                await db.ref('competidores').remove();
+                await db.ref('posicoes').remove();
+                await db.ref('tempos').remove();
+
+                // Para os rastros (que geram o erro WRITE_TOO_BIG), apagamos um por um
+                const rastrosSnap = await db.ref('rastros').once('value');
+                if (rastrosSnap.exists()) {
+                    const ids = Object.keys(rastrosSnap.val());
+                    for (const id of ids) {
+                        console.log(`Removendo rastro pesado do carro ${id}...`);
+                        await db.ref(`rastros/${id}`).remove();
+                    }
+                }
+                
+                alert("🔥 Todos os dados de carros foram removidos com sucesso!");
+                location.reload();
+            } catch (err) {
+                alert("Erro ao remover dados pesados: " + err.message);
+            }
+        }
+    } else if (senha !== null) {
+        alert("Senha incorreta!");
+    }
+};
     window.logoffGeral = function() {
     const senha = prompt("DIGITE A SENHA PARA LOGOFF GERAL:");
     
