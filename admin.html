@@ -74,6 +74,8 @@
             <button onclick="buscar()">🔍 Buscar Cidade</button>
             <button onclick="salvar()" style="background: #c53030;">💾 Salvar Trajeto</button>
             <button onclick="window.location.href='editor.html'" style="background: #d69e2e;">📋​ Editor Planilha</button>
+            <button onclick="document.getElementById('importPlanilhaInput').click()" style="background: #2b6cb0; border: 1px solid white;">📂 Importar Planilha (JSON)</button>
+    <input type="file" id="importPlanilhaInput" accept=".json" style="display:none" onchange="importarPlanilhaParaFirebase(this)">
             <button id="btnStatusProva" onclick="alternarStatusProva()">Aguardando...</button>
         </div>
 
