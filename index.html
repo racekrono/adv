@@ -17,45 +17,59 @@
     <style>
         body { font-family: sans-serif; background: #121212; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; overflow: hidden; }
         .card { background: #1e1e1e; padding: 20px; border-radius: 12px; width: 95%; max-width: 400px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border-top: 5px solid #ffffff; max-height: 98vh; overflow-y: auto; }
+        .logo { display: block; margin: 0 auto 15px auto; max-width: 120px; height: auto; }
         input, select, button { width: 100%; padding: 14px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #333; background: #252525; color: white; font-size: 16px; box-sizing: border-box; }
-        button { background: #f80303; border: none; font-weight: bold; cursor: pointer; }
+        button { background: #f80303; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        button:active { transform: scale(0.98); }
+        
         #setup { display: block; } 
         .tracking { text-align: center; display: none; }
+        
+        /* Odômetro */
         .odo-box { margin-top: 10px; padding: 10px; border-top: 1px solid #333; background: rgba(0,0,0,0.2); border-radius: 10px; }
-        .odo-val { font-size: 4rem; font-weight: bold; color: #f1c40f; margin: 0; font-family: monospace; }
+        .odo-val { font-size: 4rem; font-weight: bold; color: #f1c40f; margin: 0; font-family: monospace; cursor: pointer; }
+        
+        /* Planilha */
         #roadbook-container { margin-top: 15px; background: #000; border: 2px solid #f1c40f; border-radius: 8px; height: 230px; overflow-y: auto; scroll-behavior: smooth; }
         #tabela-roadbook { width: 100%; border-collapse: collapse; color: white; font-size: 13px; }
         #tabela-roadbook td { padding: 15px 4px; border-bottom: 1px solid #222; text-align: center; }
         .linha-ativa { background: rgba(241, 196, 15, 0.25) !important; border-left: 4px solid #f1c40f; }
         .tulipa-img { width: 60px; filter: invert(1); }
+        
+        /* Status e Segurança */
+        .status-container { margin-top: 10px; padding: 8px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid #333; }
         .btn-seguranca { background: #333; color: #ccc; font-size: 10px; padding: 8px; margin-top: 5px; border: 1px dashed #555; width: auto; flex: 1; }
-        .btn-sair { background: transparent; color: #444; font-size: 10px; margin-top: 15px; text-decoration: underline; border: none; }
+        .btn-sair { background: transparent; color: #444; font-size: 10px; margin-top: 15px; text-decoration: underline; border: none; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <div class="card">
         <div id="setup">
-            <h2 style="text-align:center;">Race Krono</h2>
-            <input type="text" id="nome" placeholder="Piloto">
+            <img src="https://raw.githubusercontent.com/racekrono/adv/refs/heads/main/Logo.png" class="logo">
+            <input type="text" id="nome" placeholder="Nome do Piloto">
             <input type="number" id="carro" placeholder="Nº do Carro">
             <button id="btnIniciar">INICIAR PROVA</button>
         </div>
 
         <div id="ativo" class="tracking">
-            <h2 id="viewCarro" style="color:#0d0af0; margin: 0;">Carro --</h2>
+            <h2 id="viewCarro" style="color:#0d0af0; margin: 0; font-size: 1.2rem;">Carro --</h2>
             <div id="viewVel" style="font-size: 2.5rem; font-weight: bold;">0.0</div>
+            <p style="margin: 0; color: #888; font-size: 12px;">KM/H</p>
+
             <div class="odo-box">
                 <div id="displayOdo" class="odo-val" onclick="ajusteManualOdo()">0.000</div>
                 <div style="display:flex; gap:5px;">
-                    <button onclick="alterarOdo(-0.010)" style="padding:5px; background:#333">-10m</button>
-                    <button onclick="zerarOdo()" style="padding:5px; background:#b30000">0</button>
-                    <button onclick="alterarOdo(0.010)" style="padding:5px; background:#333">+10m</button>
+                    <button onclick="alterarOdo(-0.010)" style="background:#333; padding:8px">-10m</button>
+                    <button onclick="zerarOdo()" style="background:#b30000; padding:8px">ZERAR</button>
+                    <button onclick="alterarOdo(0.010)" style="background:#333; padding:8px">+10m</button>
                 </div>
             </div>
 
             <div id="roadbook-container">
-                <table id="tabela-roadbook"><tbody id="corpo-roadbook"></tbody></table>
+                <table id="tabela-roadbook">
+                    <tbody id="corpo-roadbook"></tbody>
+                </table>
             </div>
             
             <div style="display: flex; gap: 5px;">
@@ -64,12 +78,19 @@
                 <input type="file" id="inputArquivo" style="display:none" accept=".json" onchange="importarPlanilhaOffline(this)">
             </div>
 
-            <div id="msgGps" style="font-size:10px; margin-top:10px; color:#2ecc71;">● GPS ATIVO</div>
-            <button class="btn-sair" onclick="encerrarSessao()">Sair</button>
+            <div class="status-container">
+                <div id="msgGps" style="color: #2ecc71; font-weight: bold; font-size: 12px;">● CONECTANDO...</div>
+                <div id="detalheOffline" style="display: none; font-size: 10px; color: #f1c40f; margin-top: 5px; text-transform: uppercase; font-weight: bold;">
+                    MODO OFFLINE - BACKUP ATIVO
+                </div>
+            </div>
+
+            <button class="btn-sair" onclick="encerrarSessao()">Sair / Finalizar</button>
         </div>
     </div>
 
     <script>
+        // Configuração do Firebase (Utilizando as suas credenciais fornecidas)
         const firebaseConfig = {
             apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
             authDomain: "cronometro-rally.firebaseapp.com",
@@ -83,8 +104,9 @@
         let odoTotal = 0;
         let ultimaPos = null;
         let dadosPlanilha = [];
+        let watchID = null;
 
-        // --- PERSISTÊNCIA ---
+        // --- 1. LÓGICA DE DADOS E PERSISTÊNCIA ---
         function carregarPlanilhaDoServidor() {
             db.ref('prova_atual').on('value', (snapshot) => {
                 if(snapshot.val()) {
@@ -99,9 +121,9 @@
             const corpo = document.getElementById('corpo-roadbook');
             corpo.innerHTML = dadosPlanilha.map((item, index) => `
                 <tr id="ref-${index}">
-                    <td style="font-weight:bold; color:#f1c40f;">${item.km.toFixed(3)}</td>
+                    <td style="font-weight:bold; color:#f1c40f; font-family:monospace; font-size:1.1rem;">${item.km.toFixed(3)}</td>
                     <td><img src="${item.tulipa}" class="tulipa-img"></td>
-                    <td style="font-size:10px; color:#aaa;">${item.obs || ''}</td>
+                    <td style="font-size:10px; color:#aaa; text-align:left; padding-left:10px;">${item.obs || ''}</td>
                 </tr>
             `).join('');
             sincronizarPlanilha();
@@ -120,42 +142,24 @@
             }
         }
 
+        // --- 2. CONTROLES DO ODÔMETRO ---
         function atualizarTelaOdo() { 
             document.getElementById('displayOdo').innerText = odoTotal.toFixed(3); 
-            localStorage.setItem('rally_odo_salvo', odoTotal); // SALVA O KM
+            localStorage.setItem('rally_odo_salvo', odoTotal);
             sincronizarPlanilha();
         }
 
-        function iniciarFluxoRastreio(num) {
-            document.getElementById('setup').style.display = 'none';
-            document.getElementById('ativo').style.display = 'block';
-            document.getElementById('viewCarro').innerText = "Carro " + num;
-            
-            // RECUPERA ODÔMETRO SALVO
-            const odoSalvo = localStorage.getItem('rally_odo_salvo');
-            if(odoSalvo) odoTotal = parseFloat(odoSalvo);
-            atualizarTelaOdo();
-
-            // RECUPERA PLANILHA SALVA
-            const cache = localStorage.getItem('backup_planilha');
-            if(cache) { dadosPlanilha = JSON.parse(cache); renderizarPlanilha(); }
-
-            carregarPlanilhaDoServidor();
-
-            navigator.geolocation.watchPosition(position => {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                if (position.coords.accuracy > 25) return;
-                if (ultimaPos) {
-                    const dist = calcularDistancia(ultimaPos.lat, ultimaPos.lng, lat, lng);
-                    if (dist > 0.002) { odoTotal += dist; atualizarTelaOdo(); ultimaPos = { lat, lng }; }
-                } else { ultimaPos = { lat, lng }; }
-                document.getElementById('viewVel').innerText = (position.coords.speed * 3.6 || 0).toFixed(1);
-                db.ref('posicoes/' + num).set({ lat, lng, vel: (position.coords.speed * 3.6 || 0), ts: Date.now() });
-            }, null, { enableHighAccuracy: true });
+        function alterarOdo(v) { odoTotal = Math.max(0, odoTotal + v); atualizarTelaOdo(); }
+        function zerarOdo() { if(confirm("Zerar odômetro parcial?")) { odoTotal = 0; atualizarTelaOdo(); } }
+        function ajusteManualOdo() {
+            let n = prompt("Ajustar Odômetro para (KM):", odoTotal.toFixed(3));
+            if(n) { 
+                let val = parseFloat(n.replace(',','.'));
+                if(!isNaN(val)) { odoTotal = Math.max(0, val); atualizarTelaOdo(); }
+            }
         }
 
-        // Funções auxiliares mantidas (calcularDistancia, baixarPlanilha, importar...)
+        // --- 3. GPS E RASTREIO ---
         function calcularDistancia(lat1, lon1, lat2, lon2) {
             const R = 6371; 
             const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -164,30 +168,87 @@
             return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))); 
         }
 
-        function importarPlanilhaOffline(input) {
-            const reader = new FileReader();
-            reader.onload = (e) => { dadosPlanilha = JSON.parse(e.target.result); renderizarPlanilha(); };
-            reader.readAsText(input.files[0]);
+        function iniciarFluxoRastreio(num) {
+            document.getElementById('setup').style.display = 'none';
+            document.getElementById('ativo').style.display = 'block';
+            document.getElementById('viewCarro').innerText = "Carro " + num;
+            
+            // Recupera estado anterior
+            const odoSalvo = localStorage.getItem('rally_odo_salvo');
+            if(odoSalvo) odoTotal = parseFloat(odoSalvo);
+            atualizarTelaOdo();
+
+            const cache = localStorage.getItem('backup_planilha');
+            if(cache) { dadosPlanilha = JSON.parse(cache); renderizarPlanilha(); }
+
+            carregarPlanilhaDoServidor();
+
+            // Monitor de Conexão
+            db.ref(".info/connected").on("value", (snap) => {
+                const msg = document.getElementById('msgGps');
+                const detalhe = document.getElementById('detalheOffline');
+                if (snap.val() === true) {
+                    msg.innerText = "● TRANSMITINDO AO VIVO";
+                    msg.style.color = "#2ecc71";
+                    detalhe.style.display = 'none';
+                } else {
+                    msg.innerText = "○ SEM INTERNET";
+                    msg.style.color = "#f1c40f";
+                    detalhe.style.display = 'block';
+                }
+            });
+
+            watchID = navigator.geolocation.watchPosition(position => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                const accuracy = position.coords.accuracy;
+                const kmh = (position.coords.speed * 3.6 || 0);
+
+                if (accuracy > 25) return;
+
+                if (ultimaPos) {
+                    const dist = calcularDistancia(ultimaPos.lat, ultimaPos.lng, lat, lng);
+                    if (dist > 0.002) { 
+                        odoTotal += dist; 
+                        atualizarTelaOdo(); 
+                        ultimaPos = { lat, lng }; 
+                    }
+                } else { ultimaPos = { lat, lng }; }
+
+                document.getElementById('viewVel').innerText = kmh.toFixed(1);
+                db.ref('posicoes/' + num).set({ lat, lng, vel: Math.round(kmh), ts: Date.now() });
+            }, null, { enableHighAccuracy: true });
         }
 
+        // --- 4. FUNÇÕES DE SEGURANÇA OFFLINE ---
         function baixarPlanilhaOffline() {
+            if(dadosPlanilha.length === 0) return alert("Planilha vazia!");
             const blob = new Blob([JSON.stringify(dadosPlanilha)], { type: "application/json" });
             const a = document.createElement("a");
             a.href = URL.createObjectURL(blob);
-            a.download = "backup.json";
+            a.download = "backup_racekrono.json";
             a.click();
         }
 
-        function alterarOdo(v) { odoTotal = Math.max(0, odoTotal + v); atualizarTelaOdo(); }
-        function zerarOdo() { if(confirm("Zerar?")) { odoTotal = 0; atualizarTelaOdo(); } }
-        function ajusteManualOdo() {
-            let n = prompt("Ajustar (KM):", odoTotal.toFixed(3));
-            if(n) { odoTotal = parseFloat(n.replace(',','.')); atualizarTelaOdo(); }
+        function importarPlanilhaOffline(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    dadosPlanilha = JSON.parse(e.target.result);
+                    localStorage.setItem('backup_planilha', JSON.stringify(dadosPlanilha));
+                    renderizarPlanilha();
+                    alert("✅ Importado com sucesso!");
+                } catch (err) { alert("Erro no ficheiro!"); }
+            };
+            reader.readAsText(file);
         }
 
+        // --- 5. INICIALIZAÇÃO ---
         document.getElementById('btnIniciar').onclick = function() {
             const num = document.getElementById('carro').value;
-            if(!num) return alert("Nº do carro!");
+            if(!num) return alert("Digite o número do carro!");
             localStorage.setItem('rally_carro_ativo', num);
             iniciarFluxoRastreio(num);
         };
@@ -197,7 +258,13 @@
             if (salvo) iniciarFluxoRastreio(salvo);
         };
 
-        function encerrarSessao() { if(confirm("Encerrar?")) { localStorage.clear(); location.reload(); } }
+        function encerrarSessao() {
+            if(confirm("Deseja encerrar a sessão? O progresso será limpo.")) {
+                if(watchID) navigator.geolocation.clearWatch(watchID);
+                localStorage.clear();
+                location.reload();
+            }
+        }
     </script>
 </body>
 </html>
