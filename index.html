@@ -16,38 +16,30 @@
     
     <style>
         body { font-family: sans-serif; background: #121212; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; overflow: hidden; }
-        .card { background: #1e1e1e; padding: 15px; border-radius: 12px; width: 95%; max-width: 400px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border-top: 5px solid #ffffff; max-height: 98vh; overflow-y: auto; }
-        .logo { display: block; margin: 0 auto 15px auto; max-width: 100px; height: auto; }
+        .card { background: #1e1e1e; padding: 20px; border-radius: 12px; width: 95%; max-width: 400px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border-top: 5px solid #ffffff; max-height: 98vh; overflow-y: auto; }
+        .logo { display: block; margin: 0 auto 15px auto; max-width: 120px; height: auto; }
         input, select, button { width: 100%; padding: 14px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #333; background: #252525; color: white; font-size: 16px; box-sizing: border-box; }
-        button { background: #f80303; border: none; font-weight: bold; cursor: pointer; }
+        button { background: #f80303; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        button:active { transform: scale(0.98); }
         
         #setup { display: block; } 
         .tracking { text-align: center; display: none; }
         
-        /* Cabeçalho Compacto */
-        .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; background: rgba(13, 10, 240, 0.1); padding: 5px 10px; border-radius: 8px; }
-        .car-label { font-size: 1.1rem; font-weight: bold; color: #0d0af0; }
-        .vel-box { text-align: right; }
-        .vel-val { font-size: 2.2rem; font-weight: bold; line-height: 1; }
-        .vel-unit { font-size: 10px; color: #888; display: block; }
-
         /* Odômetro */
-        .odo-box { padding: 8px; border-top: 1px solid #333; background: rgba(0,0,0,0.2); border-radius: 10px; margin-bottom: 10px; }
-        .odo-val { font-size: 3.8rem; font-weight: bold; color: #f1c40f; margin: 0; font-family: monospace; cursor: pointer; line-height: 1.1; }
-        .odo-btns { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 8px; }
-        .btn-m { padding: 10px 2px; background: #333; font-size: 11px; border-radius: 5px; border: 1px solid #444; color: white; }
-
-        /* Planilha */
-        #roadbook-container { background: #000; border: 2px solid #f1c40f; border-radius: 8px; height: 230px; overflow-y: auto; scroll-behavior: smooth; }
-        #tabela-roadbook { width: 100%; border-collapse: collapse; color: white; font-size: 13px; }
-        #tabela-roadbook td { padding: 12px 4px; border-bottom: 1px solid #222; text-align: center; }
-        .linha-ativa { background: rgba(241, 196, 15, 0.25) !important; border-left: 4px solid #f1c40f; }
-        .tulipa-img { width: 55px; filter: invert(1); }
+        .odo-box { margin-top: 10px; padding: 10px; border-top: 1px solid #333; background: rgba(0,0,0,0.2); border-radius: 10px; }
+        .odo-val { font-size: 4rem; font-weight: bold; color: #f1c40f; margin: 0; font-family: monospace; cursor: pointer; }
         
-        /* Status e Rodapé */
-        .status-container { margin-top: 8px; padding: 6px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid #333; }
-        .btn-seguranca { background: #333; color: #ccc; font-size: 9px; padding: 6px; border: 1px dashed #555; width: auto; flex: 1; margin-top: 5px; }
-        .btn-sair { background: transparent; color: #444; font-size: 10px; margin-top: 10px; text-decoration: underline; border: none; cursor: pointer; }
+        /* Planilha */
+        #roadbook-container { margin-top: 15px; background: #000; border: 2px solid #f1c40f; border-radius: 8px; height: 230px; overflow-y: auto; scroll-behavior: smooth; }
+        #tabela-roadbook { width: 100%; border-collapse: collapse; color: white; font-size: 13px; }
+        #tabela-roadbook td { padding: 15px 4px; border-bottom: 1px solid #222; text-align: center; }
+        .linha-ativa { background: rgba(241, 196, 15, 0.25) !important; border-left: 4px solid #f1c40f; }
+        .tulipa-img { width: 60px; filter: invert(1); }
+        
+        /* Status e Segurança */
+        .status-container { margin-top: 10px; padding: 8px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid #333; }
+        .btn-seguranca { background: #333; color: #ccc; font-size: 10px; padding: 8px; margin-top: 5px; border: 1px dashed #555; width: auto; flex: 1; }
+        .btn-sair { background: transparent; color: #444; font-size: 10px; margin-top: 15px; text-decoration: underline; border: none; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -61,22 +53,16 @@
         </div>
 
         <div id="ativo" class="tracking">
-            <div class="header-row">
-                <div id="viewCarro" class="car-label">CARRO --</div>
-                <div class="vel-box">
-                    <span id="viewVel" class="vel-val">0.0</span>
-                    <span class="vel-unit">KM/H</span>
-                </div>
-            </div>
+            <h2 id="viewCarro" style="color:#0d0af0; margin: 0; font-size: 1.2rem;">Carro --</h2>
+            <div id="viewVel" style="font-size: 2.5rem; font-weight: bold;">0.0</div>
+            <p style="margin: 0; color: #888; font-size: 12px;">KM/H</p>
 
             <div class="odo-box">
                 <div id="displayOdo" class="odo-val" onclick="ajusteManualOdo()">0.000</div>
-                <div class="odo-btns">
-                    <button class="btn-m" onclick="alterarOdo(-0.010)">-10m</button>
-                    <button class="btn-m" onclick="alterarOdo(-0.001)">-1m</button>
-                    <button class="btn-m" onclick="zerarOdo()" style="background:#b30000; font-weight:bold;">0</button>
-                    <button class="btn-m" onclick="alterarOdo(0.001)">+1m</button>
-                    <button class="btn-m" onclick="alterarOdo(0.010)">+10m</button>
+                <div style="display:flex; gap:5px;">
+                    <button onclick="alterarOdo(-0.010)" style="background:#333; padding:8px">-10m</button>
+                    <button onclick="zerarOdo()" style="background:#b30000; padding:8px">ZERAR</button>
+                    <button onclick="alterarOdo(0.010)" style="background:#333; padding:8px">+10m</button>
                 </div>
             </div>
 
@@ -86,24 +72,25 @@
                 </table>
             </div>
             
-            <div style="display: flex; gap: 4px;">
+            <div style="display: flex; gap: 5px;">
                 <button class="btn-seguranca" onclick="baixarPlanilhaOffline()">💾 BACKUP</button>
                 <button class="btn-seguranca" onclick="document.getElementById('inputArquivo').click()">📂 IMPORTAR</button>
                 <input type="file" id="inputArquivo" style="display:none" accept=".json" onchange="importarPlanilhaOffline(this)">
             </div>
 
             <div class="status-container">
-                <div id="msgGps" style="color: #2ecc71; font-weight: bold; font-size: 11px;">● CONECTANDO...</div>
-                <div id="detalheOffline" style="display: none; font-size: 9px; color: #f1c40f; margin-top: 3px; font-weight: bold;">
-                    MODO OFFLINE ATIVO
+                <div id="msgGps" style="color: #2ecc71; font-weight: bold; font-size: 12px;">● CONECTANDO...</div>
+                <div id="detalheOffline" style="display: none; font-size: 10px; color: #f1c40f; margin-top: 5px; text-transform: uppercase; font-weight: bold;">
+                    MODO OFFLINE - BACKUP ATIVO
                 </div>
             </div>
 
-            <button class="btn-sair" onclick="encerrarSessao()">Finalizar Prova</button>
+            <button class="btn-sair" onclick="encerrarSessao()">Sair / Finalizar</button>
         </div>
     </div>
 
     <script>
+        // Configuração do Firebase (Utilizando as suas credenciais fornecidas)
         const firebaseConfig = {
             apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
             authDomain: "cronometro-rally.firebaseapp.com",
@@ -119,6 +106,7 @@
         let dadosPlanilha = [];
         let watchID = null;
 
+        // --- 1. LÓGICA DE DADOS E PERSISTÊNCIA ---
         function carregarPlanilhaDoServidor() {
             db.ref('prova_atual').on('value', (snapshot) => {
                 if(snapshot.val()) {
@@ -133,9 +121,9 @@
             const corpo = document.getElementById('corpo-roadbook');
             corpo.innerHTML = dadosPlanilha.map((item, index) => `
                 <tr id="ref-${index}">
-                    <td style="font-weight:bold; color:#f1c40f; font-family:monospace; font-size:1.1rem; width:80px;">${item.km.toFixed(3)}</td>
-                    <td style="width:70px;"><img src="${item.tulipa}" class="tulipa-img"></td>
-                    <td style="font-size:11px; color:#aaa; text-align:left; padding-left:10px;">${item.obs || ''}</td>
+                    <td style="font-weight:bold; color:#f1c40f; font-family:monospace; font-size:1.1rem;">${item.km.toFixed(3)}</td>
+                    <td><img src="${item.tulipa}" class="tulipa-img"></td>
+                    <td style="font-size:10px; color:#aaa; text-align:left; padding-left:10px;">${item.obs || ''}</td>
                 </tr>
             `).join('');
             sincronizarPlanilha();
@@ -154,6 +142,7 @@
             }
         }
 
+        // --- 2. CONTROLES DO ODÔMETRO ---
         function atualizarTelaOdo() { 
             document.getElementById('displayOdo').innerText = odoTotal.toFixed(3); 
             localStorage.setItem('rally_odo_salvo', odoTotal);
@@ -170,6 +159,7 @@
             }
         }
 
+        // --- 3. GPS E RASTREIO ---
         function calcularDistancia(lat1, lon1, lat2, lon2) {
             const R = 6371; 
             const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -181,8 +171,9 @@
         function iniciarFluxoRastreio(num) {
             document.getElementById('setup').style.display = 'none';
             document.getElementById('ativo').style.display = 'block';
-            document.getElementById('viewCarro').innerText = "CARRO " + num;
+            document.getElementById('viewCarro').innerText = "Carro " + num;
             
+            // Recupera estado anterior
             const odoSalvo = localStorage.getItem('rally_odo_salvo');
             if(odoSalvo) odoTotal = parseFloat(odoSalvo);
             atualizarTelaOdo();
@@ -192,6 +183,7 @@
 
             carregarPlanilhaDoServidor();
 
+            // Monitor de Conexão
             db.ref(".info/connected").on("value", (snap) => {
                 const msg = document.getElementById('msgGps');
                 const detalhe = document.getElementById('detalheOffline');
@@ -228,12 +220,13 @@
             }, null, { enableHighAccuracy: true });
         }
 
+        // --- 4. FUNÇÕES DE SEGURANÇA OFFLINE ---
         function baixarPlanilhaOffline() {
             if(dadosPlanilha.length === 0) return alert("Planilha vazia!");
             const blob = new Blob([JSON.stringify(dadosPlanilha)], { type: "application/json" });
             const a = document.createElement("a");
             a.href = URL.createObjectURL(blob);
-            a.download = "backup_rally.json";
+            a.download = "backup_racekrono.json";
             a.click();
         }
 
@@ -252,6 +245,7 @@
             reader.readAsText(file);
         }
 
+        // --- 5. INICIALIZAÇÃO ---
         document.getElementById('btnIniciar').onclick = function() {
             const num = document.getElementById('carro').value;
             if(!num) return alert("Digite o número do carro!");
@@ -265,7 +259,7 @@
         };
 
         function encerrarSessao() {
-            if(confirm("Deseja encerrar?")) {
+            if(confirm("Deseja encerrar a sessão? O progresso será limpo.")) {
                 if(watchID) navigator.geolocation.clearWatch(watchID);
                 localStorage.clear();
                 location.reload();
