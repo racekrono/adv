@@ -35,13 +35,15 @@
         .odo-btns { display: flex; gap: 4px; justify-content: center; margin-top: 8px; }
         .btn-mini { padding: 10px 5px; font-size: 13px; background: #333; margin-bottom: 0; width: auto; flex: 1; border: 1px solid #444; }
         
-        /* Estilos da Planilha Digital */
-        #roadbook-container { margin-top: 15px; background: #000; border: 2px solid #f1c40f; border-radius: 8px; height: 250px; overflow-y: auto; position: relative; scroll-behavior: smooth; }
+        #roadbook-container { margin-top: 15px; background: #000; border: 2px solid #f1c40f; border-radius: 8px; height: 230px; overflow-y: auto; position: relative; scroll-behavior: smooth; }
         #tabela-roadbook { width: 100%; border-collapse: collapse; color: white; font-size: 13px; }
         #tabela-roadbook th { background: #333; position: sticky; top: 0; z-index: 5; padding: 8px; font-size: 11px; text-transform: uppercase; color: #888; }
         #tabela-roadbook td { padding: 15px 4px; border-bottom: 1px solid #222; text-align: center; }
         .linha-ativa { background: rgba(241, 196, 15, 0.25) !important; border-left: 4px solid #f1c40f; }
         .tulipa-img { width: 60px; filter: invert(1); }
+        
+        /* Botões de Segurança */
+        .btn-seguranca { background: #333; color: #ccc; font-size: 10px; padding: 8px; margin-top: 5px; border: 1px dashed #555; }
         .btn-sair { background: transparent; color: #444; font-size: 10px; margin-top: 15px; text-decoration: underline; border: none; cursor: pointer; }
     </style>
 </head>
@@ -50,15 +52,11 @@
     <div class="card">
         <div id="setup">
             <img src="https://raw.githubusercontent.com/racekrono/adv/refs/heads/main/Logo.png" class="logo">
-            <h2 style="color:#ffffff; text-align:center; margin-top: 0;">Rally de Aventura</h2>
-            <input type="text" id="nome" placeholder="Nome do Piloto" oninput="this.value = this.value.replace(/[0-9]/g, '')">
+            <input type="text" id="nome" placeholder="Nome do Piloto">
             <select id="categoria">
-                <option>UTV</option>
-                <option>BAIANO 4x2</option><option>BAIANO 4x4</option>
-                <option>INICIANTE 4x2</option><option>INICIANTE 4x4</option>
-                <option>ANTIGOS</option>
+                <option>UTV</option><option>BAIANO 4x2</option><option>BAIANO 4x4</option>
             </select>
-            <input type="number" id="carro" placeholder="Nº do Carro" min="1" max="100">
+            <input type="number" id="carro" placeholder="Nº do Carro">
             <button id="btnIniciar">INICIAR PROVA</button>
         </div>
 
@@ -68,13 +66,11 @@
             <p style="margin: 0; color: #888; font-size: 12px;">KM/H</p>
 
             <div class="odo-box">
-                <span class="odo-label">Odômetro Parcial</span>
+                <span class="odo-label">Odômetro</span>
                 <div id="displayOdo" class="odo-val" onclick="ajusteManualOdo()">0.000</div>
                 <div class="odo-btns">
                     <button class="btn-mini" onclick="alterarOdo(-0.010)">-10m</button>
-                    <button class="btn-mini" onclick="alterarOdo(-0.001)">-1m</button>
                     <button class="btn-mini" onclick="zerarOdo()" style="background:#b30000; color: white;">0</button>
-                    <button class="btn-mini" onclick="alterarOdo(0.001)">+1m</button>
                     <button class="btn-mini" onclick="alterarOdo(0.010)">+10m</button>
                 </div>
             </div>
@@ -82,24 +78,24 @@
             <div id="roadbook-container">
                 <table id="tabela-roadbook">
                     <thead>
-                        <tr>
-                            <th>KM</th>
-                            <th>Tulipa</th>
-                            <th>Média</th>
-                            <th>Obs</th>
-                        </tr>
+                        <tr><th>KM</th><th>Tulipa</th><th>Obs</th></tr>
                     </thead>
-                    <tbody id="corpo-roadbook">
-                        </tbody>
+                    <tbody id="corpo-roadbook"></tbody>
                 </table>
             </div>
             
+            <div style="display: flex; gap: 5px;">
+                <button class="btn-seguranca" onclick="baixarPlanilhaOffline()">💾 BAIXAR BACKUP</button>
+                <button class="btn-seguranca" onclick="document.getElementById('inputArquivo').click()">📂 IMPORTAR MANUAL</button>
+                <input type="file" id="inputArquivo" style="display:none" accept=".json" onchange="importarPlanilhaOffline(this)">
+            </div>
+
             <div class="status-container">
                 <div id="msgGps" class="status-gps">● CONECTANDO...</div>
                 <div id="detalheOffline" class="aviso-offline">DADOS PROTEGIDOS NO CELULAR.</div>
             </div>
 
-            <button class="btn-sair" onclick="encerrarSessao()">Encerrar Sessão / Sair</button>
+            <button class="btn-sair" onclick="encerrarSessao()">Sair</button>
         </div>
     </div>
 
@@ -114,26 +110,56 @@
         const app = firebase.initializeApp(firebaseConfig);
         const db = firebase.database(app);
 
-        let watchID = null;
         let odoTotal = 0;
         let ultimaPos = null;
         let dadosPlanilha = [];
 
-        // --- CARREGAR PLANILHA DO FIREBASE (Nó: prova_atual) ---
+        // 1. CARREGAR DO FIREBASE
         function carregarPlanilhaDoServidor() {
             db.ref('prova_atual').on('value', (snapshot) => {
-                dadosPlanilha = snapshot.val() || [];
-                renderizarPlanilha();
+                const val = snapshot.val();
+                if(val) {
+                    dadosPlanilha = val;
+                    renderizarPlanilha();
+                    // Salva no cache local para emergências
+                    localStorage.setItem('backup_planilha', JSON.stringify(val));
+                }
             });
+        }
+
+        // 2. BAIXAR ARQUIVO (BACKUP)
+        function baixarPlanilhaOffline() {
+            if(dadosPlanilha.length === 0) return alert("Nenhuma planilha carregada para baixar!");
+            const blob = new Blob([JSON.stringify(dadosPlanilha)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "backup_planilha_rally.json";
+            a.click();
+        }
+
+        // 3. IMPORTAR ARQUIVO (OFFLINE TOTAL)
+        function importarPlanilhaOffline(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const json = JSON.parse(e.target.result);
+                    dadosPlanilha = json;
+                    renderizarPlanilha();
+                    alert("✅ Planilha importada localmente com sucesso!");
+                } catch (err) { alert("Erro ao ler arquivo!"); }
+            };
+            reader.readAsText(file);
         }
 
         function renderizarPlanilha() {
             const corpo = document.getElementById('corpo-roadbook');
             corpo.innerHTML = dadosPlanilha.map((item, index) => `
                 <tr id="ref-${index}">
-                    <td style="font-weight:bold; font-size:1.1rem; font-family:monospace; color:#f1c40f;">${item.km.toFixed(3)}</td>
+                    <td style="font-weight:bold; font-family:monospace; color:#f1c40f;">${item.km.toFixed(3)}</td>
                     <td><img src="${item.tulipa}" class="tulipa-img"></td>
-                    <td>${item.media || '--'}</td>
                     <td style="font-size:10px; color:#aaa;">${item.obs || ''}</td>
                 </tr>
             `).join('');
@@ -143,7 +169,6 @@
         function sincronizarPlanilha() {
             if (dadosPlanilha.length === 0) return;
             const indexAtivo = dadosPlanilha.findIndex(item => item.km >= odoTotal);
-            
             if (indexAtivo !== -1) {
                 document.querySelectorAll('#corpo-roadbook tr').forEach(tr => tr.classList.remove('linha-ativa'));
                 const linha = document.getElementById(`ref-${indexAtivo}`);
@@ -154,36 +179,23 @@
             }
         }
 
-        // --- FUNÇÕES DE CONTROLE ---
-        function alterarOdo(v) { 
-            odoTotal = Math.max(0, odoTotal + v); 
-            atualizarTelaOdo(); 
-        }
-
-        function zerarOdo() { 
-            if(confirm("Zerar odômetro?")) { odoTotal = 0; atualizarTelaOdo(); } 
-        }
-
         function atualizarTelaOdo() { 
             document.getElementById('displayOdo').innerText = odoTotal.toFixed(3); 
             sincronizarPlanilha();
         }
 
+        function alterarOdo(v) { odoTotal = Math.max(0, odoTotal + v); atualizarTelaOdo(); }
+        function zerarOdo() { if(confirm("Zerar?")) { odoTotal = 0; atualizarTelaOdo(); } }
         function ajusteManualOdo() {
-            let n = prompt("Ajustar Odômetro (KM):", odoTotal.toFixed(3));
-            if(n !== null) { 
-                let val = parseFloat(n.replace(',','.'));
-                if(!isNaN(val)) { odoTotal = Math.max(0, val); atualizarTelaOdo(); }
-            }
+            let n = prompt("Ajustar (KM):", odoTotal.toFixed(3));
+            if(n) { odoTotal = parseFloat(n.replace(',','.')); atualizarTelaOdo(); }
         }
 
         function calcularDistancia(lat1, lon1, lat2, lon2) {
             const R = 6371; 
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
             return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))); 
         }
 
@@ -192,57 +204,35 @@
             document.getElementById('ativo').style.display = 'block';
             document.getElementById('viewCarro').innerText = "Carro " + num;
             
+            // Tenta carregar do cache primeiro (caso já esteja sem net ao abrir)
+            const cache = localStorage.getItem('backup_planilha');
+            if(cache) { dadosPlanilha = JSON.parse(cache); renderizarPlanilha(); }
+
             carregarPlanilhaDoServidor();
 
             db.ref(".info/connected").on("value", (snap) => {
-                const msg = document.getElementById('msgGps');
-                const detalhe = document.getElementById('detalheOffline');
-                if (snap.val() === true) {
-                    msg.innerText = "● TRANSMITINDO AO VIVO";
-                    msg.classList.remove('status-offline');
-                    detalhe.style.display = 'none';
-                } else {
-                    msg.innerText = "○ SEM INTERNET - DADOS SALVOS";
-                    msg.classList.add('status-offline');
-                    detalhe.style.display = 'block';
-                }
+                document.getElementById('msgGps').innerText = snap.val() ? "● TRANSMITINDO AO VIVO" : "○ MODO OFFLINE - BACKUP ATIVO";
+                document.getElementById('detalheOffline').style.display = snap.val() ? 'none' : 'block';
             });
 
-            watchID = navigator.geolocation.watchPosition(position => {
+            navigator.geolocation.watchPosition(position => {
                 const lat = position.coords.latitude;
                 const lng = position.coords.longitude;
                 const accuracy = position.coords.accuracy;
-                const speedMS = position.coords.speed || 0;
-                const kmh = Math.round(speedMS * 3.6);
-
-                if (accuracy > 20) return;
-
+                if (accuracy > 25) return;
                 if (ultimaPos) {
                     const dist = calcularDistancia(ultimaPos.lat, ultimaPos.lng, lat, lng);
-                    if (dist > 0.002) { 
-                        odoTotal += dist;
-                        atualizarTelaOdo();
-                        ultimaPos = { lat, lng }; 
-                    }
-                } else {
-                    ultimaPos = { lat, lng };
-                }
-
-                document.getElementById('viewVel').innerText = kmh.toFixed(1);
-                db.ref('posicoes/' + num).set({ lat, lng, vel: kmh, ts: Date.now() });
+                    if (dist > 0.002) { odoTotal += dist; atualizarTelaOdo(); ultimaPos = { lat, lng }; }
+                } else { ultimaPos = { lat, lng }; }
+                document.getElementById('viewVel').innerText = Math.round(position.coords.speed * 3.6 || 0).toFixed(1);
+                db.ref('posicoes/' + num).set({ lat, lng, vel: Math.round(position.coords.speed * 3.6 || 0), ts: Date.now() });
             }, null, { enableHighAccuracy: true });
         }
 
-        document.getElementById('btnIniciar').onclick = async function() {
+        document.getElementById('btnIniciar').onclick = function() {
             const num = document.getElementById('carro').value;
-            const nome = document.getElementById('nome').value.trim();
-            if(!nome || !num) return alert("Preencha tudo!");
-            
-            const statusSnap = await db.ref('configuracoes/provaAberta').once('value');
-            if (statusSnap.val() !== true) return alert("Prova Fechada!");
-
+            if(!num) return alert("Nº do carro!");
             localStorage.setItem('rally_carro_ativo', num);
-            localStorage.setItem('rally_timestamp_login', Date.now());
             iniciarFluxoRastreio(num);
         };
 
@@ -251,12 +241,7 @@
             if (salvo) iniciarFluxoRastreio(salvo);
         };
 
-        function encerrarSessao() {
-            if(confirm("Encerrar prova?")) {
-                localStorage.clear();
-                location.reload();
-            }
-        }
+        function encerrarSessao() { if(confirm("Encerrar?")) { localStorage.clear(); location.reload(); } }
     </script>
 </body>
 </html>
