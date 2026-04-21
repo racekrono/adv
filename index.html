@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Race Krono - Digital</title>
+    <title>Race Krono</title>
 
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#121212">
+    <meta name="theme-color" content="#0d0af0">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Race Krono">
@@ -17,65 +17,64 @@
     
     <style>
         body { font-family: sans-serif; background: #121212; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; overflow: hidden; }
-        .card { background: #1e1e1e; padding: 20px; border-radius: 12px; width: 95%; max-width: 400px; text-align: center; border-top: 5px solid #f1c40f; }
+        .card { background: #1e1e1e; padding: 25px; border-radius: 12px; width: 90%; max-width: 380px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border-top: 5px solid #ffffff; z-index: 10; max-height: 95vh; overflow-y: auto; }
+        .logo { display: block; margin: 0 auto 20px auto; max-width: 150px; height: auto; }
+        input, select, button { width: 100%; padding: 14px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #333; background: #252525; color: white; font-size: 16px; box-sizing: border-box; }
+        button { background: #f80303; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
         
-        input { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: none; background: #2d2d2d; color: white; font-size: 16px; }
-        button { width: 100%; padding: 15px; margin-top: 10px; border-radius: 8px; border: none; background: #f1c40f; color: black; font-weight: bold; font-size: 18px; cursor: pointer; }
-        
-        #ativo { display: none; width: 100%; }
-        .odo-val { font-size: 4.5rem; font-weight: bold; color: #f1c40f; margin: 10px 0; font-family: monospace; }
-        .grid-topo { display: flex; justify-content: space-between; background: #000; padding: 10px; border-radius: 8px; margin-bottom: 10px; }
-        .topo-item { flex: 1; }
-        .topo-label { font-size: 10px; color: #888; text-transform: uppercase; }
-        .topo-val { font-size: 1.5rem; font-weight: bold; }
+        .tracking { text-align: center; display: none; }
+        .odo-val { font-size: 5rem; font-weight: bold; color: #f1c40f; margin: 2px 0; font-family: monospace; }
+        .odo-btns { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; }
+        .btn-mini { padding: 10px; font-size: 12px; background: #333; margin-bottom: 5px; width: auto; flex: 1; border: 1px solid #444; }
 
-        /* Planilha Digital */
-        .planilha-container { margin-top: 15px; border: 2px solid #333; background: #000; height: 300px; overflow-y: auto; border-radius: 8px; }
-        .grid-planilha { display: grid; grid-template-columns: 65px 85px 60px 1fr; border-bottom: 1px solid #222; align-items: center; min-height: 75px; transition: 0.3s; }
-        .celula { padding: 5px; color: #fff; text-align: center; font-family: monospace; font-size: 14px; }
-        .col-obs { text-align: left; font-family: sans-serif; font-size: 11px; text-transform: uppercase; color: #bbb; }
-        
-        /* Imagem da Tulipa Branca Original */
-        .img-tulipa { width: 100%; max-height: 60px; object-fit: contain; }
-        
+        /* Planilha Digital Integrada */
+        .planilha-container { margin-top: 15px; border: 2px solid #333; border-radius: 8px; background: #000; height: 220px; overflow-y: auto; }
+        .grid-planilha { display: grid; grid-template-columns: 55px 75px 50px 1fr; border-bottom: 1px solid #222; align-items: center; min-height: 65px; }
+        .celula { padding: 4px; font-size: 12px; color: #fff; text-align: center; font-family: monospace; }
+        .col-obs { text-align: left; font-size: 10px; text-transform: uppercase; color: #888; }
+        .img-tulipa { width: 100%; max-height: 50px; object-fit: contain; }
         .linha-ativa { background: #f1c40f !important; }
-        .linha-ativa .celula { color: #000 !important; font-weight: bold; }
-        .linha-ativa .col-obs { color: #000 !important; font-weight: bold; }
+        .linha-ativa .celula, .linha-ativa .col-obs { color: #000 !important; font-weight: bold; }
 
-        #msgGps { font-size: 10px; color: #f1c40f; margin-top: 10px; display: block; }
+        .status-gps { color: #2ecc71; font-weight: bold; font-size: 12px; margin-top: 10px; }
+        .btn-sair { background: transparent; color: #444; font-size: 10px; text-decoration: underline; border: none; cursor: pointer; margin-top: 10px; }
     </style>
 </head>
 <body>
 
     <div class="card">
         <div id="setup">
-            <img src="https://raw.githubusercontent.com/racekrono/adv/refs/heads/main/Logo.png" width="80" style="margin-bottom: 10px;">
-            <h2 style="margin:0 0 15px 0;">Race Krono</h2>
+            <img src="https://raw.githubusercontent.com/racekrono/adv/refs/heads/main/Logo.png" class="logo">
             <input type="text" id="nome" placeholder="Nome do Piloto">
-            <input type="number" id="carro" placeholder="Número do Carro">
+            <select id="categoria">
+                <option>UTV</option><option>BAIANO 4x2</option><option>BAIANO 4x4</option>
+            </select>
+            <input type="number" id="carro" placeholder="Nº do Carro">
             <button id="btnIniciar">INICIAR PROVA</button>
         </div>
 
-        <div id="ativo">
-            <div class="grid-topo">
-                <div class="topo-item">
-                    <div class="topo-label">Velocidade</div>
-                    <div id="viewVel" class="topo-val">0</div>
-                </div>
-                <div class="topo-item" style="border-left: 1px solid #333;">
-                    <div class="topo-label">KM Ideal</div>
-                    <div id="viewIdeal" class="topo-val">--</div>
-                </div>
+        <div id="ativo" class="tracking">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 id="viewCarro" style="color:#0d0af0; margin: 0;">Carro --</h3>
+                <div id="viewVel" style="font-size: 1.8rem; font-weight: bold;">0</div>
             </div>
 
             <div id="displayOdo" class="odo-val">0.000</div>
             
-            <div class="planilha-container" id="listaDigital">
-                <div style="padding: 20px; color: #666;">Carregando planilha...</div>
+            <div class="odo-btns">
+                <button class="btn-mini" onclick="alterarOdo(-0.010)">-10m</button>
+                <button class="btn-mini" onclick="alterarOdo(-0.001)">-1m</button>
+                <button class="btn-mini" onclick="zerarOdo()" style="background:#b30000;">ZERAR</button>
+                <button class="btn-mini" onclick="alterarOdo(0.001)">+1m</button>
+                <button class="btn-mini" onclick="alterarOdo(0.010)">+10m</button>
             </div>
 
-            <span id="msgGps">Buscando sinal GPS...</span>
-            <button onclick="encerrarSessao()" style="background: #c53030; color: white; margin-top: 15px; font-size: 12px; padding: 10px;">ENCERRAR SESSÃO</button>
+            <div class="planilha-container" id="listaDigital">
+                <div style="padding: 20px; color: #444;">Buscando planilha...</div>
+            </div>
+            
+            <div id="msgGps" class="status-gps">● AGUARDANDO GPS...</div>
+            <button class="btn-sair" onclick="encerrarSessao()">Encerrar Sessão</button>
         </div>
     </div>
 
@@ -85,135 +84,111 @@
             authDomain: "cronometro-rally.firebaseapp.com",
             databaseURL: "https://cronometro-rally-default-rtdb.firebaseio.com",
             projectId: "cronometro-rally",
-            storageBucket: "cronometro-rally.firebasestorage.app",
-            messagingSenderId: "341731891354",
             appId: "1:341731891354:web:d0c34265be68015e98a723"
         };
-
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
         let odoTotal = 0;
+        let watchID = null;
         let ultimaPos = null;
         let dadosPlanilha = [];
 
-        // --- FUNÇÃO HÍBRIDA DE CARREGAMENTO ---
-        async function carregarDadosPlanilha() {
-            // 1. Tenta buscar da Nuvem
+        // --- PERSISTÊNCIA DE LOGIN E PLANILHA ---
+        window.onload = function() {
+            const carroSalvo = localStorage.getItem('rally_carro_ativo');
+            if (carroSalvo) iniciarFluxoRastreio(carroSalvo);
+        };
+
+        async function carregarPlanilhaHibrida() {
             try {
                 const snap = await db.ref('prova_atual').once('value');
                 if (snap.exists()) {
                     dadosPlanilha = snap.val();
                     localStorage.setItem('backup_planilha', JSON.stringify(dadosPlanilha));
-                    console.log("Planilha atualizada via Nuvem.");
-                } else {
-                    throw new Error("Nuvem vazia");
-                }
+                } else { throw new Error(); }
             } catch (e) {
-                // 2. Se falhar, usa o Backup Local
                 const backup = localStorage.getItem('backup_planilha');
-                if (backup) {
-                    dadosPlanilha = JSON.parse(backup);
-                    console.log("Planilha carregada do Backup Local (Offline).");
-                }
+                if (backup) dadosPlanilha = JSON.parse(backup);
             }
-            renderizarPlanilhaDigital();
+            renderizarPlanilha();
         }
 
-        function renderizarPlanilhaDigital() {
+        function renderizarPlanilha() {
             const container = document.getElementById('listaDigital');
-            container.innerHTML = "";
-            if (dadosPlanilha.length === 0) {
-                container.innerHTML = "<div style='padding:20px;'>Sem dados de planilha disponíveis.</div>";
-                return;
-            }
-            dadosPlanilha.forEach((p, index) => {
-                const item = document.createElement('div');
-                item.className = 'grid-planilha';
-                item.id = 'ponto-' + index;
-                item.innerHTML = `
-                    <div class="celula">${parseFloat(p.km).toFixed(3)}</div>
+            container.innerHTML = dadosPlanilha.map((p, i) => `
+                <div class="grid-planilha" id="t-${i}">
+                    <div class="celula">${parseFloat(p.km).toFixed(2)}</div>
                     <div class="celula"><img src="${p.tulipa}" class="img-tulipa"></div>
                     <div class="celula">${p.media || '--'}</div>
                     <div class="celula col-obs">${p.obs || ''}</div>
-                `;
-                container.appendChild(item);
-            });
+                </div>
+            `).join('');
         }
 
-        function atualizarDestaquePlanilha() {
-            let pontoAtualIdx = 0;
+        function atualizarDestaque() {
+            let idx = 0;
             for (let i = 0; i < dadosPlanilha.length; i++) {
-                if (odoTotal >= dadosPlanilha[i].km) {
-                    pontoAtualIdx = i;
-                } else {
-                    break;
-                }
+                if (odoTotal >= parseFloat(dadosPlanilha[i].km)) idx = i;
+                else break;
             }
-            
             document.querySelectorAll('.grid-planilha').forEach(el => el.classList.remove('linha-ativa'));
-            const elAtivo = document.getElementById('ponto-' + pontoAtualIdx);
-            if (elAtivo) {
-                elAtivo.classList.add('linha-ativa');
-                elAtivo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const ativo = document.getElementById('t-' + idx);
+            if (ativo) {
+                ativo.classList.add('linha-ativa');
+                ativo.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         }
 
-        function iniciarFluxoRastreio(num) {
-            document.getElementById('setup').style.display = 'none';
-            document.getElementById('ativo').style.display = 'block';
-            
-            carregarDadosPlanilha();
-
-            navigator.geolocation.watchPosition((position) => {
-                const { latitude: lat, longitude: lng, speed, accuracy } = position.coords;
-                const kmh = Math.round((speed || 0) * 3.6);
-
-                if (accuracy <= 25) {
-                    if (ultimaPos) {
-                        const dist = calcularDistancia(ultimaPos.lat, ultimaPos.lng, lat, lng);
-                        if (dist > 0.001) { 
-                            odoTotal += dist;
-                            document.getElementById('displayOdo').innerText = odoTotal.toFixed(3);
-                            atualizarDestaquePlanilha();
-                            ultimaPos = { lat, lng };
-                        }
-                    } else {
-                        ultimaPos = { lat, lng };
-                    }
-                    document.getElementById('msgGps').innerText = "● GPS ATIVO (" + Math.round(accuracy) + "m)";
-                }
-
-                document.getElementById('viewVel').innerText = kmh;
-                db.ref('posicoes/' + num).set({ 
-                    lat, lng, vel: kmh, odo: odoTotal.toFixed(3), ts: Date.now() 
-                });
-
-            }, (err) => {
-                document.getElementById('msgGps').innerText = "❌ ERRO GPS: " + err.message;
-            }, { enableHighAccuracy: true });
+        // --- LÓGICA DO ODÔMETRO E GPS ---
+        function alterarOdo(v) { odoTotal = Math.max(0, odoTotal + v); atualizarTela(); }
+        function zerarOdo() { if(confirm("Zerar?")) { odoTotal = 0; atualizarTela(); } }
+        function atualizarTela() { 
+            document.getElementById('displayOdo').innerText = odoTotal.toFixed(3); 
+            atualizarDestaque();
         }
 
         function calcularDistancia(lat1, lon1, lat2, lon2) {
             const R = 6371;
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                      Math.sin(dLon/2) * Math.sin(dLon/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return R * c;
+            const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         }
 
-        document.getElementById('btnIniciar').onclick = function() {
+        function iniciarFluxoRastreio(num) {
+            document.getElementById('setup').style.display = 'none';
+            document.getElementById('ativo').style.display = 'block';
+            document.getElementById('viewCarro').innerText = "Carro " + num;
+            localStorage.setItem('rally_carro_ativo', num);
+            carregarPlanilhaHibrida();
+
+            watchID = navigator.geolocation.watchPosition(pos => {
+                const { latitude: lat, longitude: lng, accuracy, speed } = pos.coords;
+                const kmh = Math.round((speed || 0) * 3.6);
+                if (accuracy <= 25) {
+                    if (ultimaPos) {
+                        const d = calcularDistancia(ultimaPos.lat, ultimaPos.lng, lat, lng);
+                        if (d > 0.001) { odoTotal += d; atualizarTela(); ultimaPos = {lat, lng}; }
+                    } else { ultimaPos = {lat, lng}; }
+                }
+                document.getElementById('viewVel').innerText = kmh;
+                db.ref('posicoes/' + num).set({ lat, lng, vel: kmh, odo: odoTotal.toFixed(3), ts: Date.now() });
+            }, null, { enableHighAccuracy: true });
+        }
+
+        document.getElementById('btnIniciar').onclick = async function() {
             const num = document.getElementById('carro').value;
             const nome = document.getElementById('nome').value;
-            if(!num || !nome) return alert("Preencha Nome e Número!");
+            if(!num || !nome) return alert("Preencha tudo!");
             iniciarFluxoRastreio(num);
         };
 
         function encerrarSessao() {
-            if(confirm("Deseja realmente encerrar a prova?")) location.reload();
+            if(confirm("Sair?")) {
+                localStorage.removeItem('rally_carro_ativo');
+                location.reload();
+            }
         }
     </script>
 </body>
