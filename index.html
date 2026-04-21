@@ -17,20 +17,24 @@
     
     <style>
         body { font-family: sans-serif; background: #121212; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; overflow: hidden; }
-        .card { background: #1e1e1e; padding: 20px; border-radius: 12px; width: 95%; max-width: 400px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border-top: 5px solid #ffffff; z-index: 10; max-height: 90vh; overflow-y: auto; }
+        .card { background: #1e1e1e; padding: 20px; border-radius: 12px; width: 95%; max-width: 400px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border-top: 5px solid #ffffff; z-index: 10; max-height: 95vh; overflow-y: auto; }
         .logo { display: block; margin: 0 auto 15px auto; max-width: 120px; height: auto; }
         input, select, button { width: 100%; padding: 12px; margin-bottom: 12px; border-radius: 8px; border: 1px solid #333; background: #252525; color: white; font-size: 16px; box-sizing: border-box; }
-        button { background: #f80303; border: none; font-weight: bold; cursor: pointer; }
+        button { background: #f80303; border: none; font-weight: bold; cursor: pointer; color: white; }
         
-        /* Estilos da Planilha */
-        .planilha-container { margin-top: 15px; border: 1px solid #333; border-radius: 8px; background: #000; height: 120px; overflow-y: auto; font-family: monospace; font-size: 13px; }
-        .linha-csv { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #222; color: #666; }
-        .linha-ativa { background: #f1c40f; color: #000; font-weight: bold; }
+        /* Estilo da Planilha Digital */
+        .planilha-container { margin-top: 15px; border: 2px solid #333; border-radius: 8px; background: #000; height: 280px; overflow-y: auto; }
+        .grid-planilha { display: grid; grid-template-columns: 60px 80px 60px 1fr; border-bottom: 1px solid #333; align-items: center; background: #1e1e1e; min-height: 70px; }
+        .celula { padding: 8px; border-right: 1px solid #333; font-size: 13px; color: #fff; text-align: center; font-family: monospace; }
+        .col-obs { text-align: left; padding-left: 10px; font-family: sans-serif; font-size: 11px; text-transform: uppercase; }
+        .img-tulipa { width: 100%; max-height: 55px; filter: invert(1); object-fit: contain; }
+        .linha-ativa { background: #f1c40f !important; }
+        .linha-ativa .celula { color: #000 !important; border-right: 1px solid #9a7d0a; font-weight: bold; }
         
-        .odo-val { font-size: 4rem; font-weight: bold; color: #f1c40f; margin: 2px 0; font-family: monospace; text-align: center;}
-        .status-gps { color: #2ecc71; font-weight: bold; font-size: 14px; text-align: center;}
-        .btn-mini { padding: 10px; background: #333; width: auto; flex: 1; }
-        label { display: block; font-size: 12px; color: #888; margin-bottom: 5px; text-transform: uppercase; }
+        .odo-val { font-size: 4.5rem; font-weight: bold; color: #f1c40f; margin: 2px 0; font-family: monospace; text-align: center; line-height: 1; }
+        .status-gps { color: #2ecc71; font-weight: bold; font-size: 12px; text-align: center; margin-top: 5px; }
+        .btn-mini { padding: 10px; background: #333; width: auto; flex: 1; margin-bottom: 0; }
+        label { display: block; font-size: 11px; color: #888; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
     </style>
 </head>
 <body>
@@ -41,40 +45,44 @@
             <input type="text" id="nome" placeholder="Nome do Piloto">
             <select id="categoria">
                 <option>UTV</option>
-                <option>BAIANO 4x2</option><option>BAIANO 4x4</option>
+                <option>MOTO</option>
+                <option>BAIANO 4x2</option>
+                <option>BAIANO 4x4</option>
             </select>
-            <input type="number" id="carro" placeholder="Nº do Carro">
+            <input type="number" id="carro" placeholder="Nº do Veículo">
             
-            <label>Planilha Digital (CSV)</label>
-            <input type="file" id="csvFile" accept=".csv" style="font-size: 12px;">
+            <label>Planilha da Prova (JSON)</label>
+            <input type="file" id="csvFile" accept=".json" style="font-size: 12px;">
             
-            <button id="btnIniciar">INICIAR PROVA</button>
+            <button id="btnIniciar">INICIAR COMPETIÇÃO</button>
         </div>
 
         <div id="ativo" style="display:none; text-align: center;">
-            <h2 id="viewCarro" style="color:#0d0af0; margin: 0;">Carro --</h2>
-            <div id="viewVel" style="font-size: 1.5rem; font-weight: bold;">0.0</div>
-            <p style="margin: 0; color: #888; font-size: 10px;">KM/H</p>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 id="viewCarro" style="color:#0d0af0; margin: 0;">Carro --</h3>
+                <div id="viewVel" style="font-size: 1.8rem; font-weight: bold;">0</div>
+                <span style="font-size: 10px; color: #888;">KM/H</span>
+            </div>
 
-            <div id="displayOdo" class="odo-val" onclick="ajusteManualOdo()">0.000</div>
+            <div id="displayOdo" class="odo-val">0.000</div>
             
-            <div style="display:flex; gap:5px; margin-bottom: 15px;">
+            <div style="display:flex; gap:8px; margin-top: 5px;">
                 <button class="btn-mini" onclick="alterarOdo(-0.010)">-10m</button>
                 <button class="btn-mini" onclick="zerarOdo()" style="background:#b30000;">ZERAR</button>
                 <button class="btn-mini" onclick="alterarOdo(0.010)">+10m</button>
             </div>
 
-            <div class="planilha-container" id="listaCsv">
-                <div style="padding: 20px; color: #444;">Nenhuma planilha carregada</div>
+            <div class="planilha-container" id="listaDigital">
+                <div style="padding: 40px 20px; color: #444; text-align: center;">Carregue a planilha para navegar</div>
             </div>
             
-            <div id="msgGps" class="status-gps" style="margin-top:10px;">● CONECTANDO...</div>
-            <button onclick="encerrarSessao()" style="background:transparent; color:#444; font-size:11px; text-decoration:underline; border:none; margin-top:10px;">Sair</button>
+            <div id="msgGps" class="status-gps">● AGUARDANDO GPS...</div>
+            <button onclick="encerrarSessao()" style="background:transparent; color:#555; font-size:10px; text-decoration:underline; border:none; margin-top:15px; width: auto;">ENCERRAR SESSÃO</button>
         </div>
     </div>
 
     <script>
-        // Configuração Firebase (Mantida do seu original)
+        // Configurações do Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
             authDomain: "cronometro-rally.firebaseapp.com",
@@ -90,33 +98,32 @@
         let ultimaPos = null;
         let dadosPlanilha = [];
 
-        // --- LÓGICA DO CSV ---
+        // --- CARREGAMENTO DA PLANILHA ---
         document.getElementById('csvFile').addEventListener('change', function(e) {
             const file = e.target.files[0];
+            if (!file) return;
             const reader = new FileReader();
             reader.onload = function(event) {
-                const text = event.target.result;
-                processarCSV(text);
+                try {
+                    dadosPlanilha = JSON.parse(event.target.result);
+                    console.log("Planilha carregada:", dadosPlanilha.length, "linhas");
+                } catch(err) {
+                    alert("Erro no arquivo JSON!");
+                }
             };
             reader.readAsText(file);
         });
 
-        function processarCSV(texto) {
-            const linhas = texto.split('\n');
-            dadosPlanilha = linhas.map(linha => {
-                const colunas = linha.split(',');
-                return { km: parseFloat(colunas[0]), desc: colunas[1] || '' };
-            }).filter(item => !isNaN(item.km));
+        function renderizarPlanilhaDigital() {
+            const container = document.getElementById('listaDigital');
+            if (dadosPlanilha.length === 0) return;
             
-            renderizarPlanilha();
-        }
-
-        function renderizarPlanilha() {
-            const container = document.getElementById('listaCsv');
             container.innerHTML = dadosPlanilha.map((item, index) => `
-                <div class="linha-csv" id="tulipa-${index}">
-                    <span>KM: ${item.km.toFixed(3)}</span>
-                    <span>${item.desc}</span>
+                <div class="grid-planilha" id="tulipa-${index}">
+                    <div class="celula">${parseFloat(item.km).toFixed(2)}</div>
+                    <div class="celula"><img src="${item.tulipa}" class="img-tulipa"></div>
+                    <div class="celula">${item.media}</div>
+                    <div class="celula col-obs">${item.obs}</div>
                 </div>
             `).join('');
         }
@@ -125,37 +132,35 @@
             if (dadosPlanilha.length === 0) return;
             
             let indiceAtivo = 0;
-            // Encontra a linha mais próxima do KM atual que o piloto já passou
             for (let i = 0; i < dadosPlanilha.length; i++) {
-                if (odoTotal >= dadosPlanilha[i].km) {
+                if (odoTotal >= parseFloat(dadosPlanilha[i].km)) {
                     indiceAtivo = i;
                 } else {
                     break;
                 }
             }
 
-            // Remove destaques anteriores e aplica no novo
-            document.querySelectorAll('.linha-csv').forEach(el => el.classList.remove('linha-ativa'));
+            document.querySelectorAll('.grid-planilha').forEach(el => el.classList.remove('linha-ativa'));
             const elementoAtivo = document.getElementById(`tulipa-${indiceAtivo}`);
             if (elementoAtivo) {
                 elementoAtivo.classList.add('linha-ativa');
-                elementoAtivo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                elementoAtivo.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         }
 
-        // --- LÓGICA DE NAVEGAÇÃO (ADAPTADA DO SEU ORIGINAL) ---
+        // --- LÓGICA DE NAVEGAÇÃO E GPS ---
         function alterarOdo(v) { 
             odoTotal = Math.max(0, odoTotal + v); 
             atualizarTelaOdo(); 
         }
 
         function zerarOdo() { 
-            if(confirm("Zerar odômetro?")) { odoTotal = 0; atualizarTelaOdo(); } 
+            if(confirm("Deseja zerar o odômetro?")) { odoTotal = 0; atualizarTelaOdo(); } 
         }
 
         function atualizarTelaOdo() { 
             document.getElementById('displayOdo').innerText = odoTotal.toFixed(3); 
-            atualizarDestaquePlanilha(); // Vincula a planilha ao odômetro
+            atualizarDestaquePlanilha();
         }
 
         function calcularDistancia(lat1, lon1, lat2, lon2) {
@@ -170,15 +175,17 @@
             document.getElementById('setup').style.display = 'none';
             document.getElementById('ativo').style.display = 'block';
             document.getElementById('viewCarro').innerText = "Carro " + num;
+            
+            renderizarPlanilhaDigital();
 
             watchID = navigator.geolocation.watchPosition(position => {
                 const { latitude: lat, longitude: lng, accuracy, speed } = position.coords;
                 const kmh = Math.round((speed || 0) * 3.6);
 
-                if (accuracy <= 20) {
+                if (accuracy <= 25) {
                     if (ultimaPos) {
                         const dist = calcularDistancia(ultimaPos.lat, ultimaPos.lng, lat, lng);
-                        if (dist > 0.002) { // Incremento mínimo de 2 metros
+                        if (dist > 0.001) { 
                             odoTotal += dist;
                             atualizarTelaOdo();
                             ultimaPos = { lat, lng };
@@ -186,22 +193,26 @@
                     } else {
                         ultimaPos = { lat, lng };
                     }
+                    document.getElementById('msgGps').innerText = "● GPS ATIVO (" + Math.round(accuracy) + "m)";
                 }
 
-                document.getElementById('viewVel').innerText = kmh.toFixed(1);
-                db.ref('posicoes/' + num).set({ lat, lng, vel: kmh, ts: Date.now() });
+                document.getElementById('viewVel').innerText = kmh;
+                db.ref('posicoes/' + num).set({ lat, lng, vel: kmh, odo: odoTotal.toFixed(3), ts: Date.now() });
 
-            }, null, { enableHighAccuracy: true });
+            }, (err) => {
+                document.getElementById('msgGps').innerText = "❌ ERRO GPS";
+            }, { enableHighAccuracy: true });
         }
 
         document.getElementById('btnIniciar').onclick = function() {
             const num = document.getElementById('carro').value;
-            if(!num) return alert("Informe o número!");
+            const nome = document.getElementById('nome').value;
+            if(!num || !nome) return alert("Preencha o Nome e o Número!");
             iniciarFluxoRastreio(num);
         };
 
         function encerrarSessao() {
-            if(confirm("Sair?")) location.reload();
+            if(confirm("Encerrar prova?")) location.reload();
         }
     </script>
 </body>
