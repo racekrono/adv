@@ -27,7 +27,6 @@
         .odo-btns { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; }
         .btn-mini { padding: 10px; font-size: 12px; background: #333; margin-bottom: 5px; width: auto; flex: 1; border: 1px solid #444; }
 
-        /* Planilha Digital Integrada */
         .planilha-container { margin-top: 15px; border: 2px solid #333; border-radius: 8px; background: #000; height: 220px; overflow-y: auto; }
         .grid-planilha { display: grid; grid-template-columns: 55px 75px 50px 1fr; border-bottom: 1px solid #222; align-items: center; min-height: 65px; }
         .celula { padding: 4px; font-size: 12px; color: #fff; text-align: center; font-family: monospace; }
@@ -36,7 +35,8 @@
         .linha-ativa { background: #f1c40f !important; }
         .linha-ativa .celula, .linha-ativa .col-obs { color: #000 !important; font-weight: bold; }
 
-        .status-gps { color: #2ecc71; font-weight: bold; font-size: 12px; margin-top: 10px; }
+        .status-gps { color: #f1c40f; font-weight: bold; font-size: 11px; margin-top: 10px; }
+        .status-net { font-size: 10px; margin-top: 5px; font-weight: bold; }
         .btn-sair { background: transparent; color: #444; font-size: 10px; text-decoration: underline; border: none; cursor: pointer; margin-top: 10px; }
     </style>
 </head>
@@ -73,7 +73,8 @@
                 <div style="padding: 20px; color: #444;">Buscando planilha...</div>
             </div>
             
-            <div id="msgGps" class="status-gps">● AGUARDANDO GPS...</div>
+            <div id="msgGps" class="status-gps">● BUSCANDO SATÉLITES...</div>
+            <div id="msgNet" class="status-net" style="color: #2ecc71;">● CONECTADO À NUVEM</div>
             <button class="btn-sair" onclick="encerrarSessao()">Encerrar Sessão</button>
         </div>
     </div>
@@ -94,7 +95,18 @@
         let ultimaPos = null;
         let dadosPlanilha = [];
 
-        // --- PERSISTÊNCIA DE LOGIN E PLANILHA ---
+        // --- MONITOR DE INTERNET ---
+        window.addEventListener('offline', () => {
+            const net = document.getElementById('msgNet');
+            net.innerText = "⚠️ SEM INTERNET! DADOS PROTEGIDOS, NÃO FECHE A TELA";
+            net.style.color = "#f80303";
+        });
+        window.addEventListener('online', () => {
+            const net = document.getElementById('msgNet');
+            net.innerText = "● CONECTADO À NUVEM";
+            net.style.color = "#2ecc71";
+        });
+
         window.onload = function() {
             const carroSalvo = localStorage.getItem('rally_carro_ativo');
             if (carroSalvo) iniciarFluxoRastreio(carroSalvo);
@@ -106,7 +118,7 @@
                 if (snap.exists()) {
                     dadosPlanilha = snap.val();
                     localStorage.setItem('backup_planilha', JSON.stringify(dadosPlanilha));
-                } else { throw new Error(); }
+                }
             } catch (e) {
                 const backup = localStorage.getItem('backup_planilha');
                 if (backup) dadosPlanilha = JSON.parse(backup);
@@ -118,15 +130,17 @@
             const container = document.getElementById('listaDigital');
             container.innerHTML = dadosPlanilha.map((p, i) => `
                 <div class="grid-planilha" id="t-${i}">
-                    <div class="celula">${parseFloat(p.km).toFixed(2)}</div>
+                    <div class="celula">${parseFloat(p.km).toFixed(3)}</div>
                     <div class="celula"><img src="${p.tulipa}" class="img-tulipa"></div>
                     <div class="celula">${p.media || '--'}</div>
                     <div class="celula col-obs">${p.obs || ''}</div>
                 </div>
             `).join('');
+            atualizarDestaque();
         }
 
         function atualizarDestaque() {
+            if (dadosPlanilha.length === 0) return;
             let idx = 0;
             for (let i = 0; i < dadosPlanilha.length; i++) {
                 if (odoTotal >= parseFloat(dadosPlanilha[i].km)) idx = i;
@@ -140,9 +154,8 @@
             }
         }
 
-        // --- LÓGICA DO ODÔMETRO E GPS ---
         function alterarOdo(v) { odoTotal = Math.max(0, odoTotal + v); atualizarTela(); }
-        function zerarOdo() { if(confirm("Zerar?")) { odoTotal = 0; atualizarTela(); } }
+        function zerarOdo() { if(confirm("Zerar Odômetro?")) { odoTotal = 0; atualizarTela(); } }
         function atualizarTela() { 
             document.getElementById('displayOdo').innerText = odoTotal.toFixed(3); 
             atualizarDestaque();
@@ -166,26 +179,36 @@
             watchID = navigator.geolocation.watchPosition(pos => {
                 const { latitude: lat, longitude: lng, accuracy, speed } = pos.coords;
                 const kmh = Math.round((speed || 0) * 3.6);
+                const statusGps = document.getElementById('msgGps');
+
                 if (accuracy <= 25) {
+                    statusGps.innerText = "● GPS ATIVO (" + Math.round(accuracy) + "m)";
+                    statusGps.style.color = "#2ecc71";
                     if (ultimaPos) {
                         const d = calcularDistancia(ultimaPos.lat, ultimaPos.lng, lat, lng);
                         if (d > 0.001) { odoTotal += d; atualizarTela(); ultimaPos = {lat, lng}; }
                     } else { ultimaPos = {lat, lng}; }
+                } else {
+                    statusGps.innerText = "● SINAL GPS FRACO (" + Math.round(accuracy) + "m)";
+                    statusGps.style.color = "#f1c40f";
                 }
+                
                 document.getElementById('viewVel').innerText = kmh;
                 db.ref('posicoes/' + num).set({ lat, lng, vel: kmh, odo: odoTotal.toFixed(3), ts: Date.now() });
-            }, null, { enableHighAccuracy: true });
+            }, (err) => {
+                document.getElementById('msgGps').innerText = "❌ ERRO GPS: " + err.message;
+            }, { enableHighAccuracy: true });
         }
 
-        document.getElementById('btnIniciar').onclick = async function() {
+        document.getElementById('btnIniciar').onclick = function() {
             const num = document.getElementById('carro').value;
             const nome = document.getElementById('nome').value;
-            if(!num || !nome) return alert("Preencha tudo!");
+            if(!num || !nome) return alert("Preencha Nome e Número!");
             iniciarFluxoRastreio(num);
         };
 
         function encerrarSessao() {
-            if(confirm("Sair?")) {
+            if(confirm("Encerrar prova e sair?")) {
                 localStorage.removeItem('rally_carro_ativo');
                 location.reload();
             }
