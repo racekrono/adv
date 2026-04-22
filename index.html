@@ -272,7 +272,7 @@
             if(!nome || !num) return alert("Preencha tudo!");
             
             const provaSnap = await db.ref('configuracoes/provaAberta').once('value');
-            if (provaSnap.val() !== true) return alert("Prova fechada!");
+            if (provaSnap.val() !== true) return alert("🚫 A prova será liberada em instantes!");
 
             somClique();
             await db.ref('competidores/' + num).set({ nome, categoria: document.getElementById('categoria').value });
@@ -331,6 +331,36 @@
         function pararGps() { if (watchID) navigator.geolocation.clearWatch(watchID); }
         function limparLocalStorage() { localStorage.removeItem('rally_carro_ativo'); localStorage.removeItem('rally_timestamp_login'); }
         function verRastro() { location.href = 'rastropiloto.html'; }
+ // --- CONTROLE DO MENU SUSPENSO ---
+const btnMenu = document.getElementById('btnMenu');
+const menuOpcoes = document.getElementById('menuOpcoes');
+
+// Abre/Fecha o menu ao clicar no botão ☰
+btnMenu.onclick = (e) => {
+    e.stopPropagation(); // Impede que o clique feche o menu imediatamente
+    menuOpcoes.style.display = menuOpcoes.style.display === 'block' ? 'none' : 'block';
+};
+
+// Fecha o menu se o usuário clicar em qualquer outro lugar da tela
+window.onclick = () => {
+    menuOpcoes.style.display = 'none';
+};
+
+// Funções dos botões do menu
+function enviarDatalogger() {
+    alert("Datalogger enviado com sucesso!");
+    // Aqui você pode adicionar a lógica de push para o Firebase se desejar
+}
+
+function verRastro() {
+    const c = localStorage.getItem('rally_carro_ativo');
+    if (c) {
+        window.location.href = 'rastropiloto.html';
+    } else {
+        alert("Inicie a prova primeiro.");
+    }
+}
+    
     </script>
 </body>
 </html>
