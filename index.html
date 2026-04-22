@@ -40,18 +40,10 @@
         .btn-mini { padding: 8px 2px; font-size: 11px; background: #333; margin-bottom: 0; width: auto; flex: 1; border: 1px solid #444; color: white; border-radius: 4px; }
 
         .roadbook-container { 
-            background: #000; 
-            border-radius: 8px; 
-            overflow-y: auto; 
-            flex-grow: 0; 
-            border: 2px solid #333; 
-            min-height: 260px; 
-            margin-bottom: 10px;
-            scroll-behavior: smooth;
-            height: 260px; 
-            max-height: 260px;      
+            background: #000; border-radius: 8px; overflow-y: auto; flex-grow: 0; border: 2px solid #333; 
+            min-height: 260px; margin-bottom: 10px; scroll-behavior: smooth; height: 260px; max-height: 260px;      
         }
-        .roadbook-item { display: flex; align-items: center; border-bottom: 1px solid #222; padding: 6px 4px; gap: 8px; transition: background 0.3s; }
+        .roadbook-item { display: flex; align-items: center; border-bottom: 1px solid #222; padding: 6px 4px; gap: 8px; }
         .rb-item-ativo { background-color: #262d37 !important; border-left: 6px solid #FF0000 ; }
         .rb-col-km { flex: 0 0 55px; font-family: monospace; font-weight: bold; color: #f1c40f; font-size: 18px; text-align: right; }
         .rb-col-tulipa { flex: 0 0 80px; background: white; padding: 2px; border-radius: 4px; display: flex; justify-content: center; align-items: center; min-height: 70px; }
@@ -60,13 +52,11 @@
 
         .status-container { padding: 5px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid #333; margin-bottom: 5px; }
         .status-gps { color: #2ecc71; font-weight: bold; font-size: 11px; text-align: center; }
-        .status-offline { color: #f1c40f !important; }
         
         #menuContainer { position: absolute; top: 15px; right: 15px; z-index: 100; }
         #btnMenu { width: 40px; height: 40px; padding: 0; margin: 0; border-radius: 50%; background: #333; display: flex; justify-content: center; align-items: center; border: 1px solid #444; font-size: 20px; color: white; }
         #menuOpcoes { display: none; position: absolute; top: 45px; right: 0; background: #252525; border: 1px solid #444; border-radius: 8px; width: 200px; box-shadow: 0 4px 15px rgba(0,0,0,0.8); overflow: hidden; }
-        #menuOpcoes button { margin: 0; border: none; border-bottom: 1px solid #333; background: transparent; text-align: left; font-size: 14px; padding: 15px; border-radius: 0; }
-        #menuOpcoes button:last-child { border-bottom: none; }
+        #menuOpcoes button { margin: 0; border: none; border-bottom: 1px solid #333; background: transparent; text-align: left; font-size: 14px; padding: 15px; border-radius: 0; width: 100%; }
         #menuOpcoes button:hover { background: #333; }
     </style>
 </head>
@@ -84,14 +74,12 @@
         <div id="setup">
             <img src="https://raw.githubusercontent.com/racekrono/adv/refs/heads/main/Logo.png" class="logo">
             <h2 style="color:#ffffff; text-align:center; margin-top: 0; font-size: 1.2rem;">Rally de Aventura</h2>
-            <input type="text" id="nome" placeholder="Nome do Piloto" oninput="this.value = this.value.replace(/[0-9]/g, '')">
+            <input type="text" id="nome" placeholder="Nome do Piloto">
             <select id="categoria">
-                <option>UTV</option>
-                <option>BAIANO 4x2</option><option>BAIANO 4x4</option>
-                <option>INICIANTE 4x2</option><option>INICIANTE 4x4</option>
-                <option>ANTIGOS</option>
+                <option>UTV</option><option>BAIANO 4x2</option><option>BAIANO 4x4</option>
+                <option>INICIANTE 4x2</option><option>INICIANTE 4x4</option><option>ANTIGOS</option>
             </select>
-            <input type="number" id="carro" placeholder="Nº do Carro" min="1" max="100">
+            <input type="number" id="carro" placeholder="Nº do Carro">
             <button id="btnIniciar">INICIAR PROVA</button>
         </div>
 
@@ -101,7 +89,6 @@
                 <div id="viewVel">0.0</div>
                 <span class="unidade-kmh">KM/H</span>
             </div>
-
             <div class="odo-box">
                 <span class="odo-label">Odômetro</span>
                 <div id="displayOdo" class="odo-val" onclick="ajusteManualOdo()">0.000</div>
@@ -113,11 +100,9 @@
                     <button class="btn-mini" onclick="alterarOdo(0.010)">+10m</button>
                 </div>
             </div>
-
             <div class="roadbook-container" id="roadbookList">
-                <div style="padding: 20px; color: #444; font-size: 11px; text-align: center;">CARREGANDO PLANILHA...</div>
+                <div style="padding: 20px; color: #444; font-size: 11px; text-align: center;">CARREGANDO...</div>
             </div>
-            
             <div class="status-container">
                 <div id="msgGps" class="status-gps">● CONECTANDO...</div>
             </div>
@@ -135,232 +120,157 @@
         const app = firebase.initializeApp(firebaseConfig);
         const db = firebase.database(app);
 
-        let wakeLock = null;
         let watchID = null;
-        let odoTotal = 0;
-        let ultimaPos = null;
-        let ultimoIndiceAtivo = -1;
-        let radaresConfig = null;
-        let alertaAtivo = false;
-        let intervaloBip = null;
+        let odoTotal = 0, ultimaPos = null, ultimoIndiceAtivo = -1;
+        let radaresConfig = null, alertaAtivo = false, intervaloBip = null, audioCtx = null;
 
-        let audioCtx = null;
+        // --- ÁUDIO ---
         function obterAudioContext() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
             return audioCtx;
         }
-
-        function tocarBip(frequencia, duracao, volume = 0.1) {
+        function tocarBip(f, d, v = 0.1) {
             try {
                 const ctx = obterAudioContext();
-                const oscillator = ctx.createOscillator();
-                const gainNode = ctx.createGain();
-                oscillator.type = 'sine';
-                oscillator.frequency.setValueAtTime(frequencia, ctx.currentTime);
-                gainNode.gain.setValueAtTime(volume, ctx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duracao);
-                oscillator.connect(gainNode);
-                gainNode.connect(ctx.destination);
-                oscillator.start();
-                oscillator.stop(ctx.currentTime + duracao);
-            } catch (e) { console.error(e); }
+                const osc = ctx.createOscillator();
+                const g = ctx.createGain();
+                osc.type = 'sine'; osc.frequency.setValueAtTime(f, ctx.currentTime);
+                g.gain.setValueAtTime(v, ctx.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + d);
+                osc.connect(g); g.connect(ctx.destination);
+                osc.start(); osc.stop(ctx.currentTime + d);
+            } catch (e) {}
         }
-
-        const somClique = () => tocarBip(2000, 0.08, 0.1); 
+        const somClique = () => tocarBip(2000, 0.08, 0.1);
         const somTrocaReferencia = () => tocarBip(1200, 0.25, 0.15);
         const somAlertaVelocidade = () => tocarBip(3000, 0.1, 0.2);
 
-        // Carrega radares do Admin
+        // --- RADAR ---
         db.ref('configuracoes/percurso').on('value', snap => { radaresConfig = snap.val(); });
 
-        function monitorarRadarVirtual(lat, lng, velAtual) {
+        function monitorarRadar(lat, lng, vel) {
             if (!radaresConfig || !radaresConfig.features) return;
-            let limiteAtual = 0;
-            const pontoAtual = turf.point([lng, lat]);
-
-            radaresConfig.features.forEach(feat => {
-                if (feat.geometry.type === 'Polygon' || feat.geometry.type === 'MultiPolygon') {
-                    if (turf.booleanPointInPolygon(pontoAtual, feat)) {
-                        limiteAtual = feat.properties.velocidade || 0;
-                    }
-                }
+            let limite = 0;
+            const pt = turf.point([lng, lat]);
+            radaresConfig.features.forEach(f => {
+                if (turf.booleanPointInPolygon(pt, f)) limite = f.properties.velocidade || 0;
             });
-
-            const displayVel = document.getElementById('viewVel');
-            if (limiteAtual > 0 && velAtual > limiteAtual) {
+            const dVel = document.getElementById('viewVel');
+            if (limite > 0 && vel > limite) {
                 if (!alertaAtivo) {
-                    alertaAtivo = true;
-                    document.body.style.background = "#4a0000";
-                    displayVel.style.color = "#ff0000";
+                    alertaAtivo = true; document.body.style.background = "#4a0000"; dVel.style.color = "#ff0000";
                     if (!intervaloBip) intervaloBip = setInterval(somAlertaVelocidade, 400);
                 }
-            } else {
-                if (alertaAtivo) {
-                    alertaAtivo = false;
-                    document.body.style.background = "#121212";
-                    displayVel.style.color = "#f1c40f";
-                    clearInterval(intervaloBip);
-                    intervaloBip = null;
-                }
+            } else if (alertaAtivo) {
+                alertaAtivo = false; document.body.style.background = "#121212"; dVel.style.color = "#f1c40f";
+                clearInterval(intervaloBip); intervaloBip = null;
             }
         }
 
-        window.onload = async function() {
-            const salvo = localStorage.getItem('rally_carro_ativo');
-            const tempoLogin = localStorage.getItem('rally_timestamp_login') || 0;
-
-            if (salvo) {
-                const snapLogoff = await db.ref('configuracoes/comandoLogoff').once('value');
-                const timestampLogoff = snapLogoff.val() || 0;
-                if (timestampLogoff > parseInt(tempoLogin)) {
-                    limparLocalStorage(); location.reload();
-                } else {
-                    iniciarFluxoRastreio(salvo); carregarRoadbook();
-                }
+        // --- LÓGICA PRINCIPAL ---
+        window.onload = async () => {
+            const car = localStorage.getItem('rally_carro_ativo');
+            const ts = localStorage.getItem('rally_timestamp_login') || 0;
+            if (car) {
+                const sLog = await db.ref('configuracoes/comandoLogoff').once('value');
+                if ((sLog.val() || 0) > parseInt(ts)) { limpar(); location.reload(); }
+                else { iniciar(car); carregarPlanilha(); }
             }
         };
 
-        function iniciarFluxoRastreio(num) {
+        function iniciar(num) {
             document.getElementById('setup').style.display = 'none';
             document.getElementById('ativo').style.display = 'flex';
             document.getElementById('viewCarro').innerText = "Carro " + num;
 
-            // Monitor de Conexão e Logoff em tempo real
-            const msgStatus = document.getElementById('msgGps');
-            db.ref(".info/connected").on("value", (snap) => {
-                if (snap.val() === true) {
-                    msgStatus.innerText = "● TRANSMITINDO AO VIVO";
-                    msgStatus.style.color = "#2ecc71";
-                    msgStatus.classList.remove('status-offline');
-                } else {
-                    msgStatus.innerText = "SEM INTERNET - DADOS PROTEGIDOS";
-                    msgStatus.style.color = "#f1c40f";
-                    msgStatus.classList.add('status-offline');
+            // Monitor Conexão e Logoff
+            const st = document.getElementById('msgGps');
+            db.ref(".info/connected").on("value", s => {
+                st.innerText = s.val() ? "● TRANSMITINDO AO VIVO" : "SEM INTERNET - DADOS PROTEGIDOS";
+                st.style.color = s.val() ? "#2ecc71" : "#f1c40f";
+            });
+            db.ref('configuracoes/comandoLogoff').on('value', s => {
+                if ((s.val() || 0) > (localStorage.getItem('rally_timestamp_login') || 0)) {
+                    if(watchID) navigator.geolocation.clearWatch(watchID);
+                    limpar(); location.reload();
                 }
             });
 
-            db.ref('configuracoes/comandoLogoff').on('value', snap => {
-                const tsLogoff = snap.val() || 0;
-                const tsLogin = localStorage.getItem('rally_timestamp_login') || 0;
-                if (tsLogoff > tsLogin) { 
-                    pararGps(); limparLocalStorage(); location.reload(); 
-                }
-            });
-
-            watchID = navigator.geolocation.watchPosition(position => {
-                const { latitude: lat, longitude: lng, accuracy, speed } = position.coords;
-                const kmh = Math.round((speed || 0) * 3.6);
-                if (accuracy > 25) return;
-
+            watchID = navigator.geolocation.watchPosition(p => {
+                const { latitude: lat, longitude: lng, accuracy: acc, speed: spd } = p.coords;
+                const kmh = Math.round((spd || 0) * 3.6);
+                if (acc > 25) return;
                 if (ultimaPos) {
-                    const dist = calcularDistancia(ultimaPos.lat, ultimaPos.lng, lat, lng);
-                    if (dist > 0.004) { odoTotal += dist; atualizarTelaOdo(); ultimaPos = { lat, lng }; }
-                } else { ultimaPos = { lat, lng }; }
-
+                    const d = calcularDist(ultimaPos.lat, ultimaPos.lng, lat, lng);
+                    if (d > 0.004) { odoTotal += d; atualizarTelaOdo(); ultimaPos = { lat, lng }; }
+                } else ultimaPos = { lat, lng };
                 document.getElementById('viewVel').innerText = kmh.toFixed(1);
-                monitorarRadarVirtual(lat, lng, kmh);
-                
-                db.ref('posicoes/' + num).set({ lat, lng, vel: kmh, acc: accuracy, ts: Date.now() });
-                db.ref('rastros/' + num).push({ lat, lng, vel: kmh, acc: accuracy, ts: Date.now() });
+                monitorarRadar(lat, lng, kmh);
+                db.ref('posicoes/' + num).set({ lat, lng, vel: kmh, acc, ts: Date.now() });
+                db.ref('rastros/' + num).push({ lat, lng, vel: kmh, acc, ts: Date.now() });
             }, null, { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
         }
 
-        document.getElementById('btnIniciar').onclick = async function() {
-            const num = document.getElementById('carro').value;
-            const nome = document.getElementById('nome').value.trim();
-            if(!nome || !num) return alert("Preencha tudo!");
-            
-            const provaSnap = await db.ref('configuracoes/provaAberta').once('value');
-            if (provaSnap.val() !== true) return alert("🚫 A prova será liberada em instantes!");
-
+        document.getElementById('btnIniciar').onclick = async () => {
+            const num = document.getElementById('carro').value, nome = document.getElementById('nome').value.trim();
+            if (!num || !nome) return alert("Preencha tudo!");
+            const s = await db.ref('configuracoes/provaAberta').once('value');
+            if (s.val() !== true) return alert("🚫 A PROVA SERÁ LIBERADA EM INSTANTES!");
             somClique();
             await db.ref('competidores/' + num).set({ nome, categoria: document.getElementById('categoria').value });
             localStorage.setItem('rally_carro_ativo', num);
             localStorage.setItem('rally_timestamp_login', Date.now());
-            iniciarFluxoRastreio(num); carregarRoadbook();
+            iniciar(num); carregarPlanilha();
         };
 
-        function carregarRoadbook() {
-            db.ref('prova_atual').on('value', snap => {
-                const dados = snap.val();
-                const list = document.getElementById('roadbookList');
-                if (!dados) return list.innerHTML = '<div style="padding:20px; color:#444;">PLANILHA INDISPONÍVEL</div>';
-                list.innerHTML = '';
-                dados.forEach((item, i) => {
-                    const div = document.createElement('div');
-                    div.className = 'roadbook-item';
-                    div.id = 'rb-item-' + i;
-                    div.innerHTML = `<div class="rb-col-km">${parseFloat(item.km).toFixed(3)}</div><div class="rb-col-tulipa">${item.tulipa ? `<img src="${item.tulipa}">` : ''}</div><div class="rb-col-obs">${item.obs || '--'}</div>`;
-                    list.appendChild(div);
-                });
-                atualizarScrollRoadbook();
+        // --- ROADBOOK E ODO ---
+        function carregarPlanilha() {
+            db.ref('prova_atual').on('value', s => {
+                const d = s.val(), list = document.getElementById('roadbookList');
+                if (!d) return list.innerHTML = '<div style="padding:20px;">SEM PLANILHA</div>';
+                list.innerHTML = d.map((it, i) => `
+                    <div class="roadbook-item" id="rb-item-${i}">
+                        <div class="rb-col-km">${parseFloat(it.km).toFixed(3)}</div>
+                        <div class="rb-col-tulipa">${it.tulipa ? `<img src="${it.tulipa}">`:''}</div>
+                        <div class="rb-col-obs">${it.obs || '--'}</div>
+                    </div>`).join('');
+                scrollRB();
             });
         }
-
-        function atualizarScrollRoadbook() {
-            const itens = document.querySelectorAll('.roadbook-item');
-            let idx = -1;
-            itens.forEach((div, i) => {
+        function scrollRB() {
+            const its = document.querySelectorAll('.roadbook-item'); let idx = -1;
+            its.forEach((div, i) => {
                 const km = parseFloat(div.querySelector('.rb-col-km').innerText);
                 div.classList.remove('rb-item-ativo');
                 if (idx === -1 && odoTotal < km) idx = i;
             });
             if (idx !== -1) {
-                if (idx !== ultimoIndiceAtivo) { if (ultimoIndiceAtivo !== -1) somTrocaReferencia(); ultimoIndiceAtivo = idx; }
-                const alvo = document.getElementById('rb-item-' + idx);
-                alvo.classList.add('rb-item-ativo'); alvo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                if (idx !== ultimoIndiceAtivo) { if(ultimoIndiceAtivo !== -1) somTrocaReferencia(); ultimoIndiceAtivo = idx; }
+                const el = document.getElementById('rb-item-' + idx); el.classList.add('rb-item-ativo');
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         }
-
-        function calcularDistancia(lat1, lon1, lat2, lon2) {
-            const R = 6371; 
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+        function calcularDist(la1, lo1, la2, lo2) {
+            const R = 6371, dLa = (la2-la1)*Math.PI/180, dLo = (lo2-lo1)*Math.PI/180;
+            const a = Math.sin(dLa/2)**2 + Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLo/2)**2;
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         }
-
         function alterarOdo(v) { odoTotal = Math.max(0, odoTotal + v); somClique(); atualizarTelaOdo(); }
         function zerarOdo() { if(confirm("Zerar?")) { odoTotal = 0; somClique(); atualizarTelaOdo(); } }
-        function atualizarTelaOdo() { document.getElementById('displayOdo').innerText = odoTotal.toFixed(3); atualizarScrollRoadbook(); }
+        function atualizarTelaOdo() { document.getElementById('displayOdo').innerText = odoTotal.toFixed(3); scrollRB(); }
         function ajusteManualOdo() { 
             let n = prompt("Ajustar (KM):", odoTotal.toFixed(3));
             if(n) { odoTotal = Math.max(0, parseFloat(n.replace(',','.'))); somClique(); atualizarTelaOdo(); }
         }
-        function pararGps() { if (watchID) navigator.geolocation.clearWatch(watchID); }
-        function limparLocalStorage() { localStorage.removeItem('rally_carro_ativo'); localStorage.removeItem('rally_timestamp_login'); }
+        function limpar() { localStorage.removeItem('rally_carro_ativo'); localStorage.removeItem('rally_timestamp_login'); }
+
+        // --- MENU ---
+        const btnM = document.getElementById('btnMenu'), optM = document.getElementById('menuOpcoes');
+        btnM.onclick = (e) => { e.stopPropagation(); optM.style.display = optM.style.display === 'block' ? 'none' : 'block'; };
+        window.onclick = () => { optM.style.display = 'none'; };
+        function enviarDatalogger() { alert("Datalogger enviado!"); }
         function verRastro() { location.href = 'rastropiloto.html'; }
- // --- CONTROLE DO MENU SUSPENSO ---
-const btnMenu = document.getElementById('btnMenu');
-const menuOpcoes = document.getElementById('menuOpcoes');
-
-// Abre/Fecha o menu ao clicar no botão ☰
-btnMenu.onclick = (e) => {
-    e.stopPropagation(); // Impede que o clique feche o menu imediatamente
-    menuOpcoes.style.display = menuOpcoes.style.display === 'block' ? 'none' : 'block';
-};
-
-// Fecha o menu se o usuário clicar em qualquer outro lugar da tela
-window.onclick = () => {
-    menuOpcoes.style.display = 'none';
-};
-
-// Funções dos botões do menu
-function enviarDatalogger() {
-    alert("Datalogger enviado com sucesso!");
-    // Aqui você pode adicionar a lógica de push para o Firebase se desejar
-}
-
-function verRastro() {
-    const c = localStorage.getItem('rally_carro_ativo');
-    if (c) {
-        window.location.href = 'rastropiloto.html';
-    } else {
-        alert("Inicie a prova primeiro.");
-    }
-}
-    
     </script>
 </body>
 </html>
