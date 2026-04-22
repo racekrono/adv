@@ -24,18 +24,46 @@
         button { background: #f80303; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
         button:active { transform: scale(0.98); }
         #setup { display: block; } 
-        .tracking { text-align: center; display: none; }
+        
+        /* Estilos da tela de rastreio ativa */
+        .tracking { text-align: center; display: none; padding-top: 10px; }
+        
+        .header-dados {
+            display: flex;
+            justify-content: center;
+            align-items: baseline;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        #viewCarro { color: #ffffff; margin: 0; font-size: 1.2rem; font-weight: bold; }
+        #viewVel { font-size: 3.5rem; font-weight: bold; line-height: 1; color: #f1c40f; }
+        .unidade-kmh { color: #888; font-size: 12px; font-weight: bold; text-transform: uppercase; }
+
         .status-container { margin-top: 15px; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid #333; }
         .status-gps { color: #2ecc71; font-weight: bold; font-size: 14px; }
         .status-offline { color: #f1c40f !important; }
         .aviso-offline { display: none; font-size: 11px; color: #f1c40f; margin-top: 5px; text-transform: uppercase; font-weight: bold; }
         .wake-lock-status { color: #666; font-size: 10px; margin-top: 10px; text-transform: uppercase; }
         .btn-sair { background: transparent; color: #444; font-size: 11px; margin-top: 20px; text-decoration: underline; cursor: pointer; border: none; width: 100%; }
+        
+        /* Odómetro */
         .odo-box { margin-top: 15px; padding: 15px 10px; border-top: 1px solid #333; background: rgba(0,0,0,0.2); border-radius: 10px; }
         .odo-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
         .odo-val { font-size: 5rem; font-weight: bold; color: #f1c40f; margin: 2px 0; cursor: pointer; font-family: monospace; }
-        .odo-btns { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
-        .btn-mini { padding: 10px; font-size: 14px; background: #333; margin-bottom: 0; width: auto; flex: 1; border: 1px solid #444; }
+        .odo-btns { display: flex; gap: 5px; justify-content: center; margin-top: 10px; }
+        
+        .btn-mini { 
+            padding: 10px 5px; 
+            font-size: 12px; 
+            background: #333; 
+            margin-bottom: 0; 
+            width: auto; 
+            flex: 1; 
+            border: 1px solid #444; 
+            color: white;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
@@ -56,20 +84,22 @@
         </div>
 
         <div id="ativo" class="tracking">
-            <h2 id="viewCarro" style="color:#0d0af0; margin-bottom: 4px;">Carro --</h2>
-            <div id="viewVel" style="font-size: 2rem; font-weight: bold; line-height: 1;">0.0</div>
-            <p style="margin-top: 5px; color: #888; font-size: 12px;">KM/H</p>
+            <div class="header-dados">
+                <span id="viewCarro">Carro --</span>
+                <div id="viewVel">0.0</div>
+                <span class="unidade-kmh">KM/H</span>
+            </div>
 
             <div class="odo-box">
-                <span class="odo-label">Odômetro Parcial</span>
+                <span class="odo-label">Odômetro</span>
                 <div id="displayOdo" class="odo-val" onclick="ajusteManualOdo()">0.000</div>
                 <div class="odo-btns">
-    <button class="btn-mini" onclick="alterarOdo(-0.010)">-10m</button>
-    <button class="btn-mini" onclick="alterarOdo(-0.001)">-1m</button>
-    <button class="btn-mini" onclick="zerarOdo()" style="background:#b30000; color: white;">ZERAR</button>
-    <button class="btn-mini" onclick="alterarOdo(0.001)">+1m</button>
-    <button class="btn-mini" onclick="alterarOdo(0.010)">+10m</button>
-</div>
+                    <button class="btn-mini" onclick="alterarOdo(-0.010)">-10m</button>
+                    <button class="btn-mini" onclick="alterarOdo(-0.001)">-1m</button>
+                    <button class="btn-mini" onclick="zerarOdo()" style="background:#b30000;">ZERAR</button>
+                    <button class="btn-mini" onclick="alterarOdo(0.001)">+1m</button>
+                    <button class="btn-mini" onclick="alterarOdo(0.010)">+10m</button>
+                </div>
             </div>
             
             <div class="status-container">
@@ -93,18 +123,15 @@
         const app = firebase.initializeApp(firebaseConfig);
         const db = firebase.database(app);
 
-        // --- LÓGICA DE PERSISTÊNCIA E LOGOFF REMOTO ---
         window.onload = async function() {
             const salvo = localStorage.getItem('rally_carro_ativo');
             const tempoLogin = localStorage.getItem('rally_timestamp_login') || 0;
 
             if (salvo) {
-                // Verifica se houve um comando de logoff geral após o login deste aparelho
                 const snapLogoff = await db.ref('configuracoes/comandoLogoff').once('value');
                 const timestampLogoff = snapLogoff.val() || 0;
 
                 if (timestampLogoff > parseInt(tempoLogin)) {
-                    // Logoff detectado: limpa os dados e recarrega para a tela de login
                     localStorage.removeItem('rally_carro_ativo');
                     localStorage.removeItem('rally_timestamp_login');
                     location.reload();
@@ -114,7 +141,6 @@
             }
         };
 
-        // Ouvinte em tempo real para quem está com a página aberta
         db.ref('configuracoes/comandoLogoff').on('value', (snap) => {
             const timestampLogoff = snap.val();
             const tempoLogin = localStorage.getItem('rally_timestamp_login') || 0;
@@ -255,7 +281,6 @@
 
                 await db.ref('competidores/' + num).set({ nome: nomeRaw, categoria: cat });
                 
-                // Grava os dados e o momento do login para controle de logoff futuro
                 const agora = Date.now();
                 localStorage.setItem('rally_carro_ativo', num);
                 localStorage.setItem('rally_timestamp_login', agora);
