@@ -39,8 +39,23 @@
         .btn-mini { padding: 8px 2px; font-size: 11px; background: #333; margin-bottom: 0; width: auto; flex: 1; border: 1px solid #444; color: white; border-radius: 4px; }
 
         /* --- ESTILOS DO ROADBOOK --- */
-        .roadbook-container { background: #000; border-radius: 8px; overflow-y: auto; flex-grow: 1; border: 2px solid #333; min-height: 150px; margin-bottom: 10px; }
-        .roadbook-item { display: flex; align-items: center; border-bottom: 1px solid #222; padding: 6px 4px; gap: 8px; }
+        .roadbook-container { 
+            background: #000; 
+            border-radius: 8px; 
+            overflow-y: auto; 
+            flex-grow: 1; 
+            border: 2px solid #333; 
+            min-height: 150px; 
+            margin-bottom: 10px;
+            scroll-behavior: smooth;
+            height: 190px; 
+            max-height: 190px;      
+        }
+        .roadbook-item { display: flex; align-items: center; border-bottom: 1px solid #222; padding: 6px 4px; gap: 8px; transition: background 0.3s; }
+        
+        /* Destaque para a tulipa atual */
+        .rb-item-ativo { background-color: #2d3748 !important; border-left: 4px solid #f1c40f; }
+
         .rb-col-km { flex: 0 0 55px; font-family: monospace; font-weight: bold; color: #f1c40f; font-size: 14px; text-align: right; }
         .rb-col-tulipa { flex: 0 0 65px; background: white; padding: 2px; border-radius: 4px; display: flex; justify-content: center; align-items: center; min-height: 50px; }
         .rb-col-tulipa img { max-width: 100%; height: auto; max-height: 50px; }
@@ -155,9 +170,11 @@
                     return;
                 }
                 rbList.innerHTML = '';
-                dados.forEach((item) => {
+                dados.forEach((item, index) => {
                     const div = document.createElement('div');
                     div.className = 'roadbook-item';
+                    div.id = 'rb-item-' + index;
+
                     const imgUrl = item.tulipa || ''; 
                     const obs = item.obs || '--';
                     const km = parseFloat(item.km).toFixed(3);
@@ -170,7 +187,32 @@
                     `;
                     rbList.appendChild(div);
                 });
+                atualizarScrollRoadbook(); // Atualiza posição inicial após carregar
             });
+        }
+
+        function atualizarScrollRoadbook() {
+            const itens = document.querySelectorAll('.roadbook-item');
+            if (itens.length === 0) return;
+
+            let proximoItemIdx = -1;
+
+            itens.forEach((div, index) => {
+                const kmItem = parseFloat(div.querySelector('.rb-col-km').innerText);
+                div.classList.remove('rb-item-ativo');
+
+                // Encontra a primeira tulipa que ainda não foi alcançada
+                if (proximoItemIdx === -1 && odoTotal < kmItem) {
+                    proximoItemIdx = index;
+                }
+            });
+
+            // Se encontrou a próxima referência, destaca e faz scroll
+            if (proximoItemIdx !== -1) {
+                const itemAlvo = document.getElementById('rb-item-' + proximoItemIdx);
+                itemAlvo.classList.add('rb-item-ativo');
+                itemAlvo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         }
 
         // --- LÓGICA DE RASTREIO E GPS ---
@@ -262,7 +304,12 @@
 
         function alterarOdo(v) { odoTotal = Math.max(0, odoTotal + v); atualizarTelaOdo(); }
         function zerarOdo() { if(confirm("Zerar odômetro?")) { odoTotal = 0; atualizarTelaOdo(); } }
-        function atualizarTelaOdo() { document.getElementById('displayOdo').innerText = odoTotal.toFixed(3); }
+        
+        function atualizarTelaOdo() { 
+            document.getElementById('displayOdo').innerText = odoTotal.toFixed(3); 
+            atualizarScrollRoadbook(); // Sincroniza o roadbook com a nova quilometragem
+        }
+
         function ajusteManualOdo() {
             let n = prompt("Ajustar Odômetro (KM):", odoTotal.toFixed(3));
             if(n !== null) { 
