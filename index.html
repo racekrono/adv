@@ -15,7 +15,6 @@
 
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
-    <!-- Turf.js para processamento geográfico offline de radares -->
     <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
     
     <style>
@@ -69,9 +68,6 @@
         #menuOpcoes button { margin: 0; border: none; border-bottom: 1px solid #333; background: transparent; text-align: left; font-size: 14px; padding: 15px; border-radius: 0; }
         #menuOpcoes button:last-child { border-bottom: none; }
         #menuOpcoes button:hover { background: #333; }
-
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
     </style>
 </head>
 <body>
@@ -148,7 +144,6 @@
         let alertaAtivo = false;
         let intervaloBip = null;
 
-        // --- SISTEMA DE ÁUDIO OTIMIZADO ---
         let audioCtx = null;
         function obterAudioContext() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -169,7 +164,6 @@
                 gainNode.connect(ctx.destination);
                 oscillator.start();
                 oscillator.stop(ctx.currentTime + duracao);
-                oscillator.onended = () => { oscillator.disconnect(); gainNode.disconnect(); };
             } catch (e) { console.error(e); }
         }
 
@@ -177,7 +171,7 @@
         const somTrocaReferencia = () => tocarBip(1200, 0.25, 0.15);
         const somAlertaVelocidade = () => tocarBip(3000, 0.1, 0.2);
 
-        // --- LÓGICA DE RADAR VIRTUAL (GEO) ---
+        // Carrega radares do Admin
         db.ref('configuracoes/percurso').on('value', snap => { radaresConfig = snap.val(); });
 
         function monitorarRadarVirtual(lat, lng, velAtual) {
@@ -212,18 +206,14 @@
             }
         }
 
-        // --- INTERFACE E CONTROLE ---
-        const btnMenu = document.getElementById('btnMenu');
-        const menuOpcoes = document.getElementById('menuOpcoes');
-        btnMenu.onclick = (e) => { e.stopPropagation(); menuOpcoes.style.display = menuOpcoes.style.display === 'block' ? 'none' : 'block'; };
-        window.onclick = () => { menuOpcoes.style.display = 'none'; };
-
         window.onload = async function() {
             const salvo = localStorage.getItem('rally_carro_ativo');
             const tempoLogin = localStorage.getItem('rally_timestamp_login') || 0;
+
             if (salvo) {
                 const snapLogoff = await db.ref('configuracoes/comandoLogoff').once('value');
-                if ((snapLogoff.val() || 0) > parseInt(tempoLogin)) {
+                const timestampLogoff = snapLogoff.val() || 0;
+                if (timestampLogoff > parseInt(tempoLogin)) {
                     limparLocalStorage(); location.reload();
                 } else {
                     iniciarFluxoRastreio(salvo); carregarRoadbook();
@@ -231,58 +221,32 @@
             }
         };
 
-        function carregarRoadbook() {
-            const rbList = document.getElementById('roadbookList');
-            db.ref('prova_atual').on('value', (snapshot) => {
-                const dados = snapshot.val();
-                if (!dados) { rbList.innerHTML = '<div style="padding:20px; color:#444; font-size:11px; text-align:center;">PLANILHA NÃO DISPONÍVEL</div>'; return; }
-                rbList.innerHTML = '';
-                dados.forEach((item, index) => {
-                    const div = document.createElement('div');
-                    div.className = 'roadbook-item';
-                    div.id = 'rb-item-' + index;
-                    const imgUrl = item.tulipa || ''; 
-                    const km = parseFloat(item.km).toFixed(3);
-                    div.innerHTML = `<div class="rb-col-km">${km}</div><div class="rb-col-tulipa">${imgUrl ? `<img src="${imgUrl}">` : ''}</div><div class="rb-col-obs">${item.obs || '--'}</div>`;
-                    rbList.appendChild(div);
-                });
-                atualizarScrollRoadbook();
-            });
-        }
-
-        function atualizarScrollRoadbook() {
-            const itens = document.querySelectorAll('.roadbook-item');
-            if (itens.length === 0) return;
-            let proximoItemIdx = -1;
-            itens.forEach((div, index) => {
-                const kmItem = parseFloat(div.querySelector('.rb-col-km').innerText);
-                div.classList.remove('rb-item-ativo');
-                if (proximoItemIdx === -1 && odoTotal < kmItem) proximoItemIdx = index;
-            });
-            if (proximoItemIdx !== -1) {
-                if (proximoItemIdx !== ultimoIndiceAtivo) {
-                    if (ultimoIndiceAtivo !== -1) somTrocaReferencia();
-                    ultimoIndiceAtivo = proximoItemIdx;
-                }
-                const itemAlvo = document.getElementById('rb-item-' + proximoItemIdx);
-                itemAlvo.classList.add('rb-item-ativo');
-                itemAlvo.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        }
-
-        function calcularDistancia(lat1, lon1, lat2, lon2) {
-            const R = 6371; 
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        }
-
         function iniciarFluxoRastreio(num) {
             document.getElementById('setup').style.display = 'none';
             document.getElementById('ativo').style.display = 'flex';
             document.getElementById('viewCarro').innerText = "Carro " + num;
-            if ('wakeLock' in navigator) navigator.wakeLock.request('screen').catch(()=>{});
+
+            // Monitor de Conexão e Logoff em tempo real
+            const msgStatus = document.getElementById('msgGps');
+            db.ref(".info/connected").on("value", (snap) => {
+                if (snap.val() === true) {
+                    msgStatus.innerText = "● TRANSMITINDO AO VIVO";
+                    msgStatus.style.color = "#2ecc71";
+                    msgStatus.classList.remove('status-offline');
+                } else {
+                    msgStatus.innerText = "SEM INTERNET - DADOS PROTEGIDOS";
+                    msgStatus.style.color = "#f1c40f";
+                    msgStatus.classList.add('status-offline');
+                }
+            });
+
+            db.ref('configuracoes/comandoLogoff').on('value', snap => {
+                const tsLogoff = snap.val() || 0;
+                const tsLogin = localStorage.getItem('rally_timestamp_login') || 0;
+                if (tsLogoff > tsLogin) { 
+                    pararGps(); limparLocalStorage(); location.reload(); 
+                }
+            });
 
             watchID = navigator.geolocation.watchPosition(position => {
                 const { latitude: lat, longitude: lng, accuracy, speed } = position.coords;
@@ -297,42 +261,76 @@
                 document.getElementById('viewVel').innerText = kmh.toFixed(1);
                 monitorarRadarVirtual(lat, lng, kmh);
                 
-                const dados = { lat, lng, vel: kmh, acc: accuracy, ts: Date.now() };
-                db.ref('posicoes/' + num).set(dados);
-                db.ref('rastros/' + num).push(dados);
+                db.ref('posicoes/' + num).set({ lat, lng, vel: kmh, acc: accuracy, ts: Date.now() });
+                db.ref('rastros/' + num).push({ lat, lng, vel: kmh, acc: accuracy, ts: Date.now() });
             }, null, { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
         }
 
         document.getElementById('btnIniciar').onclick = async function() {
-            const numRaw = document.getElementById('carro').value;
-            const nomeRaw = document.getElementById('nome').value.trim();
-            const num = parseInt(numRaw);
-            if(!nomeRaw || !numRaw) return alert("Preencha tudo!");
-            try {
-                const statusSnap = await db.ref('configuracoes/provaAberta').once('value');
-                if (statusSnap.val() !== true) return alert("Prova fechada.");
-                somClique();
-                await db.ref('competidores/' + num).set({ nome: nomeRaw, categoria: document.getElementById('categoria').value });
-                localStorage.setItem('rally_carro_ativo', num);
-                localStorage.setItem('rally_timestamp_login', Date.now());
-                iniciarFluxoRastreio(num); carregarRoadbook();
-            } catch (e) { alert("Erro de conexão."); }
+            const num = document.getElementById('carro').value;
+            const nome = document.getElementById('nome').value.trim();
+            if(!nome || !num) return alert("Preencha tudo!");
+            
+            const provaSnap = await db.ref('configuracoes/provaAberta').once('value');
+            if (provaSnap.val() !== true) return alert("Prova fechada!");
+
+            somClique();
+            await db.ref('competidores/' + num).set({ nome, categoria: document.getElementById('categoria').value });
+            localStorage.setItem('rally_carro_ativo', num);
+            localStorage.setItem('rally_timestamp_login', Date.now());
+            iniciarFluxoRastreio(num); carregarRoadbook();
         };
+
+        function carregarRoadbook() {
+            db.ref('prova_atual').on('value', snap => {
+                const dados = snap.val();
+                const list = document.getElementById('roadbookList');
+                if (!dados) return list.innerHTML = '<div style="padding:20px; color:#444;">PLANILHA INDISPONÍVEL</div>';
+                list.innerHTML = '';
+                dados.forEach((item, i) => {
+                    const div = document.createElement('div');
+                    div.className = 'roadbook-item';
+                    div.id = 'rb-item-' + i;
+                    div.innerHTML = `<div class="rb-col-km">${parseFloat(item.km).toFixed(3)}</div><div class="rb-col-tulipa">${item.tulipa ? `<img src="${item.tulipa}">` : ''}</div><div class="rb-col-obs">${item.obs || '--'}</div>`;
+                    list.appendChild(div);
+                });
+                atualizarScrollRoadbook();
+            });
+        }
+
+        function atualizarScrollRoadbook() {
+            const itens = document.querySelectorAll('.roadbook-item');
+            let idx = -1;
+            itens.forEach((div, i) => {
+                const km = parseFloat(div.querySelector('.rb-col-km').innerText);
+                div.classList.remove('rb-item-ativo');
+                if (idx === -1 && odoTotal < km) idx = i;
+            });
+            if (idx !== -1) {
+                if (idx !== ultimoIndiceAtivo) { if (ultimoIndiceAtivo !== -1) somTrocaReferencia(); ultimoIndiceAtivo = idx; }
+                const alvo = document.getElementById('rb-item-' + idx);
+                alvo.classList.add('rb-item-ativo'); alvo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        function calcularDistancia(lat1, lon1, lat2, lon2) {
+            const R = 6371; 
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
 
         function alterarOdo(v) { odoTotal = Math.max(0, odoTotal + v); somClique(); atualizarTelaOdo(); }
         function zerarOdo() { if(confirm("Zerar?")) { odoTotal = 0; somClique(); atualizarTelaOdo(); } }
         function atualizarTelaOdo() { document.getElementById('displayOdo').innerText = odoTotal.toFixed(3); atualizarScrollRoadbook(); }
         function ajusteManualOdo() { 
             let n = prompt("Ajustar (KM):", odoTotal.toFixed(3));
-            if(n !== null) { let val = parseFloat(n.replace(',','.')); if(!isNaN(val)) { odoTotal = Math.max(0, val); somClique(); atualizarTelaOdo(); } }
+            if(n) { odoTotal = Math.max(0, parseFloat(n.replace(',','.'))); somClique(); atualizarTelaOdo(); }
         }
-
-        function enviarDatalogger() { console.log("Enviando..."); }
-        function verRastro() { 
-            const c = localStorage.getItem('rally_carro_ativo');
-            if (c) window.location.href = 'rastropiloto.html'; else alert("Inicie a prova primeiro.");
-        }
+        function pararGps() { if (watchID) navigator.geolocation.clearWatch(watchID); }
         function limparLocalStorage() { localStorage.removeItem('rally_carro_ativo'); localStorage.removeItem('rally_timestamp_login'); }
+        function verRastro() { location.href = 'rastropiloto.html'; }
     </script>
 </body>
 </html>
