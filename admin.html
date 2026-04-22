@@ -538,7 +538,7 @@ window.importarBackup = function() {
                 // Salvando na rota 'prova_atual' usando a instância db que você já tem
                 db.ref('prova_atual').set(dadosPlanilha)
                 .then(() => {
-                    alert("✅ Planilha (Tulipas) publicada com sucesso!");
+                    alert("✅ Planilha publicada com sucesso!");
                     // Opcional: limpa o input para permitir importar o mesmo arquivo novamente se necessário
                     input.value = ""; 
                 })
