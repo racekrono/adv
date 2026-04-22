@@ -143,27 +143,51 @@
         let ultimaPos = null;
         let ultimoIndiceAtivo = -1; // Para controle do som da planilha
 
-        // --- SISTEMA DE ÁUDIO ---
-        function tocarBip(frequencia, duracao, volume = 0.1) {
-            try {
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const oscillator = audioCtx.createOscillator();
-                const gainNode = audioCtx.createGain();
+        // --- SISTEMA DE ÁUDIO OTIMIZADO ---
+let audioCtx = null;
 
-                oscillator.type = 'sine';
-                oscillator.frequency.setValueAtTime(frequencia, audioCtx.currentTime);
-                gainNode.gain.setValueAtTime(volume, audioCtx.currentTime);
+function obterAudioContext() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    // Se o navegador suspendeu o áudio por inatividade, retomamos
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+    return audioCtx;
+}
 
-                oscillator.connect(gainNode);
-                gainNode.connect(audioCtx.destination);
+function tocarBip(frequencia, duracao, volume = 0.1) {
+    try {
+        const ctx = obterAudioContext();
+        const oscillator = ctx.createOscillator();
+        const gainNode = ctx.createGain();
 
-                oscillator.start();
-                oscillator.stop(audioCtx.currentTime + duracao);
-            } catch (e) { console.error("Erro ao tocar som", e); }
-        }
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(frequencia, ctx.currentTime);
+        
+        // Envelope suave para evitar estalos e liberar memória
+        gainNode.gain.setValueAtTime(volume, ctx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duracao);
 
-        const somClique = () => tocarBip(880, 0.05, 0.1); // Bip curto agudo
-        const somTrocaReferencia = () => tocarBip(440, 0.2, 0.15); // Bip mais longo e grave
+        oscillator.connect(gainNode);
+        gainNode.connect(ctx.destination);
+
+        oscillator.start();
+        oscillator.stop(ctx.currentTime + duracao);
+
+        // Limpeza de memória após o som acabar
+        oscillator.onended = () => {
+            oscillator.disconnect();
+            gainNode.disconnect();
+        };
+    } catch (e) { 
+        console.error("Erro ao tocar som", e); 
+    }
+}
+
+const somClique = () => tocarBip(880, 0.05, 0.1); 
+const somTrocaReferencia = () => tocarBip(440, 0.2, 0.15);
 
         // Lógica do Menu
         const btnMenu = document.getElementById('btnMenu');
