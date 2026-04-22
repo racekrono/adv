@@ -423,14 +423,7 @@ const somTrocaReferencia = () => tocarBip(1200, 0.25, 0.15);
                 alert("Você precisa iniciar a prova para visualizar seu rastro.");
             }
         }
-        function encerrarSessao() {
-            if(confirm("Encerrar prova?")) {
-                if (watchID) navigator.geolocation.clearWatch(watchID);
-                localStorage.removeItem('rally_carro_ativo');
-                localStorage.removeItem('rally_timestamp_login');
-                location.reload();
-            }
-        }
+        
     </script>
 </body>
 </html>
