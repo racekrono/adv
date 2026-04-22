@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Race Krono</title>
+    <title>Race Krono - Pro</title>
 
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0d0af0">
@@ -18,7 +18,7 @@
     
     <style>
         body { font-family: sans-serif; background: #121212; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; overflow: hidden; }
-        .card { background: #1e1e1e; padding: 25px; border-radius: 12px; width: 90%; max-width: 380px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border-top: 5px solid #ffffff; z-index: 10; max-height: 95vh; display: flex; flex-direction: column; position: relative; }
+        .card { background: #1e1e1e; padding: 25px; border-radius: 12px; width: 90%; max-width: 380px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border-top: 5px solid #ffffff; z-index: 10; max-height: 95vh; display: flex; flex-direction: column; }
         .logo { display: block; margin: 0 auto 10px auto; max-width: 120px; height: auto; }
         input, select, button { width: 100%; padding: 14px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #333; background: #252525; color: white; font-size: 16px; box-sizing: border-box; }
         button { background: #f80303; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
@@ -27,56 +27,35 @@
         #setup { display: block; } 
         #ativo { display: none; flex-direction: column; overflow: hidden; }
         
-        /* HEADER E VELOCIDADE */
         .header-dados { display: flex; justify-content: center; align-items: baseline; gap: 12px; margin-bottom: 5px; }
         #viewCarro { color: #ffffff; margin: 0; font-size: 1.1rem; font-weight: bold; }
         #viewVel { font-size: 3rem; font-weight: bold; line-height: 1; color: #f1c40f; }
         .unidade-kmh { color: #888; font-size: 11px; font-weight: bold; text-transform: uppercase; }
 
-        /* ODÓMETRO */
         .odo-box { padding: 10px 5px; border-top: 1px solid #333; background: rgba(0,0,0,0.2); border-radius: 10px; margin-bottom: 10px; }
         .odo-label { font-size: 9px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
         .odo-val { font-size: 4rem; text-align: center; font-weight: bold; color: #f1c40f; margin: 0; cursor: pointer; font-family: monospace; line-height: 1; }
         .odo-btns { display: flex; gap: 4px; justify-content: center; margin-top: 8px; }
         .btn-mini { padding: 8px 2px; font-size: 11px; background: #333; margin-bottom: 0; width: auto; flex: 1; border: 1px solid #444; color: white; border-radius: 4px; }
 
-        /* ROADBOOK AMPLIADO */
-        .roadbook-container { 
-            background: #000; 
-            border-radius: 8px; 
-            overflow-y: auto; 
-            flex-grow: 0; 
-            border: 2px solid #333; 
-            margin-bottom: 10px;
-            scroll-behavior: smooth;
-            height: 260px; 
-            max-height: 260px;
-            min-height: 260px;
-        }
-        .roadbook-item { display: flex; align-items: center; border-bottom: 1px solid #222; padding: 8px 4px; gap: 10px; }
-        
-        /* Destaque Vermelho Suave */
-        .rb-item-ativo { 
-            background-color: rgba(255, 0, 0, 0.25) !important; 
-            border-left: 5px solid #f80303; 
-        }
+        .roadbook-container { background: #000; border-radius: 8px; overflow-y: auto; flex-grow: 0; border: 2px solid #333; min-height: 150px; margin-bottom: 10px; scroll-behavior: smooth; height: 180px; max-height: 180px; }
+        .roadbook-item { display: flex; align-items: center; border-bottom: 1px solid #222; padding: 6px 4px; gap: 8px; transition: background 0.3s; }
+        .rb-item-ativo { background-color: #262d37 !important; border-left: 6px solid #FF0000; }
+        .rb-col-km { flex: 0 0 55px; font-family: monospace; font-weight: bold; color: #f1c40f; font-size: 14px; text-align: right; }
+        .rb-col-tulipa { flex: 0 0 65px; background: white; padding: 2px; border-radius: 4px; display: flex; justify-content: center; align-items: center; min-height: 50px; }
+        .rb-col-tulipa img { max-width: 100%; height: auto; max-height: 50px; }
+        .rb-col-obs { flex: 1; font-size: 11px; color: #eee; text-align: left; text-transform: uppercase; font-weight: bold; }
 
-        .rb-col-km { flex: 0 0 70px; font-family: monospace; font-weight: bold; color: #f1c40f; font-size: 18px; text-align: right; }
-        .rb-col-tulipa { flex: 0 0 95px; background: white; padding: 4px; border-radius: 4px; display: flex; justify-content: center; align-items: center; min-height: 75px; }
-        .rb-col-tulipa img { max-width: 100%; height: auto; max-height: 75px; }
-        .rb-col-obs { flex: 1; font-size: 14px; color: #eee; text-align: left; text-transform: uppercase; font-weight: bold; line-height: 1.2; }
-
-        /* MENU LATERAL */
-        .menu-lateral { position: fixed; top: 0; right: -280px; width: 280px; height: 100%; background: #1e1e1e; z-index: 1001; transition: 0.3s; box-shadow: -5px 0 15px rgba(0,0,0,0.5); border-left: 2px solid #333; }
-        .menu-lateral.active { right: 0; }
-        .menu-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; display: none; }
-        .menu-overlay.active { display: block; }
-        .btn-hamburguer { position: absolute; top: 15px; right: 15px; z-index: 100; cursor: pointer; padding: 5px; }
-        .bar { width: 25px; height: 3px; background: white; margin: 4px 0; border-radius: 2px; }
-
-        /* STATUS */
-        .status-gps { color: #2ecc71; font-weight: bold; font-size: 11px; text-align: center; margin-top: 5px; }
+        .status-container { padding: 5px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid #333; margin-bottom: 5px; }
+        .status-gps { color: #2ecc71; font-weight: bold; font-size: 11px; text-align: center; }
         .status-offline { color: #f1c40f !important; }
+        
+        /* MENU DATALOGGER */
+        #menuDados { display: none; padding: 10px; border: 1px solid #444; margin-bottom: 10px; border-radius: 8px; background: #1a1a1a; }
+        .btn-sync { background: #2ecc71; color: white; margin-bottom: 5px; font-size: 14px; }
+        .btn-toggle { background: #444; margin-bottom: 10px; font-size: 12px; padding: 8px; }
+        .btn-sair { background: transparent; color: #555; font-size: 10px; text-decoration: underline; cursor: pointer; border: none; width: 100%; padding: 5px; }
+        
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
     </style>
@@ -84,17 +63,15 @@
 <body>
 
     <div class="card">
-        <div id="btnMenu" class="btn-hamburguer" onclick="toggleMenu()" style="display:none;">
-            <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-        </div>
-
         <div id="setup">
             <img src="https://raw.githubusercontent.com/racekrono/adv/refs/heads/main/Logo.png" class="logo">
-            <h2 style="color:#ffffff; text-align:center; margin-top: 0; font-size: 1.2rem;">Rally de Aventura</h2>
-            <input type="text" id="nome" placeholder="Nome do Piloto" oninput="this.value = this.value.replace(/[0-9]/g, '')">
+            <h2 style="color:#ffffff; text-align:center; margin-top: 0; font-size: 1.2rem;">Race Krono</h2>
+            <input type="text" id="nome" placeholder="Nome do Piloto">
             <select id="categoria">
-                <option>UTV</option><option>BAIANO 4x2</option><option>BAIANO 4x4</option>
-                <option>INICIANTE 4x2</option><option>INICIANTE 4x4</option><option>ANTIGOS</option>
+                <option>UTV</option>
+                <option>BAIANO 4x2</option><option>BAIANO 4x4</option>
+                <option>INICIANTE 4x2</option><option>INICIANTE 4x4</option>
+                <option>ANTIGOS</option>
             </select>
             <input type="number" id="carro" placeholder="Nº do Carro">
             <button id="btnIniciar">INICIAR PROVA</button>
@@ -112,37 +89,26 @@
                 <div id="displayOdo" class="odo-val" onclick="ajusteManualOdo()">0.000</div>
                 <div class="odo-btns">
                     <button class="btn-mini" onclick="alterarOdo(-0.010)">-10m</button>
-                    <button class="btn-mini" onclick="alterarOdo(-0.001)">-1m</button>
                     <button class="btn-mini" onclick="zerarOdo()" style="background:#b30000;">ZERAR</button>
-                    <button class="btn-mini" onclick="alterarOdo(0.001)">+1m</button>
                     <button class="btn-mini" onclick="alterarOdo(0.010)">+10m</button>
                 </div>
             </div>
 
-            <div class="roadbook-container" id="roadbookList">
-                <div style="padding: 20px; color: #444; font-size: 11px; text-align: center;">CARREGANDO PLANILHA...</div>
+            <div class="roadbook-container" id="roadbookList"></div>
+            
+            <div class="status-container">
+                <div id="msgGps" class="status-gps">● CONECTANDO...</div>
             </div>
+
+            <button class="btn-toggle" onclick="toggleMenu()">⚙️ MENU DE SINCRONIZAÇÃO</button>
             
-            <div id="msgGps" class="status-gps">● CONECTANDO GPS...</div>
+            <div id="menuDados">
+                <button id="btnSincronizar" class="btn-sync" onclick="enviarDatalogger()">📤 ENVIAR DADOS OFFLINE</button>
+                <div id="statusSinc" style="font-size:10px; text-align:center; color:#aaa;">Pressione ao fim da prova.</div>
+                <button class="btn-sair" onclick="encerrarSessao()">Encerrar Sessão</button>
+            </div>
         </div>
     </div>
-
-    <div id="menuLateral" class="menu-lateral">
-        <div style="padding: 25px; display: flex; flex-direction: column; gap: 15px;">
-            <h3 style="margin-top: 0; color: #f1c40f; border-bottom: 1px solid #333; padding-bottom: 10px;">MENU PROVA</h3>
-            
-            <button id="btnSincronizar" onclick="sincronizarDadosFinais()" style="background: #27ae60;">
-                📤 ENVIAR DADOS OFFLINE
-            </button>
-
-            <button onclick="encerrarSessao()" style="background: #b30000; margin-top: 20px;">
-                ENCERRAR PROVA
-            </button>
-
-            <button onclick="toggleMenu()" style="background: #444; margin-top: 40px;">FECHAR MENU</button>
-        </div>
-    </div>
-    <div id="menuOverlay" class="menu-overlay" onclick="toggleMenu()"></div>
 
     <script>
         const firebaseConfig = {
@@ -152,136 +118,139 @@
             projectId: "cronometro-rally",
             appId: "1:341731891354:web:d0c34265be68015e98a723"
         };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.database(app);
 
+        let wakeLock = null;
         let watchID = null;
         let odoTotal = 0;
         let ultimaPos = null;
 
-        // --- BACKUP OFFLINE ---
-        function salvarPontoLocal(ponto) {
-            let rastro = JSON.parse(localStorage.getItem('rastro_backup') || "[]");
-            rastro.push(ponto);
-            localStorage.setItem('rastro_backup', JSON.stringify(rastro));
-        }
+        // --- DATABASE LOCAL (INDEXED DB) ---
+        const dbLocalReq = indexedDB.open("RaceKronoLog", 1);
+        let dbLocal;
 
-        async function sincronizarDadosFinais() {
-            const num = localStorage.getItem('rally_carro_ativo');
-            const rastro = JSON.parse(localStorage.getItem('rastro_backup') || "[]");
-            if (rastro.length === 0) return alert("Nenhum dado pendente.");
-
-            if (confirm(`Enviar ${rastro.length} pontos gravados offline?`)) {
-                const btn = document.getElementById('btnSincronizar');
-                btn.innerText = "ENVIANDO...";
-                try {
-                    await db.ref('backups_finais/' + num).set({ carro: num, rastro: rastro, ts: Date.now() });
-                    alert("✅ Dados enviados com sucesso!");
-                    localStorage.removeItem('rastro_backup');
-                    toggleMenu();
-                } catch (e) { alert("Erro de conexão. Tente novamente."); }
-                btn.innerText = "📤 ENVIAR DADOS OFFLINE";
+        dbLocalReq.onupgradeneeded = e => {
+            dbLocal = e.target.result;
+            if (!dbLocal.objectStoreNames.contains("logs")) {
+                dbLocal.createObjectStore("logs", { autoIncrement: true });
             }
+        };
+        dbLocalReq.onsuccess = e => { dbLocal = e.target.result; };
+
+        function salvarNoDatalogger(dados) {
+            if (!dbLocal) return;
+            const tx = dbLocal.transaction("logs", "readwrite");
+            tx.objectStore("logs").add(dados);
         }
 
-        // --- MENU E NAVEGAÇÃO ---
+        window.onload = async function() {
+            const salvo = localStorage.getItem('rally_carro_ativo');
+            if (salvo) {
+                iniciarFluxoRastreio(salvo);
+                carregarRoadbook();
+            }
+        };
+
         function toggleMenu() {
-            document.getElementById('menuLateral').classList.toggle('active');
-            document.getElementById('menuOverlay').classList.toggle('active');
+            const m = document.getElementById('menuDados');
+            m.style.display = m.style.display === 'none' ? 'block' : 'none';
+        }
+
+        async function enviarDatalogger() {
+            const btn = document.getElementById('btnSincronizar');
+            const status = document.getElementById('statusSinc');
+            const num = localStorage.getItem('rally_carro_ativo');
+            
+            if (!num) return;
+            btn.disabled = true;
+            btn.innerText = "ENVIANDO...";
+            
+            const tx = dbLocal.transaction("logs", "readonly");
+            const store = tx.objectStore("logs");
+            const todosDados = await new Promise(res => {
+                store.getAll().onsuccess = e => res(e.target.result);
+            });
+
+            if (todosDados.length === 0) {
+                alert("Não há dados locais para enviar.");
+                btn.disabled = false; btn.innerText = "📤 ENVIAR DADOS OFFLINE";
+                return;
+            }
+
+            try {
+                const total = todosDados.length;
+                for (let i = 0; i < total; i++) {
+                    await db.ref('rastros/' + num).push(todosDados[i]);
+                    status.innerText = `Sincronizando: ${i+1}/${total}`;
+                }
+                alert("✅ Dados sincronizados com sucesso!");
+                if (confirm("Limpar memória local?")) {
+                    const clearTx = dbLocal.transaction("logs", "readwrite");
+                    clearTx.objectStore("logs").clear();
+                }
+            } catch (err) {
+                alert("Erro: " + err.message);
+            } finally {
+                btn.disabled = false; btn.innerText = "📤 ENVIAR DADOS OFFLINE";
+            }
         }
 
         function carregarRoadbook() {
             const rbList = document.getElementById('roadbookList');
-            db.ref('prova_atual').on('value', (snap) => {
-                const dados = snap.val();
-                if (!dados) return rbList.innerHTML = '<div style="color:#444; padding:20px; text-align:center;">SEM PLANILHA</div>';
+            db.ref('prova_atual').on('value', (snapshot) => {
+                const dados = snapshot.val();
+                if (!dados) return;
                 rbList.innerHTML = '';
                 dados.forEach((item, index) => {
                     const div = document.createElement('div');
                     div.className = 'roadbook-item';
                     div.id = 'rb-item-' + index;
-                    div.innerHTML = `
-                        <div class="rb-col-km">${parseFloat(item.km).toFixed(3)}</div>
-                        <div class="rb-col-tulipa"><img src="${item.tulipa || ''}" onerror="this.parentElement.style.display='none'"></div>
-                        <div class="rb-col-obs">${item.obs || '--'}</div>
-                    `;
+                    div.innerHTML = `<div class="rb-col-km">${parseFloat(item.km).toFixed(3)}</div>
+                                     <div class="rb-col-tulipa">${item.tulipa ? `<img src="${item.tulipa}">` : ''}</div>
+                                     <div class="rb-col-obs">${item.obs || '--'}</div>`;
                     rbList.appendChild(div);
                 });
-                atualizarScrollRoadbook();
             });
-        }
-
-        function atualizarScrollRoadbook() {
-            const itens = document.querySelectorAll('.roadbook-item');
-            let proximoIdx = -1;
-            itens.forEach((div, i) => {
-                const km = parseFloat(div.querySelector('.rb-col-km').innerText);
-                div.classList.remove('rb-item-ativo');
-                if (proximoIdx === -1 && odoTotal < km) proximoIdx = i;
-            });
-            if (proximoIdx !== -1) {
-                const alvo = document.getElementById('rb-item-' + proximoIdx);
-                alvo.classList.add('rb-item-ativo');
-                alvo.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        }
-
-        function calcularDistancia(lat1, lon1, lat2, lon2) {
-            const R = 6371;
-            const dLat = (lat2-lat1) * Math.PI/180;
-            const dLon = (lon2-lon1) * Math.PI/180;
-            const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         }
 
         function iniciarFluxoRastreio(num) {
             document.getElementById('setup').style.display = 'none';
             document.getElementById('ativo').style.display = 'flex';
-            document.getElementById('btnMenu').style.display = 'block';
             document.getElementById('viewCarro').innerText = "Carro " + num;
 
-            watchID = navigator.geolocation.watchPosition(pos => {
-                const lat = pos.coords.latitude;
-                const lng = pos.coords.longitude;
-                const kmh = Math.round((pos.coords.speed || 0) * 3.6);
+            watchID = navigator.geolocation.watchPosition(position => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                const accuracy = position.coords.accuracy;
+                const kmh = Math.round((position.coords.speed || 0) * 3.6);
 
-                if (pos.coords.accuracy <= 25) {
-                    if (ultimaPos) {
-                        const d = calcularDistancia(ultimaPos.lat, ultimaPos.lng, lat, lng);
-                        if (d > 0.003) { odoTotal += d; atualizarTelaOdo(); ultimaPos = {lat, lng}; }
-                    } else { ultimaPos = {lat, lng}; }
-                }
+                if (accuracy > 30) return;
+
+                const dados = { lat, lng, vel: kmh, acc: accuracy, ts: Date.now() };
+                
+                // Grava localmente SEMPRE (Datalogger Offline)
+                salvarNoDatalogger(dados);
+                
+                // Tenta enviar tempo real
+                db.ref('posicoes/' + num).set(dados);
+                db.ref('rastros/' + num).push(dados).catch(() => {});
 
                 document.getElementById('viewVel').innerText = kmh.toFixed(1);
-                const p = { lat, lng, vel: kmh, ts: Date.now(), odo: odoTotal.toFixed(3) };
-                
-                salvarPontoLocal(p); // Backup Offline
-                db.ref('posicoes/' + num).set(p); // Live
-                db.ref('rastros/' + num).push(p);
-
-            }, null, { enableHighAccuracy: true });
+            }, null, { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 });
         }
 
         document.getElementById('btnIniciar').onclick = async function() {
             const num = document.getElementById('carro').value;
             const nome = document.getElementById('nome').value;
             if(!num || !nome) return alert("Preencha tudo!");
-            
             localStorage.setItem('rally_carro_ativo', num);
             iniciarFluxoRastreio(num);
             carregarRoadbook();
         };
 
-        function alterarOdo(v) { odoTotal = Math.max(0, odoTotal + v); atualizarTelaOdo(); }
-        function zerarOdo() { if(confirm("Zerar?")) { odoTotal = 0; atualizarTelaOdo(); } }
-        function atualizarTelaOdo() { 
-            document.getElementById('displayOdo').innerText = odoTotal.toFixed(3); 
-            atualizarScrollRoadbook();
-        }
-        function ajusteManualOdo() {
-            let n = prompt("Ajustar KM:", odoTotal.toFixed(3));
-            if(n) { odoTotal = parseFloat(n.replace(',','.')); atualizarTelaOdo(); }
-        }
+        function alterarOdo(v) { odoTotal = Math.max(0, odoTotal + v); document.getElementById('displayOdo').innerText = odoTotal.toFixed(3); }
+        function zerarOdo() { if(confirm("Zerar?")) { odoTotal = 0; alterarOdo(0); } }
         function encerrarSessao() { if(confirm("Sair?")) { localStorage.clear(); location.reload(); } }
     </script>
 </body>
