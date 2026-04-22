@@ -11,51 +11,54 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Race Krono">
     <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/racekrono/adv/refs/heads/main/Logo.png">
-    <meta name="mobile-web-app-capable" content="yes">
 
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     
     <style>
         body { font-family: sans-serif; background: #121212; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; overflow: hidden; }
-        .card { background: #1e1e1e; padding: 25px; border-radius: 12px; width: 90%; max-width: 380px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border-top: 5px solid #ffffff; z-index: 10; max-height: 95vh; display: flex; flex-direction: column; }
-        .logo { display: block; margin: 0 auto 10px auto; max-width: 120px; height: auto; }
+        .card { background: #1e1e1e; padding: 20px; border-radius: 12px; width: 95%; max-width: 380px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border-top: 5px solid #ffffff; display: flex; flex-direction: column; max-height: 98vh; }
+        .logo { display: block; margin: 0 auto 10px auto; max-width: 100px; height: auto; }
+        
         input, select, button { width: 100%; padding: 14px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #333; background: #252525; color: white; font-size: 16px; box-sizing: border-box; }
-        button { background: #f80303; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        button:active { transform: scale(0.98); }
-        
+        button { background: #f80303; border: none; font-weight: bold; cursor: pointer; }
+
         #setup { display: block; } 
-        #ativo { display: none; flex-direction: column; overflow: hidden; flex: 1; }
+        #ativo { display: none; flex-direction: column; width: 100%; }
         
-        .header-dados { display: flex; justify-content: center; align-items: baseline; gap: 12px; margin-bottom: 5px; }
-        #viewCarro { color: #ffffff; margin: 0; font-size: 1.1rem; font-weight: bold; }
-        #viewVel { font-size: 3rem; font-weight: bold; line-height: 1; color: #f1c40f; }
-        .unidade-kmh { color: #888; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+        /* Ajuste do Cabeçalho para reaparecer */
+        .header-dados { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #333; margin-bottom: 10px; }
+        #viewCarro { color: #ffffff; font-size: 1.2rem; font-weight: bold; }
+        .vel-box { text-align: right; }
+        #viewVel { font-size: 2.5rem; font-weight: bold; color: #f1c40f; line-height: 1; }
+        .unidade-kmh { color: #888; font-size: 10px; font-weight: bold; display: block; }
 
-        .odo-box { padding: 10px 5px; border-top: 1px solid #333; background: rgba(0,0,0,0.2); border-radius: 10px; margin-bottom: 10px; display: flex; flex-direction: column; align-items: center; }
-        .odo-label { font-size: 9px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+        .odo-box { padding: 10px; background: rgba(0,0,0,0.2); border-radius: 10px; margin-bottom: 10px; display: flex; flex-direction: column; align-items: center; }
+        .odo-label { font-size: 10px; color: #888; text-transform: uppercase; }
+        .odo-val { font-size: 4.5rem; font-weight: bold; color: #f1c40f; font-family: monospace; line-height: 1; text-align: center; width: 100%; cursor: pointer; }
         
-        /* Odômetro Centralizado */
-        .odo-val { font-size: 4.5rem; font-weight: bold; color: #f1c40f; margin: 0; cursor: pointer; font-family: monospace; line-height: 1; text-align: center; width: 100%; }
-        
-        .odo-btns { display: flex; gap: 4px; justify-content: center; margin-top: 8px; width: 100%; }
-        .btn-mini { padding: 8px 2px; font-size: 11px; background: #333; margin-bottom: 0; width: auto; flex: 1; border: 1px solid #444; color: white; border-radius: 4px; }
+        .odo-btns { display: flex; gap: 4px; justify-content: center; width: 100%; margin-top: 5px; }
+        .btn-mini { padding: 10px 2px; font-size: 11px; background: #333; margin-bottom: 0; flex: 1; color: white; border-radius: 4px; border: 1px solid #444; }
 
-        /* Estilos do Roadbook com Auto-Scroll */
-        .roadbook-container { background: #000; border-radius: 8px; overflow-y: auto; flex-grow: 1; border: 2px solid #333; min-height: 150px; margin-bottom: 10px; scroll-behavior: smooth; position: relative; }
-        .roadbook-item { display: flex; align-items: center; border-bottom: 1px solid #222; padding: 10px 6px; gap: 8px; transition: background 0.3s; }
-        .rb-col-km { flex: 0 0 60px; font-family: monospace; font-weight: bold; color: #f1c40f; font-size: 15px; text-align: right; }
-        .rb-col-tulipa { flex: 0 0 70px; background: white; padding: 4px; border-radius: 4px; display: flex; justify-content: center; align-items: center; min-height: 60px; }
-        .rb-col-tulipa img { max-width: 100%; height: auto; max-height: 55px; }
-        .rb-col-obs { flex: 1; font-size: 12px; color: #eee; text-align: left; text-transform: uppercase; font-weight: bold; line-height: 1.2; }
+        /* Roadbook reduzido para 3 referências */
+        .roadbook-container { 
+            background: #000; 
+            border-radius: 8px; 
+            overflow-y: auto; 
+            border: 2px solid #333; 
+            height: 240px; /* Altura ajustada para mostrar ~3 itens */
+            margin-bottom: 10px; 
+            scroll-behavior: smooth; 
+            position: relative; 
+        }
+        .roadbook-item { display: flex; align-items: center; border-bottom: 1px solid #222; padding: 12px 8px; gap: 10px; min-height: 80px; box-sizing: border-box; transition: 0.3s; }
+        .rb-col-km { flex: 0 0 65px; font-family: monospace; font-weight: bold; color: #f1c40f; font-size: 16px; text-align: right; }
+        .rb-col-tulipa { flex: 0 0 80px; background: white; padding: 4px; border-radius: 4px; display: flex; justify-content: center; align-items: center; height: 60px; }
+        .rb-col-tulipa img { max-width: 100%; max-height: 100%; }
+        .rb-col-obs { flex: 1; font-size: 12px; color: #eee; text-transform: uppercase; font-weight: bold; }
 
-        .status-container { padding: 5px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid #333; margin-bottom: 5px; }
-        .status-gps { color: #2ecc71; font-weight: bold; font-size: 11px; text-align: center; }
-        .status-offline { color: #f1c40f !important; }
-        .btn-sair { background: transparent; color: #555; font-size: 10px; margin-top: 5px; text-decoration: underline; cursor: pointer; border: none; width: 100%; padding: 5px; }
-        
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
+        .status-gps { color: #2ecc71; font-weight: bold; font-size: 11px; text-align: center; padding: 5px; }
+        .btn-sair { background: transparent; color: #555; font-size: 10px; text-decoration: underline; border: none; width: 100%; }
     </style>
 </head>
 <body>
@@ -63,23 +66,21 @@
     <div class="card">
         <div id="setup">
             <img src="https://raw.githubusercontent.com/racekrono/adv/refs/heads/main/Logo.png" class="logo">
-            <h2 style="color:#ffffff; text-align:center; margin-top: 0; font-size: 1.2rem;">Rally de Aventura</h2>
-            <input type="text" id="nome" placeholder="Nome do Piloto">
+            <input type="text" id="nome" placeholder="Piloto">
+            <input type="number" id="carro" placeholder="Nº Carro">
             <select id="categoria">
-                <option>UTV</option>
-                <option>BAIANO 4x2</option><option>BAIANO 4x4</option>
-                <option>INICIANTE 4x2</option><option>INICIANTE 4x4</option>
-                <option>ANTIGOS</option>
+                <option>UTV</option><option>4x2</option><option>4x4</option>
             </select>
-            <input type="number" id="carro" placeholder="Nº do Carro">
-            <button id="btnIniciar">INICIAR PROVA</button>
+            <button id="btnIniciar">INICIAR</button>
         </div>
 
         <div id="ativo">
             <div class="header-dados">
                 <span id="viewCarro">Carro --</span>
-                <div id="viewVel">0.0</div>
-                <span class="unidade-kmh">KM/H</span>
+                <div class="vel-box">
+                    <span id="viewVel">0.0</span>
+                    <span class="unidade-kmh">KM/H</span>
+                </div>
             </div>
 
             <div class="odo-box">
@@ -87,22 +88,17 @@
                 <div id="displayOdo" class="odo-val" onclick="ajusteManualOdo()">0.000</div>
                 <div class="odo-btns">
                     <button class="btn-mini" onclick="alterarOdo(-0.010)">-10m</button>
-                    <button class="btn-mini" onclick="alterarOdo(-0.001)">-1m</button>
                     <button class="btn-mini" onclick="zerarOdo()" style="background:#b30000;">ZERAR</button>
-                    <button class="btn-mini" onclick="alterarOdo(0.001)">+1m</button>
                     <button class="btn-mini" onclick="alterarOdo(0.010)">+10m</button>
                 </div>
             </div>
 
             <div class="roadbook-container" id="roadbookList">
-                <div style="padding: 20px; color: #444; font-size: 11px; text-align: center;">AGUARDANDO PLANILHA...</div>
+                <div style="padding: 20px; text-align: center; color: #444;">CARREGANDO...</div>
             </div>
             
-            <div class="status-container">
-                <div id="msgGps" class="status-gps">● CONECTANDO GPS...</div>
-            </div>
-
-            <button class="btn-sair" onclick="encerrarSessao()">Encerrar Sessão / Sair</button>
+            <div id="msgGps" class="status-gps">● GPS ATIVO</div>
+            <button class="btn-sair" onclick="encerrarSessao()">Sair</button>
         </div>
     </div>
 
@@ -114,79 +110,52 @@
             projectId: "cronometro-rally",
             appId: "1:341731891354:web:d0c34265be68015e98a723"
         };
-        const app = firebase.initializeApp(firebaseConfig);
-        const db = firebase.database(app);
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
         let watchID = null;
         let odoTotal = 0;
         let ultimaPos = null;
 
-        window.onload = async function() {
+        window.onload = function() {
             const salvo = localStorage.getItem('rally_carro_ativo');
-            if (salvo) {
-                iniciarFluxoRastreio(salvo);
-                carregarRoadbook();
-            }
+            if (salvo) { iniciarFluxoRastreio(salvo); carregarRoadbook(); }
         };
 
         function carregarRoadbook() {
             const rbList = document.getElementById('roadbookList');
-            db.ref('prova_atual').on('value', (snapshot) => {
-                const dados = snapshot.val();
+            db.ref('prova_atual').on('value', (snap) => {
+                const dados = snap.val();
                 if (!dados) return;
                 rbList.innerHTML = '';
                 dados.forEach((item) => {
                     const div = document.createElement('div');
                     div.className = 'roadbook-item';
-                    div.setAttribute('data-km', item.km); // Importante para o Auto-Scroll
-                    const imgUrl = item.tulipa || ''; 
-                    const km = parseFloat(item.km).toFixed(3);
+                    div.setAttribute('data-km', item.km);
                     div.innerHTML = `
-                        <div class="rb-col-km">${km}</div>
-                        <div class="rb-col-tulipa">
-                            ${imgUrl ? `<img src="${imgUrl}" onerror="this.parentElement.innerHTML='--'">` : '--'}
-                        </div>
+                        <div class="rb-col-km">${parseFloat(item.km).toFixed(3)}</div>
+                        <div class="rb-col-tulipa"><img src="${item.tulipa || ''}"></div>
                         <div class="rb-col-obs">${item.obs || ''}</div>
                     `;
                     rbList.appendChild(div);
                 });
-                atualizarTelaOdo(); // Atualiza foco após carregar
+                atualizarTelaOdo();
             });
-        }
-
-        function calcularDistancia(lat1, lon1, lat2, lon2) {
-            const R = 6371; 
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                      Math.sin(dLon/2) * Math.sin(dLon/2);
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         }
 
         function atualizarTelaOdo() {
-            const display = document.getElementById('displayOdo');
-            if(!display) return;
-            display.innerText = odoTotal.toFixed(3);
-
-            // AUTO-SCROLL LOGIC
+            document.getElementById('displayOdo').innerText = odoTotal.toFixed(3);
             const itens = document.querySelectorAll('.roadbook-item');
-            let itemParaFocar = null;
+            let atual = null;
 
-            itens.forEach((item) => {
-                const kmItem = parseFloat(item.getAttribute('data-km'));
+            itens.forEach(item => {
                 item.style.background = "transparent";
-                item.style.borderLeft = "none";
-
-                if (kmItem <= odoTotal) {
-                    itemParaFocar = item;
-                }
+                if (parseFloat(item.getAttribute('data-km')) <= odoTotal) atual = item;
             });
 
-            if (itemParaFocar) {
-                itemParaFocar.style.background = "rgba(241, 196, 15, 0.2)";
-                itemParaFocar.style.borderLeft = "4px solid #f1c40f";
-                itemParaFocar.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (atual) {
+                atual.style.background = "rgba(241, 196, 15, 0.2)";
+                atual.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         }
 
@@ -195,52 +164,44 @@
             document.getElementById('ativo').style.display = 'flex';
             document.getElementById('viewCarro').innerText = "Carro " + num;
 
-            watchID = navigator.geolocation.watchPosition(position => {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                const speedMS = position.coords.speed || 0;
-                const kmh = Math.round(speedMS * 3.6);
-
+            watchID = navigator.geolocation.watchPosition(pos => {
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+                const kmh = Math.round((pos.coords.speed || 0) * 3.6);
+                
                 if (ultimaPos) {
-                    const dist = calcularDistancia(ultimaPos.lat, ultimaPos.lng, lat, lng);
-                    if (dist > 0.003) { 
-                        odoTotal += dist;
-                        atualizarTelaOdo();
-                        ultimaPos = { lat, lng }; 
-                    }
-                } else {
-                    ultimaPos = { lat, lng };
-                }
+                    const d = calcularDist(ultimaPos.lat, ultimaPos.lng, lat, lng);
+                    if (d > 0.002) { odoTotal += d; atualizarTelaOdo(); ultimaPos = {lat, lng}; }
+                } else { ultimaPos = {lat, lng}; }
 
                 document.getElementById('viewVel').innerText = kmh.toFixed(1);
                 db.ref('posicoes/' + num).set({ lat, lng, vel: kmh, ts: Date.now() });
             }, null, { enableHighAccuracy: true });
         }
 
-        document.getElementById('btnIniciar').onclick = async function() {
-            const num = document.getElementById('carro').value;
-            const nome = document.getElementById('nome').value;
-            if(!nome || !num) return alert("Preencha os dados!");
-            
-            localStorage.setItem('rally_carro_ativo', num);
-            iniciarFluxoRastreio(num);
+        function calcularDist(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2-lat1)*Math.PI/180;
+            const dLon = (lon2-lon1)*Math.PI/180;
+            const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+
+        document.getElementById('btnIniciar').onclick = function() {
+            const n = document.getElementById('carro').value;
+            if(!n) return alert("Número!");
+            localStorage.setItem('rally_carro_ativo', n);
+            iniciarFluxoRastreio(n);
             carregarRoadbook();
-            db.ref('competidores/' + num).set({ nome, categoria: document.getElementById('categoria').value });
         };
 
         function alterarOdo(v) { odoTotal = Math.max(0, odoTotal + v); atualizarTelaOdo(); }
-        function zerarOdo() { if(confirm("Zerar odômetro?")) { odoTotal = 0; atualizarTelaOdo(); } }
+        function zerarOdo() { if(confirm("Zerar?")) { odoTotal = 0; atualizarTelaOdo(); } }
         function ajusteManualOdo() {
-            let n = prompt("Ajustar Odômetro (KM):", odoTotal.toFixed(3));
+            let n = prompt("KM:", odoTotal.toFixed(3));
             if(n) { odoTotal = parseFloat(n.replace(',','.')); atualizarTelaOdo(); }
         }
-
-        function encerrarSessao() {
-            if(confirm("Encerrar prova?")) {
-                localStorage.removeItem('rally_carro_ativo');
-                location.reload();
-            }
-        }
+        function encerrarSessao() { localStorage.removeItem('rally_carro_ativo'); location.reload(); }
     </script>
 </body>
 </html>
