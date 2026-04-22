@@ -141,29 +141,42 @@
         let watchID = null;
         let odoTotal = 0;
         let ultimaPos = null;
-        let ultimoIndiceAtivo = -1; // Para controle do som da planilha
+        let ultimoIndiceAtivo = -1;
+        let audioCtx = null; // Gerenciador de Áudio Global
 
-        // --- SISTEMA DE ÁUDIO ---
+        // --- SISTEMA DE ÁUDIO OTIMIZADO ---
         function tocarBip(frequencia, duracao, volume = 0.1) {
             try {
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                // Inicializa o contexto apenas uma vez após interação
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+
+                // Força o retorno do áudio se estiver suspenso (comum em poupança de energia)
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+
                 const oscillator = audioCtx.createOscillator();
                 const gainNode = audioCtx.createGain();
 
                 oscillator.type = 'sine';
                 oscillator.frequency.setValueAtTime(frequencia, audioCtx.currentTime);
+                
+                // Aplica volume e rampa de suavização para evitar estalos
                 gainNode.gain.setValueAtTime(volume, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duracao);
 
                 oscillator.connect(gainNode);
                 gainNode.connect(audioCtx.destination);
 
                 oscillator.start();
                 oscillator.stop(audioCtx.currentTime + duracao);
-            } catch (e) { console.error("Erro ao tocar som", e); }
+            } catch (e) { console.error("Falha no áudio", e); }
         }
 
-        const somClique = () => tocarBip(880, 0.05, 0.1); // Bip curto agudo
-        const somTrocaReferencia = () => tocarBip(440, 0.2, 0.15); // Bip mais longo e grave
+        const somClique = () => tocarBip(880, 0.1, 0.1); 
+        const somTrocaReferencia = () => tocarBip(440, 0.3, 0.15);
 
         // Lógica do Menu
         const btnMenu = document.getElementById('btnMenu');
@@ -247,7 +260,6 @@
             });
 
             if (proximoItemIdx !== -1) {
-                // Toca som se a referência mudar
                 if (proximoItemIdx !== ultimoIndiceAtivo) {
                     if (ultimoIndiceAtivo !== -1) somTrocaReferencia();
                     ultimoIndiceAtivo = proximoItemIdx;
@@ -332,7 +344,7 @@
                 const snapshot = await db.ref('competidores/' + num).once('value');
                 if (snapshot.exists()) return alert("Este número de carro já existe!");
                 
-                // Toca som de clique inicial para habilitar áudio no navegador
+                // Inicializa o áudio na primeira interação do utilizador
                 somClique();
                 
                 await db.ref('competidores/' + num).set({ nome: nomeRaw, categoria: cat });
