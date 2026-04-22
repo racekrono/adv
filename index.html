@@ -121,6 +121,7 @@
             
             <div class="status-container">
                 <div id="msgGps" class="status-gps">● CONECTANDO...</div>
+                <div id="statusWakeLock" style="font-size: 9px; color: #555;">TELA SEMPRE ACESA: Off</div>
             </div>
         </div>
     </div>
@@ -295,9 +296,46 @@
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         }
 
-        async function solicitarWakeLock() {
-            if ('wakeLock' in navigator) { try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {} }
+        // Variável global já existente
+let wakeLock = null;
+
+async function solicitarWakeLock() {
+    const statusTxt = document.getElementById('statusWakeLock');
+    if ('wakeLock' in navigator) {
+        try {
+            wakeLock = await navigator.wakeLock.request('screen');
+            
+            // Atualiza o visual para o piloto saber que está funcionando
+            if (statusTxt) {
+                statusTxt.innerText = "TELA SEMPRE ACESA: ON";
+                statusTxt.style.color = "#2ecc71"; // Verde
+            }
+
+            wakeLock.addEventListener('release', () => {
+                console.log('Wake Lock foi liberado');
+                if (statusTxt) {
+                    statusTxt.innerText = "TELA SEMPRE ACESA: OFF";
+                    statusTxt.style.color = "#f1c40f"; // Amarelo/Laranja
+                }
+            });
+            
+            console.log('Wake Lock está ATIVO');
+        } catch (err) {
+            console.error(`${err.name}, ${err.message}`);
+            if (statusTxt) statusTxt.innerText = "ERRO AO ATIVAR TELA ACESA";
         }
+    } else {
+        console.warn("Navegador não suporta Wake Lock API");
+        if (statusTxt) statusTxt.innerText = "TELA SEMPRE ACESA: NÃO SUPORTADO";
+    }
+}
+
+// Reativar automaticamente quando a página voltar a ficar visível
+document.addEventListener('visibilitychange', async () => {
+    if (wakeLock !== null && document.visibilityState === 'visible') {
+        await solicitarWakeLock();
+    }
+});
 
         function iniciarFluxoRastreio(num) {
             document.getElementById('setup').style.display = 'none';
@@ -311,7 +349,7 @@
                     msg.innerText = "● TRANSMITINDO AO VIVO";
                     msg.classList.remove('status-offline');
                 } else {
-                    msg.innerText = "SEM INTERNET - DADOS PROTEGIDOS";
+                    msg.innerText = "SEM INTERNET - DADOS PROTEGIDOS - NÃO FECHE OU ATUALIZE A PÁGINA";
                     msg.classList.add('status-offline');
                 }
             });
