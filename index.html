@@ -38,7 +38,6 @@
         .odo-btns { display: flex; gap: 4px; justify-content: center; margin-top: 8px; }
         .btn-mini { padding: 8px 2px; font-size: 11px; background: #333; margin-bottom: 0; width: auto; flex: 1; border: 1px solid #444; color: white; border-radius: 4px; }
 
-        /* --- ESTILOS DO ROADBOOK --- */
         .roadbook-container { 
             background: #000; 
             border-radius: 8px; 
@@ -61,15 +60,12 @@
         .status-container { padding: 5px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid #333; margin-bottom: 5px; }
         .status-gps { color: #2ecc71; font-weight: bold; font-size: 11px; text-align: center; }
         .status-offline { color: #f1c40f !important; }
-        .btn-sair { background: transparent; color: #555; font-size: 10px; margin-top: 5px; text-decoration: underline; cursor: pointer; border: none; width: 100%; padding: 5px; }
         
-        /* --- ESTILOS DO MENU --- */
         #menuContainer { position: absolute; top: 15px; right: 15px; z-index: 100; }
         #btnMenu { width: 40px; height: 40px; padding: 0; margin: 0; border-radius: 50%; background: #333; display: flex; justify-content: center; align-items: center; border: 1px solid #444; font-size: 20px; color: white; }
         #menuOpcoes { display: none; position: absolute; top: 45px; right: 0; background: #252525; border: 1px solid #444; border-radius: 8px; width: 200px; box-shadow: 0 4px 15px rgba(0,0,0,0.8); overflow: hidden; }
         #menuOpcoes button { margin: 0; border: none; border-bottom: 1px solid #333; background: transparent; text-align: left; font-size: 14px; padding: 15px; border-radius: 0; }
         #menuOpcoes button:last-child { border-bottom: none; }
-        #menuOpcoes button:hover { background: #333; }
 
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
@@ -83,6 +79,7 @@
             <div id="menuOpcoes">
                 <button onclick="enviarDatalogger()">📤 Enviar Datalogger</button>
                 <button onclick="verRastro()">📍 Ver Rastro</button>
+                <button onclick="encerrarSessao()">🚪 Sair da Prova</button>
             </div>
         </div>
 
@@ -125,7 +122,9 @@
             
             <div class="status-container">
                 <div id="msgGps" class="status-gps">● CONECTANDO...</div>
-                </div>
+            </div>
+        </div>
+    </div>
 
     <script>
         const firebaseConfig = {
@@ -142,6 +141,28 @@
         let watchID = null;
         let odoTotal = 0;
         let ultimaPos = null;
+        let indiceTulipaAtual = -1;
+
+        // --- MOTOR DE ÁUDIO ---
+        function emitirSom(frequencia, duracao) {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(frequencia, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + duracao);
+            } catch (e) {
+                console.log("Áudio bloqueado.");
+            }
+        }
 
         // Lógica do Menu
         const btnMenu = document.getElementById('btnMenu');
@@ -215,6 +236,7 @@
             const itens = document.querySelectorAll('.roadbook-item');
             if (itens.length === 0) return;
             let proximoItemIdx = -1;
+            
             itens.forEach((div, index) => {
                 const kmItem = parseFloat(div.querySelector('.rb-col-km').innerText);
                 div.classList.remove('rb-item-ativo');
@@ -222,7 +244,15 @@
                     proximoItemIdx = index;
                 }
             });
+
             if (proximoItemIdx !== -1) {
+                // Alerta sonoro de nova tulipa
+                if (proximoItemIdx !== indiceTulipaAtual) {
+                    indiceTulipaAtual = proximoItemIdx;
+                    emitirSom(1200, 0.1); 
+                    setTimeout(() => emitirSom(1500, 0.1), 150);
+                }
+
                 const itemAlvo = document.getElementById('rb-item-' + proximoItemIdx);
                 itemAlvo.classList.add('rb-item-ativo');
                 itemAlvo.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -257,7 +287,7 @@
                     msg.innerText = "● TRANSMITINDO AO VIVO";
                     msg.classList.remove('status-offline');
                 } else {
-                    msg.innerText = "SEM INTERNET - DADOS PROTEGIDOS - NÃO FECHE OU ATUALIZE A PÁGINA";
+                    msg.innerText = "SEM INTERNET - DADOS PROTEGIDOS";
                     msg.classList.add('status-offline');
                 }
             });
@@ -301,20 +331,40 @@
                 if (statusSnap.val() !== true) return alert("🚫 A prova está fechada.");
                 const snapshot = await db.ref('competidores/' + num).once('value');
                 if (snapshot.exists()) return alert("Este número de carro já existe!");
+                
                 await db.ref('competidores/' + num).set({ nome: nomeRaw, categoria: cat });
                 localStorage.setItem('rally_carro_ativo', num);
                 localStorage.setItem('rally_timestamp_login', Date.now());
+                
+                // Emite um som ao iniciar
+                emitirSom(880, 0.2);
+                
                 iniciarFluxoRastreio(num);
                 carregarRoadbook();
             } catch (e) { alert("Erro de conexão."); }
         };
 
-        function alterarOdo(v) { odoTotal = Math.max(0, odoTotal + v); atualizarTelaOdo(); }
-        function zerarOdo() { if(confirm("Zerar odômetro?")) { odoTotal = 0; atualizarTelaOdo(); } }
+        function alterarOdo(v) { 
+            odoTotal = Math.max(0, odoTotal + v); 
+            // Som agudo para +, médio para -
+            if (v > 0) emitirSom(880, 0.05); 
+            else emitirSom(440, 0.05);
+            atualizarTelaOdo(); 
+        }
+
+        function zerarOdo() { 
+            if(confirm("Zerar odômetro?")) { 
+                odoTotal = 0; 
+                emitirSom(220, 0.2);
+                atualizarTelaOdo(); 
+            } 
+        }
+
         function atualizarTelaOdo() { 
             document.getElementById('displayOdo').innerText = odoTotal.toFixed(3); 
             atualizarScrollRoadbook(); 
         }
+
         function ajusteManualOdo() {
             let n = prompt("Ajustar Odômetro (KM):", odoTotal.toFixed(3));
             if(n !== null) { 
@@ -344,23 +394,12 @@
             localStorage.removeItem('rally_timestamp_login');
         }
 
-        // --- FUNÇÕES DO MENU (Aguardando instruções) ---
-        function enviarDatalogger() {
-            console.log("Comando: Enviar Datalogger");
-        }
-
+        function enviarDatalogger() { console.log("Datalogger enviado"); }
         function verRastro() {
-    // Verifica se existe um carro ativo no armazenamento local
-    const carroAtivo = localStorage.getItem('rally_carro_ativo');
-
-    if (carroAtivo) {
-        // Se houver um carro, redireciona para a página de rastro privativa
-        window.location.href = 'rastropiloto.html';
-    } else {
-        // Caso contrário, avisa o piloto
-        alert("Você precisa iniciar a prova para visualizar seu rastro.");
-    }
-}
+            const carroAtivo = localStorage.getItem('rally_carro_ativo');
+            if (carroAtivo) window.location.href = 'rastropiloto.html';
+            else alert("Inicie a prova primeiro.");
+        }
     </script>
 </body>
 </html>
