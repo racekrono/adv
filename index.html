@@ -143,14 +143,13 @@
         let ultimaPos = null;
         let ultimoIndiceAtivo = -1; // Para controle do som da planilha
 
-        // --- SISTEMA DE ÁUDIO OTIMIZADO ---
+        // --- SISTEMA DE ÁUDIO MAIS AGUDO E NÍTIDO ---
 let audioCtx = null;
 
 function obterAudioContext() {
     if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
-    // Se o navegador suspendeu o áudio por inatividade, retomamos
     if (audioCtx.state === 'suspended') {
         audioCtx.resume();
     }
@@ -163,12 +162,13 @@ function tocarBip(frequencia, duracao, volume = 0.1) {
         const oscillator = ctx.createOscillator();
         const gainNode = ctx.createGain();
 
-        oscillator.type = 'sine';
+        // 'square' ou 'triangle' são mais fáceis de ouvir que 'sine' em ruído
+        oscillator.type = 'sine'; 
         oscillator.frequency.setValueAtTime(frequencia, ctx.currentTime);
         
-        // Envelope suave para evitar estalos e liberar memória
         gainNode.gain.setValueAtTime(volume, ctx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duracao);
+        // Finaliza o som de forma limpa
+        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duracao);
 
         oscillator.connect(gainNode);
         gainNode.connect(ctx.destination);
@@ -176,18 +176,19 @@ function tocarBip(frequencia, duracao, volume = 0.1) {
         oscillator.start();
         oscillator.stop(ctx.currentTime + duracao);
 
-        // Limpeza de memória após o som acabar
         oscillator.onended = () => {
             oscillator.disconnect();
             gainNode.disconnect();
         };
-    } catch (e) { 
-        console.error("Erro ao tocar som", e); 
-    }
+    } catch (e) { console.error(e); }
 }
 
-const somClique = () => tocarBip(880, 0.05, 0.1); 
-const somTrocaReferencia = () => tocarBip(440, 0.2, 0.15);
+// AJUSTE DE TONS:
+// 2000Hz é bem agudo e "fura" o barulho do motor
+const somClique = () => tocarBip(2000, 0.08, 0.1); 
+
+// 1200Hz para a troca (um pouco mais grave que o clique, mas ainda agudo)
+const somTrocaReferencia = () => tocarBip(1200, 0.25, 0.15);
 
         // Lógica do Menu
         const btnMenu = document.getElementById('btnMenu');
