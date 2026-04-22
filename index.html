@@ -350,8 +350,17 @@
         }
 
         function verRastro() {
-            console.log("Comando: Ver Rastro");
-        }
+    // Verifica se existe um carro ativo no armazenamento local
+    const carroAtivo = localStorage.getItem('rally_carro_ativo');
+
+    if (carroAtivo) {
+        // Se houver um carro, redireciona para a página de rastro privativa
+        window.location.href = 'rastropiloto.html';
+    } else {
+        // Caso contrário, avisa o piloto
+        alert("Você precisa iniciar a prova para visualizar seu rastro.");
+    }
+}
     </script>
 </body>
 </html>
