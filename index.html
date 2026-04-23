@@ -489,13 +489,24 @@
             }
         }
         
-        function encerrarSessao() {
-            if(confirm("Deseja realmente sair?")) {
-                pararGps();
-                limparLocalStorage();
-                location.reload();
-            }
+        async function encerrarSessao() {
+    if(confirm("Deseja realmente sair? Os dados de rastro serão sincronizados antes de encerrar.")) {
+        // 1. Tenta enviar o datalogger primeiro
+        try {
+            await enviarDatalogger(); 
+            console.log("Sincronização final concluída.");
+        } catch (e) {
+            console.error("Falha na sincronização final, mas encerrando sessão.");
         }
+
+        // 2. Para o GPS e limpa os dados
+        pararGps();
+        limparLocalStorage();
+        
+        // 3. Recarrega para voltar à tela de login
+        location.reload();
+    }
+}
     </script>
 </body>
 </html>
