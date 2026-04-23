@@ -74,7 +74,7 @@
             <div id="menuOpcoes">
                 <button onclick="enviarDatalogger()">📤 Enviar Datalogger</button>
                 <button onclick="verRastro()">📍 Ver Rastro</button>
-                <button onclick="encerrarSessao()">🔚 SAIR ❌</button>
+                
             </div>
         </div>
         <div id="setup">
@@ -749,14 +749,7 @@
         }
     }
 
-    async function encerrarSessao() {
-        if (!confirm("Encerrar sessão? Recomenda-se enviar o datalogger antes.")) return;
-        pararGps();
-        await limparTudo();
-        location.reload();
-    }
-
-    function encerrarSessaoRemoto() {
+     function encerrarSessaoRemoto() {
         pararGps();
         limparTudo().finally(() => {
             alert("A organização encerrou a sessão.");
