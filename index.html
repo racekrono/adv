@@ -10,13 +10,12 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Race Krono">
     <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/racekrono/adv/refs/heads/main/Logo.png">
-    <meta name="mobile-web-app-capable" content="yes">
     
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 
     <style>
-        /* Mantendo o seu estilo original de alto contraste */
+        /* ESTILO ORIGINAL PRESERVADO */
         body { font-family: sans-serif; background: #121212; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; overflow: hidden; }
         .card { position: relative; background: #1e1e1e; padding: 25px; border-radius: 12px; width: 90%; max-width: 380px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border-top: 5px solid #ffffff; z-index: 10; max-height: 95vh; display: flex; flex-direction: column; }
         .logo { display: block; margin: 0 auto 10px auto; max-width: 120px; height: auto; }
@@ -42,28 +41,47 @@
         .rb-col-km { flex: 0 0 55px; font-family: monospace; font-weight: bold; color: #f1c40f; font-size: 18px; text-align: right; }
         .rb-col-tulipa { flex: 0 0 80px; background: white; padding: 2px; border-radius: 4px; display: flex; justify-content: center; align-items: center; min-height: 70px; }
         .rb-col-tulipa img { max-width: 100%; height: auto; max-height: 70px; }
-        
+        .rb-col-obs { flex: 1; font-size: 14px; color: #eee; text-transform: uppercase; font-weight: bold; }
+
         .status-container { padding: 5px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid #333; }
         .status-gps { color: #2ecc71; font-weight: bold; font-size: 11px; text-align: center; }
         .status-offline { color: #f1c40f !important; }
-        
+
+        #menuContainer { position: absolute; top: 15px; right: 15px; z-index: 100; }
+        #btnMenu { width: 40px; height: 40px; border-radius: 50%; background: #333; display: flex; justify-content: center; align-items: center; border: 1px solid #444; font-size: 20px; color: white; }
+        #menuOpcoes { display: none; position: absolute; top: 45px; right: 0; background: #252525; border: 1px solid #444; border-radius: 8px; width: 200px; box-shadow: 0 4px 15px rgba(0,0,0,0.8); }
+        #menuOpcoes button { margin: 0; border: none; background: transparent; text-align: left; padding: 15px; border-bottom: 1px solid #333; border-radius: 0; }
+
         .odo-btns { display: flex; gap: 4px; justify-content: center; margin-top: 8px; }
         .btn-mini { padding: 8px 2px; font-size: 11px; background: #333; margin-bottom: 0; width: auto; flex: 1; border: 1px solid #444; color: white; border-radius: 4px; }
     </style>
 </head>
 <body>
     <div class="card">
+        <div id="menuContainer">
+            <button id="btnMenu">☰</button>
+            <div id="menuOpcoes">
+                <button onclick="enviarDatalogger()">📤 Enviar Datalogger</button>
+                <button onclick="location.reload()">🔄 Recarregar App</button>
+            </div>
+        </div>
+
         <div id="setup">
             <img src="https://raw.githubusercontent.com/racekrono/adv/refs/heads/main/Logo.png" class="logo">
-            <h2 style="color:#ffffff; text-align:center; margin-top: 0; font-size: 1.2rem;">Rally Offline</h2>
-            <input type="text" id="nome" placeholder="Piloto">
+            <h2 style="color:#ffffff; text-align:center; margin-top: 0; font-size: 1.2rem;">Rally de Aventura</h2>
+            <input type="text" id="nome" placeholder="Nome do Piloto">
+            <select id="categoria">
+                <option>UTV</option>
+                <option>BAIANO 4x2</option><option>BAIANO 4x4</option>
+                <option>INICIANTE 4x2</option><option>INICIANTE 4x4</option>
+            </select>
             <input type="number" id="carro" placeholder="Nº do Carro">
-            <button id="btnIniciar">ENTRAR (MODO HÍBRIDO)</button>
+            <button id="btnIniciar">INICIAR PROVA</button>
         </div>
 
         <div id="ativo">
             <div class="header-dados">
-                <span id="viewCarro">--</span>
+                <span id="viewCarro">Carro --</span>
                 <div id="viewVel">0.0</div>
                 <span class="unidade-kmh">KM/H</span>
             </div>
@@ -78,25 +96,23 @@
             </div>
 
             <div class="roadbook-container" id="roadbookList">
-                <div style="padding: 20px; color: #444; text-align: center;">AGUARDANDO...</div>
+                <div style="padding: 20px; color: #444; text-align: center;">CARREGANDO...</div>
             </div>
 
             <div class="status-container">
                 <div id="msgGps" class="status-gps">● BUSCANDO GPS...</div>
-                <div id="msgSync" style="color:#e67e22; font-size:9px; text-align:center; margin-top:2px;"></div>
+                <div id="msgPendentes" style="color:#e67e22; font-size:9px; text-align:center; margin-top:2px; display:none;">0 pontos offline</div>
             </div>
         </div>
     </div>
 
     <script>
-    /* 1. REGISTRO SERVICE WORKER (Para funcionar totalmente Offline) */
+    /* 1. REGISTRO SERVICE WORKER */
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js')
-        .then(() => console.log("SW: Ativo"))
-        .catch(err => console.error("SW Erro:", err));
+        navigator.serviceWorker.register('sw.js').then(() => console.log("Offline Ready"));
     }
 
-    /* FIREBASE CONFIG */
+    /* FIREBASE CONFIG ORIGINAL */
     const firebaseConfig = {
         apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
         authDomain: "cronometro-rally.firebaseapp.com",
@@ -107,9 +123,9 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    /* INDEXEDDB (Armazenamento Permanente Local) */
+    /* INDEXEDDB (A Nova Mágica Offline) */
     let idb;
-    const request = indexedDB.open('RaceKronoDB', 2);
+    const request = indexedDB.open('RaceKronoDB', 3);
     request.onupgradeneeded = (e) => {
         idb = e.target.result;
         if (!idb.objectStoreNames.contains('sessao')) idb.createObjectStore('sessao', { keyPath: 'id' });
@@ -118,44 +134,69 @@
     };
     request.onsuccess = (e) => { 
         idb = e.target.result; 
-        verificarSessaoExistente();
+        verificarSessaoExistente(); 
     };
 
-    /* VARIÁVEIS DE ESTADO */
+    /* ESTADO */
     let odoTotal = 0;
     let ultimaPos = null;
     let carroAtivo = null;
     let sincronizando = false;
 
-    /* CARREGAR ROADBOOK (Offline-First) */
-    async function carregarRoadbook() {
-        // Primeiro: tenta ler o que está no celular
-        const tx = idb.transaction('roadbook', 'readonly');
-        const store = tx.objectStore('roadbook');
-        const cacheReq = store.get('atual');
-        
-        cacheReq.onsuccess = () => {
-            if (cacheReq.result) renderizarRoadbook(cacheReq.result.dados);
-        };
+    /* ÁUDIO ORIGINAL */
+    function tocarBip(f, d) {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.frequency.value = f;
+        g.gain.value = 0.1;
+        osc.connect(g); g.connect(ctx.destination);
+        osc.start(); osc.stop(ctx.currentTime + d);
+    }
 
-        // Segundo: Se houver internet, tenta atualizar do servidor
-        if (navigator.onLine) {
-            db.ref('prova_atual').once('value', (snap) => {
-                if (snap.exists()) {
-                    const dados = Object.values(snap.val());
-                    const txW = idb.transaction('roadbook', 'readwrite');
-                    txW.objectStore('roadbook').put({ id: 'atual', dados });
-                    renderizarRoadbook(dados);
-                    // Força o download das imagens para o cache do PWA
-                    dados.forEach(item => { if(item.tulipa) new Image().src = item.tulipa; });
-                }
-            });
-        }
+    /* MENU */
+    document.getElementById('btnMenu').onclick = (e) => {
+        e.stopPropagation();
+        const m = document.getElementById('menuOpcoes');
+        m.style.display = m.style.display === 'block' ? 'none' : 'block';
+    };
+    window.onclick = () => document.getElementById('menuOpcoes').style.display = 'none';
+
+    /* RESTAURAR SESSÃO AO ABRIR (Mesmo Offline) */
+    async function verificarSessaoExistente() {
+        const tx = idb.transaction('sessao', 'readonly');
+        tx.objectStore('sessao').get('atual').onsuccess = (e) => {
+            const s = e.target.result;
+            if (s && s.carro) {
+                odoTotal = s.odo || 0;
+                iniciarFluxo(s.carro);
+                carregarRoadbook();
+                atualizarTelaOdo();
+            }
+        };
+    }
+
+    /* CARREGAR ROADBOOK (Híbrido) */
+    function carregarRoadbook() {
+        // Tenta ler local primeiro
+        idb.transaction('roadbook').objectStore('roadbook').get('atual').onsuccess = (e) => {
+            if (e.target.result) renderizarRoadbook(e.target.result.dados);
+        };
+        // Se tiver net, atualiza do Firebase
+        db.ref('prova_atual').on('value', (snap) => {
+            if (snap.exists()) {
+                const dados = Object.values(snap.val());
+                idb.transaction('roadbook', 'readwrite').objectStore('roadbook').put({id: 'atual', dados});
+                renderizarRoadbook(dados);
+                // Pré-carrega imagens para o Cache do PWA
+                dados.forEach(i => { if(i.tulipa) new Image().src = i.tulipa; });
+            }
+        });
     }
 
     function renderizarRoadbook(lista) {
-        const listDiv = document.getElementById('roadbookList');
-        listDiv.innerHTML = '';
+        const container = document.getElementById('roadbookList');
+        container.innerHTML = '';
         lista.forEach((item, idx) => {
             const div = document.createElement('div');
             div.className = 'roadbook-item';
@@ -163,125 +204,114 @@
             div.innerHTML = `
                 <div class="rb-col-km">${parseFloat(item.km).toFixed(3)}</div>
                 <div class="rb-col-tulipa"><img src="${item.tulipa}"></div>
-                <div style="flex:1; font-size:12px; font-weight:bold;">${item.obs || ''}</div>
+                <div class="rb-col-obs">${item.obs || ''}</div>
             `;
-            listDiv.appendChild(div);
+            container.appendChild(div);
         });
-        atualizarScroll();
     }
 
-    /* GPS E RASTREIO */
-    function iniciarRastreio(num) {
+    /* GPS E PERSISTÊNCIA */
+    function iniciarFluxo(num) {
         carroAtivo = num;
         document.getElementById('setup').style.display = 'none';
         document.getElementById('ativo').style.display = 'flex';
-        document.getElementById('viewCarro').innerText = "CARRO " + num;
+        document.getElementById('viewCarro').innerText = "Carro " + num;
 
         navigator.geolocation.watchPosition((pos) => {
             const { latitude: lat, longitude: lng, speed, accuracy } = pos.coords;
             if (accuracy > 30) return;
 
-            const velKmh = (speed || 0) * 3.6;
-            document.getElementById('viewVel').innerText = velKmh.toFixed(1);
+            const vel = (speed || 0) * 3.6;
+            document.getElementById('viewVel').innerText = vel.toFixed(1);
 
             if (ultimaPos) {
-                const dist = calcularDist(ultimaPos.lat, ultimaPos.lng, lat, lng);
-                if (dist > 0.002) { // 2 metros
-                    odoTotal += dist;
-                    atualizarTelaOdo();
-                }
+                const d = calcularDist(ultimaPos.lat, ultimaPos.lng, lat, lng);
+                if (d > 0.003) { odoTotal += d; atualizarTelaOdo(); }
             }
             ultimaPos = { lat, lng };
 
-            // SALVAR NO CELULAR (Prioridade)
-            const ponto = { lat, lng, vel: velKmh, ts: Date.now(), sync: 0 };
-            const tx = idb.transaction('rastro', 'readwrite');
-            tx.objectStore('rastro').add(ponto);
+            // SALVA NO BANCO LOCAL (Offline First)
+            const ponto = { lat, lng, vel, ts: Date.now(), sync: 0 };
+            idb.transaction('rastro', 'readwrite').objectStore('rastro').add(ponto);
             
-            // TENTAR ENVIAR PARA O SERVIDOR (Background)
-            sincronizarServidor();
-            salvarEstadoLocal();
-            
+            // Tenta salvar estado da sessão
+            idb.transaction('sessao', 'readwrite').objectStore('sessao').put({id: 'atual', carro: num, odo: odoTotal});
+
+            // Tenta sincronizar se houver rede
+            if (navigator.onLine) sincronizar();
+
         }, null, { enableHighAccuracy: true });
+
+        // Monitor de conexão
+        db.ref(".info/connected").on("value", (snap) => {
+            const msg = document.getElementById('msgGps');
+            if (snap.val()) {
+                msg.innerText = "● TRANSMITINDO AO VIVO";
+                msg.classList.remove('status-offline');
+                sincronizar();
+            } else {
+                msg.innerText = "MODO OFFLINE ATIVO";
+                msg.classList.add('status-offline');
+            }
+        });
     }
 
-    /* SINCRONIZAÇÃO EM SEGUNDO PLANO */
-    async function sincronizarServidor() {
+    async function sincronizar() {
         if (sincronizando || !navigator.onLine) return;
         sincronizando = true;
-
-        const tx = idb.transaction('rastro', 'readwrite');
-        const store = tx.objectStore('rastro');
         
+        const store = idb.transaction('rastro', 'readwrite').objectStore('rastro');
         store.openCursor().onsuccess = (e) => {
             const cursor = e.target.result;
             if (cursor) {
-                const dado = cursor.value;
-                if (dado.sync === 0) {
-                    db.ref('rastros/' + carroAtivo).push({
-                        lat: dado.lat, lng: dado.lng, ts: dado.ts, vel: dado.vel
-                    }).then(() => {
-                        dado.sync = 1;
-                        cursor.update(dado);
+                if (cursor.value.sync === 0) {
+                    const p = cursor.value;
+                    db.ref('rastros/' + carroAtivo).push({lat: p.lat, lng: p.lng, vel: p.vel, ts: p.ts})
+                    .then(() => {
+                        p.sync = 1;
+                        cursor.update(p);
                         cursor.continue();
-                    }).catch(() => { sincronizando = false; });
-                } else {
-                    cursor.continue();
-                }
-            } else {
-                sincronizando = false;
-            }
+                    }).catch(() => sincronizando = false);
+                } else { cursor.continue(); }
+            } else { sincronizando = false; }
         };
     }
 
-    /* UTILITÁRIOS */
+    /* ODÔMETRO E UTILITÁRIOS */
+    function alterarOdo(v) { odoTotal = Math.max(0, odoTotal + v); atualizarTelaOdo(); tocarBip(1000, 0.05); }
+    function zerarOdo() { if(confirm("Zerar?")) { odoTotal = 0; atualizarTelaOdo(); } }
+    function atualizarTelaOdo() {
+        document.getElementById('displayOdo').innerText = odoTotal.toFixed(3);
+        const itens = document.querySelectorAll('.roadbook-item');
+        itens.forEach(it => {
+            const km = parseFloat(it.querySelector('.rb-col-km').innerText);
+            it.classList.toggle('rb-item-ativo', Math.abs(odoTotal - km) < 0.01);
+        });
+    }
+
     function calcularDist(lat1, lon1, lat2, lon2) {
         const R = 6371;
-        const dLat = (lat2-lat1) * Math.PI / 180;
-        const dLon = (lon2-lon1) * Math.PI / 180;
+        const dLat = (lat2-lat1)*Math.PI/180;
+        const dLon = (lon2-lon1)*Math.PI/180;
         const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     }
 
-    function atualizarTelaOdo() {
-        document.getElementById('displayOdo').innerText = odoTotal.toFixed(3);
-        atualizarScroll();
-    }
-
-    function atualizarScroll() {
-        const itens = document.querySelectorAll('.roadbook-item');
-        itens.forEach(it => {
-            const km = parseFloat(it.querySelector('.rb-col-km').innerText);
-            it.classList.toggle('rb-item-ativo', odoTotal >= (km - 0.010) && odoTotal <= (km + 0.010));
-        });
-    }
-
-    function salvarEstadoLocal() {
-        const tx = idb.transaction('sessao', 'readwrite');
-        tx.objectStore('sessao').put({ id: 'atual', odo: odoTotal, carro: carroAtivo });
-    }
-
-    function verificarSessaoExistente() {
-        const tx = idb.transaction('sessao', 'readonly');
-        tx.objectStore('sessao').get('atual').onsuccess = (e) => {
-            if (e.target.result) {
-                odoTotal = e.target.result.odo || 0;
-                carroAtivo = e.target.result.carro;
-                if (carroAtivo) {
-                    iniciarRastreio(carroAtivo);
-                    carregarRoadbook();
-                    atualizarTelaOdo();
-                }
-            }
-        };
-    }
-
     document.getElementById('btnIniciar').onclick = () => {
-        const n = document.getElementById('carro').value;
-        if (!n) return alert("Nº do Carro!");
-        iniciarRastreio(n);
+        const num = document.getElementById('carro').value;
+        if (!num) return alert("Digite o número!");
+        iniciarFluxo(num);
         carregarRoadbook();
     };
+
+    function enviarDatalogger() {
+        if(navigator.onLine) {
+            alert("Sincronizando dados pendentes...");
+            sincronizar();
+        } else {
+            alert("Sem internet. Os dados estão protegidos no seu telemóvel.");
+        }
+    }
     </script>
 </body>
 </html>
