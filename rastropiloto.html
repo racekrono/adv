@@ -69,10 +69,11 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 
     <script>
-        javascript
-const carroFiltrado = new URLSearchParams(location.search).get('carro');
-// Use `carroFiltrado` para buscar o rastro só desse carro no Firebase:
-// firebase.database().ref('rastros/' + carroFiltrado).on(...)
+        // Lê o carro da URL (?carro=NN) ou do localStorage como fallback
+    const carroURL = new URLSearchParams(location.search).get('carro');
+    if (carroURL) {
+        localStorage.setItem('rally_carro_ativo', carroURL);
+    }
         var map = L.map('map').setView([-12.26, -38.96], 13);
         var sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Esri' }).addTo(map);
         var rua = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
