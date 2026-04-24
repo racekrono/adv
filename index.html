@@ -13,6 +13,8 @@
     <meta name="mobile-web-app-capable" content="yes">
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
         body { font-family: sans-serif; background: #121212; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; overflow: hidden; }
@@ -65,6 +67,15 @@
         #menuOpcoes button:hover { background: #333; }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
+
+        /* Modal Ver Rastro */
+        #rastroModal { display:none; position:fixed; inset:0; background:#000; z-index:9999; flex-direction:column; }
+        #rastroModal.active { display:flex; }
+        #rastroHeader { display:flex; justify-content:space-between; align-items:center; padding:12px 15px; background:#1e1e1e; border-bottom:1px solid #333; color:#fff; }
+        #rastroHeader h3 { margin:0; font-size:15px; color:#f1c40f; }
+        #rastroFechar { width:auto; padding:8px 14px; font-size:14px; margin:0; background:#333; }
+        #rastroMapa { flex:1; background:#222; }
+        #rastroInfo { padding:8px 12px; background:#1e1e1e; color:#aaa; font-size:11px; text-align:center; border-top:1px solid #333; }
     </style>
 </head>
 <body>
@@ -115,6 +126,15 @@
                 <div id="msgPendentes" style="color:#e67e22; font-size:10px; text-align:center; margin-top:3px; display:none;">0 pontos pendentes</div>
             </div>
         </div>
+    </div>
+
+    <div id="rastroModal">
+        <div id="rastroHeader">
+            <h3>📍 Meu Rastro</h3>
+            <button id="rastroFechar" onclick="fecharRastro()">✕ Fechar</button>
+        </div>
+        <div id="rastroMapa"></div>
+        <div id="rastroInfo">Carregando pontos…</div>
     </div>
 
     <script>
@@ -753,13 +773,64 @@
         }
     }
 
-    function verRastro() {
+    let _rastroMap = null, _rastroLayer = null;
+    async function verRastro() {
+        document.getElementById('menuOpcoes').style.display = 'none';
         const carro = carroAtivo || localStorage.getItem('rally_carro_ativo');
-        if (carro) {
-            window.location.href = 'http://racekrono.github.io/adv/rastropiloto.html';
-        } else {
-            alert("Você precisa iniciar a prova para visualizar seu rastro.");
+        if (!carro) { alert("Você precisa iniciar a prova para visualizar seu rastro."); return; }
+
+        const modal = document.getElementById('rastroModal');
+        const info = document.getElementById('rastroInfo');
+        modal.classList.add('active');
+        info.innerText = 'Carregando pontos…';
+
+        // Lê pontos do IndexedDB (fonte da verdade, funciona offline)
+        let pontos = [];
+        try {
+            const all = await idbGetAll('rastro');
+            pontos = all
+                .filter(p => Number(p.carro) === Number(carro) && typeof p.lat === 'number' && typeof p.lng === 'number')
+                .sort((a, b) => (a.ts || 0) - (b.ts || 0));
+        } catch (e) { console.warn('Falha lendo rastro IDB', e); }
+
+        // Inicializa mapa (uma vez)
+        if (!_rastroMap) {
+            _rastroMap = L.map('rastroMapa', { zoomControl: true, attributionControl: false });
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19, crossOrigin: true
+            }).addTo(_rastroMap);
+            _rastroMap.setView([-12.9, -38.5], 13);
         }
+        if (_rastroLayer) { _rastroMap.removeLayer(_rastroLayer); _rastroLayer = null; }
+
+        if (pontos.length === 0) {
+            info.innerText = 'Nenhum ponto registrado ainda.';
+            setTimeout(() => _rastroMap.invalidateSize(), 100);
+            return;
+        }
+
+        const coords = pontos.map(p => [p.lat, p.lng]);
+        const grupo = L.featureGroup();
+        L.polyline(coords, { color: '#f80303', weight: 4, opacity: 0.85 }).addTo(grupo);
+        L.circleMarker(coords[0], { radius: 7, color: '#2ecc71', fillColor: '#2ecc71', fillOpacity: 1 })
+            .bindTooltip('Início').addTo(grupo);
+        L.circleMarker(coords[coords.length - 1], { radius: 7, color: '#f1c40f', fillColor: '#f1c40f', fillOpacity: 1 })
+            .bindTooltip('Atual').addTo(grupo);
+        grupo.addTo(_rastroMap);
+        _rastroLayer = grupo;
+
+        setTimeout(() => {
+            _rastroMap.invalidateSize();
+            _rastroMap.fitBounds(grupo.getBounds(), { padding: [30, 30] });
+        }, 150);
+
+        const dt0 = pontos[0].ts ? new Date(pontos[0].ts).toLocaleTimeString() : '-';
+        const dt1 = pontos[pontos.length - 1].ts ? new Date(pontos[pontos.length - 1].ts).toLocaleTimeString() : '-';
+        info.innerText = `Carro ${carro} • ${pontos.length} pontos • ${dt0} → ${dt1}`;
+    }
+
+    function fecharRastro() {
+        document.getElementById('rastroModal').classList.remove('active');
     }
 
     async function encerrarSessao() {
