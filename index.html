@@ -15,6 +15,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
 
     <style>
         body { font-family: sans-serif; background: #121212; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; overflow: hidden; }
@@ -68,14 +69,27 @@
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
 
-        /* Modal Ver Rastro */
-        #rastroModal { display:none; position:fixed; inset:0; background:#000; z-index:9999; flex-direction:column; }
+        /* Modal Ver Rastro - Analisador GPS */
+        #rastroModal { display:none; position:fixed; inset:0; background:#121212; z-index:9999; flex-direction:row; color:#fff; font-family:sans-serif; }
         #rastroModal.active { display:flex; }
-        #rastroHeader { display:flex; justify-content:space-between; align-items:center; padding:12px 15px; background:#1e1e1e; border-bottom:1px solid #333; color:#fff; }
-        #rastroHeader h3 { margin:0; font-size:15px; color:#f1c40f; }
-        #rastroFechar { width:auto; padding:8px 14px; font-size:14px; margin:0; background:#333; }
-        #rastroMapa { flex:1; background:#222; }
-        #rastroInfo { padding:8px 12px; background:#1e1e1e; color:#aaa; font-size:11px; text-align:center; border-top:1px solid #333; }
+        #rastroSidebar { width: 300px; background:#1e1e1e; border-right:2px solid #e67e22; display:flex; flex-direction:column; padding:14px; box-sizing:border-box; overflow-y:auto; }
+        #rastroSidebar h3 { margin:0 0 12px 0; font-size:16px; color:#e67e22; }
+        #rastroSidebar .btn-rastro { width:100%; padding:12px; margin:0 0 10px 0; border-radius:6px; border:none; font-size:13px; font-weight:bold; cursor:pointer; }
+        #btnAnalisar { background:#e67e22; color:#fff; }
+        #btnFecharRastro { background:#444; color:#fff; margin-top:auto; }
+        #rastroResumo { flex-grow:1; overflow-y:auto; margin-bottom:10px; }
+        #rastroResumo .stats-card { background:#252525; padding:12px; border-radius:8px; border-left:4px solid #e67e22; font-size:12px; line-height:1.55; color:#fff; }
+        #rastroResumo .stats-card hr { border:none; border-top:1px solid #333; margin:6px 0; }
+        #rastroLegenda { padding:10px; background:rgba(255,255,255,0.05); border-radius:8px; font-size:11px; line-height:1.7; border:1px solid #333; }
+        #rastroLegenda strong { display:block; margin-bottom:4px; color:#fff; }
+        #rastroLegenda .item-legenda { display:flex; align-items:center; gap:8px; }
+        #rastroMapa { flex:1; background:#222; height:100%; }
+        .leaflet-popup-content-wrapper { background:#fff; color:#333; border-radius:8px; }
+        @media (max-width: 640px) {
+            #rastroModal.active { flex-direction:column; }
+            #rastroSidebar { width:100%; max-height:48vh; border-right:none; border-bottom:2px solid #e67e22; }
+            #rastroMapa { flex:1; min-height:52vh; }
+        }
     </style>
 </head>
 <body>
@@ -129,12 +143,23 @@
     </div>
 
     <div id="rastroModal">
-        <div id="rastroHeader">
-            <h3>📍 Meu Rastro</h3>
-            <button id="rastroFechar" onclick="fecharRastro()">✕ Fechar</button>
+        <div id="rastroSidebar">
+            <h3>🛰️ Meu Rastro</h3>
+            <button class="btn-rastro" id="btnAnalisar" onclick="analisarRastro()">PROCESSAR TELEMETRIA</button>
+            <div id="rastroResumo">
+                <div class="stats-card">Clique em processar para verificar radares e waypoints do seu rastro.</div>
+            </div>
+            <div id="rastroLegenda">
+                <strong>Dicionário do Mapa:</strong>
+                <div class="item-legenda"><span style="color:#3498db; font-weight:bold;">━━</span> Rota Planejada</div>
+                <div class="item-legenda"><span style="color:#ffff00; font-size:16px;">●</span> Rastro Normal (OK)</div>
+                <div class="item-legenda"><span style="color:red; font-size:16px;">●</span> Excesso de Velocidade</div>
+                <div class="item-legenda"><span style="color:#38a169; font-size:16px;">●</span> Waypoint Validado</div>
+                <div class="item-legenda"><span style="color:#e74c3c; font-size:16px;">●</span> Waypoint Perdido</div>
+            </div>
+            <button class="btn-rastro" id="btnFecharRastro" onclick="fecharRastro()">✕ FECHAR</button>
         </div>
         <div id="rastroMapa"></div>
-        <div id="rastroInfo">Carregando pontos…</div>
     </div>
 
     <script>
@@ -773,60 +798,168 @@
         }
     }
 
-    let _rastroMap = null, _rastroLayer = null;
+    /* =========================================================
+       VER RASTRO - Analisador GPS embutido
+       Replica a lógica de rastro.html (admin) para o próprio piloto.
+       - Rastro vem do IndexedDB local (funciona offline)
+       - Percurso (rota/radares/waypoints) vem de configuracoes/percurso
+         no Firebase e é cacheado em IndexedDB store 'percursoCache'.
+    ========================================================= */
+    let _rastroMap = null;
+    let _rastroCamadas = { rota: null, alertas: null };
+
     async function verRastro() {
         document.getElementById('menuOpcoes').style.display = 'none';
         const carro = carroAtivo || localStorage.getItem('rally_carro_ativo');
         if (!carro) { alert("Você precisa iniciar a prova para visualizar seu rastro."); return; }
 
         const modal = document.getElementById('rastroModal');
-        const info = document.getElementById('rastroInfo');
         modal.classList.add('active');
-        info.innerText = 'Carregando pontos…';
 
-        // Lê pontos do IndexedDB (fonte da verdade, funciona offline)
-        let pontos = [];
+        // Inicializa mapa uma vez
+        if (!_rastroMap) {
+            _rastroMap = L.map('rastroMapa', { zoomControl: true });
+            const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Esri', maxZoom: 19 });
+            const rua = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, crossOrigin: true }).addTo(_rastroMap);
+            L.control.layers({ "Rua": rua, "Satélite": sat }).addTo(_rastroMap);
+            _rastroMap.setView([-12.26, -38.96], 13);
+            _rastroCamadas.rota = L.featureGroup().addTo(_rastroMap);
+            _rastroCamadas.alertas = L.featureGroup().addTo(_rastroMap);
+        }
+        _rastroCamadas.rota.clearLayers();
+        _rastroCamadas.alertas.clearLayers();
+        document.getElementById('rastroResumo').innerHTML = '<div class="stats-card">Carregando rastro do Carro ' + carro + '…</div>';
+
+        setTimeout(() => _rastroMap.invalidateSize(), 150);
+
+        // Tenta atualizar cache do percurso (se online). Ignora falhas.
+        try {
+            const snap = await db.ref('configuracoes/percurso').once('value');
+            const v = snap.val();
+            if (v && idb) { await idbPut('roadbook', { id: 'percurso', dados: v, ts: Date.now() }).catch(() => {}); }
+        } catch (e) { /* offline: usa cache */ }
+
+        // Análise automática na abertura
+        setTimeout(() => analisarRastro(), 100);
+    }
+
+    async function analisarRastro() {
+        const carro = carroAtivo || localStorage.getItem('rally_carro_ativo');
+        if (!carro || !_rastroMap) return;
+        const resumoEl = document.getElementById('rastroResumo');
+        resumoEl.innerHTML = '<div class="stats-card">Processando telemetria…</div>';
+
+        _rastroCamadas.rota.clearLayers();
+        _rastroCamadas.alertas.clearLayers();
+
+        // 1) Rastro do próprio carro (IndexedDB)
+        let rastroArr = [];
         try {
             const all = await idbGetAll('rastro');
-            pontos = all
+            rastroArr = all
                 .filter(p => Number(p.carro) === Number(carro) && typeof p.lat === 'number' && typeof p.lng === 'number')
-                .sort((a, b) => (a.ts || 0) - (b.ts || 0));
-        } catch (e) { console.warn('Falha lendo rastro IDB', e); }
+                .map(p => ({ lat: p.lat, lng: p.lng, vel: p.vel || 0, ts: p.ts || 0 }))
+                .sort((a, b) => a.ts - b.ts);
+        } catch (e) { console.warn('IDB rastro', e); }
 
-        // Inicializa mapa (uma vez)
-        if (!_rastroMap) {
-            _rastroMap = L.map('rastroMapa', { zoomControl: true, attributionControl: false });
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19, crossOrigin: true
-            }).addTo(_rastroMap);
-            _rastroMap.setView([-12.9, -38.5], 13);
-        }
-        if (_rastroLayer) { _rastroMap.removeLayer(_rastroLayer); _rastroLayer = null; }
-
-        if (pontos.length === 0) {
-            info.innerText = 'Nenhum ponto registrado ainda.';
-            setTimeout(() => _rastroMap.invalidateSize(), 100);
+        if (rastroArr.length === 0) {
+            resumoEl.innerHTML = '<div class="stats-card">Sem rastro disponível ainda.</div>';
             return;
         }
 
-        const coords = pontos.map(p => [p.lat, p.lng]);
-        const grupo = L.featureGroup();
-        L.polyline(coords, { color: '#f80303', weight: 4, opacity: 0.85 }).addTo(grupo);
-        L.circleMarker(coords[0], { radius: 7, color: '#2ecc71', fillColor: '#2ecc71', fillOpacity: 1 })
-            .bindTooltip('Início').addTo(grupo);
-        L.circleMarker(coords[coords.length - 1], { radius: 7, color: '#f1c40f', fillColor: '#f1c40f', fillOpacity: 1 })
-            .bindTooltip('Atual').addTo(grupo);
-        grupo.addTo(_rastroMap);
-        _rastroLayer = grupo;
+        _rastroMap.fitBounds(L.latLngBounds(rastroArr.map(p => [p.lat, p.lng])), { padding: [40, 40] });
 
-        setTimeout(() => {
-            _rastroMap.invalidateSize();
-            _rastroMap.fitBounds(grupo.getBounds(), { padding: [30, 30] });
-        }, 150);
+        // 2) Percurso (rota/radares/waypoints) - cache local
+        let percurso = null;
+        try {
+            const cache = await idbGet('roadbook', 'percurso').catch(() => null);
+            if (cache && cache.dados) percurso = cache.dados;
+        } catch (e) {}
 
-        const dt0 = pontos[0].ts ? new Date(pontos[0].ts).toLocaleTimeString() : '-';
-        const dt1 = pontos[pontos.length - 1].ts ? new Date(pontos[pontos.length - 1].ts).toLocaleTimeString() : '-';
-        info.innerText = `Carro ${carro} • ${pontos.length} pontos • ${dt0} → ${dt1}`;
+        let penTotal = 0;
+        let logs = '';
+        const pontosInfracao = new Map();
+
+        if (percurso && Array.isArray(percurso.features) && typeof turf !== 'undefined') {
+            percurso.features.forEach(feat => {
+                // Linha guia (rota planejada)
+                if (feat.geometry && feat.geometry.type === 'LineString') {
+                    L.polyline(feat.geometry.coordinates.map(c => [c[1], c[0]]), { color: '#3498db', weight: 4, opacity: 0.5 }).addTo(_rastroCamadas.rota);
+                }
+                // Waypoints (círculos)
+                if (feat.properties && feat.properties.type === 'circle') {
+                    const coords = feat.geometry.coordinates;
+                    const raioM = feat.properties.radius || 50;
+                    const isChegada = feat.properties.subType === 'chegada';
+                    const visitou = rastroArr.some(p => (turf.distance(turf.point([p.lng, p.lat]), turf.point(coords)) * 1000) <= raioM);
+                    L.circle([coords[1], coords[0]], {
+                        radius: raioM,
+                        color: isChegada ? '#f1c40f' : (visitou ? '#38a169' : '#e74c3c'),
+                        weight: isChegada ? 5 : 2,
+                        fillOpacity: 0.2
+                    }).addTo(_rastroCamadas.rota);
+                    if (!isChegada && !visitou) {
+                        penTotal += 2000;
+                        logs += '❌ WP Perdido (-2000)<br>';
+                    }
+                }
+                // Radares (polígonos)
+                else if (feat.geometry && feat.geometry.type.includes('Polygon')) {
+                    L.geoJSON(feat, { style: { color: '#3498db', weight: 1, fillOpacity: 0.1 } }).addTo(_rastroCamadas.rota);
+                    const vMax = (feat.properties.velocidade || 60) * 1.1;
+                    let tempoExcesso = 0;
+                    rastroArr.forEach((p, i) => {
+                        if (i > 0) {
+                            const dur = p.ts - rastroArr[i - 1].ts;
+                            if (dur < 30000 && p.vel > vMax && turf.booleanPointInPolygon(turf.point([p.lng, p.lat]), feat)) {
+                                tempoExcesso += dur;
+                                pontosInfracao.set(p.ts, Math.round(tempoExcesso / 1000));
+                            }
+                        }
+                    });
+                    if (tempoExcesso > 10000) {
+                        const pts = (Math.floor((tempoExcesso - 10000) / 10000) + 1) * 500;
+                        penTotal += pts;
+                        logs += `⚠️ Radar: Excesso (${Math.round(tempoExcesso / 1000)}s) -${pts} pts<br>`;
+                    }
+                }
+            });
+        } else if (!percurso) {
+            logs = '<em style="color:#aaa;">Percurso ainda não disponível offline. Conecte à internet uma vez para baixar radares e waypoints.</em><br>';
+        }
+
+        // 3) Desenho do rastro (amarelo esparso / vermelho em infração)
+        const espacamentoVerde = 4;
+        rastroArr.forEach((p, index) => {
+            if (pontosInfracao.has(p.ts)) {
+                L.circleMarker([p.lat, p.lng], {
+                    radius: 5, color: '#7B0000', weight: 1,
+                    fillColor: 'red', fillOpacity: 0.9
+                }).addTo(_rastroCamadas.alertas).bindPopup(
+                    `<div style="color:red; font-weight:bold;">⚠️ EXCESSO DETECTADO</div>
+                     Velocidade: <b>${p.vel} km/h</b><br>
+                     Tempo no Radar: ${pontosInfracao.get(p.ts)}s<br>
+                     Hora: ${new Date(p.ts).toLocaleTimeString('pt-BR')}`
+                );
+            } else if (index % espacamentoVerde === 0) {
+                L.circleMarker([p.lat, p.lng], {
+                    radius: 2.5, color: '#b8860b', weight: 1,
+                    fillColor: '#ffff00', fillOpacity: 0.5
+                }).addTo(_rastroCamadas.alertas).bindPopup(
+                    `<b>Rastro OK</b><br>
+                     Hora: ${new Date(p.ts).toLocaleTimeString('pt-BR')}<br>
+                     Vel: ${p.vel} km/h`
+                );
+            }
+        });
+
+        // 4) Resumo lateral
+        resumoEl.innerHTML = `
+            <div class="stats-card">
+                <strong>Meu Desempenho (Carro ${carro})</strong><hr>
+                ${logs || '✅ Sem penalidades detectadas.'}<br>
+                <b>Total: -${penTotal} pts</b>
+            </div>`;
     }
 
     function fecharRastro() {
