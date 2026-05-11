@@ -372,8 +372,20 @@
             try {
                 const statusSnap = await db.ref('configuracoes/provaAberta').once('value');
                 if (statusSnap.val() !== true) return alert("🚫 A prova está fechada.");
+
                 const snapshot = await db.ref('competidores/' + num).once('value');
-                if (snapshot.exists()) return alert("Este número de carro já existe!");
+                if (snapshot.exists()) {
+                    // Permite reentrar se for o mesmo carro/nome desta sessão local (reinstalação, app fechado, etc.)
+                    const existente = snapshot.val() || {};
+                    const mesmoNome = (existente.nome || '').trim().toLowerCase() === nomeRaw.toLowerCase();
+                    const carroLocal = localStorage.getItem('rally_carro_ativo');
+                    const ehMinhaSessao = carroLocal && parseInt(carroLocal) === num;
+
+                    if (!mesmoNome && !ehMinhaSessao) {
+                        return alert("Este número de carro já existe!\n\nEscolha outro número ou peça ao organizador para liberar.");
+                    }
+                    // Mesmo carro/nome → segue, sobrescrevendo categoria se mudou
+                }
 
                 somClique();
 
@@ -463,8 +475,14 @@
         async function enviarDatalogger() {
             const num = window.__rk.carroAtivo || localStorage.getItem('rally_carro_ativo');
             if (!num) return alert("Nenhuma sessão ativa.");
+            // Aguarda o boot.js (módulo ES) terminar de carregar — pode demorar no navegador web
+            let tentativas = 0;
+            while ((!window.__rk || !window.__rk.enviarDataloggerCompleto) && tentativas < 50) {
+                await new Promise(r => setTimeout(r, 100));
+                tentativas++;
+            }
             if (!window.__rk || !window.__rk.enviarDataloggerCompleto) {
-                return alert("Sistema offline ainda inicializando, aguarde alguns segundos.");
+                return alert("Sistema offline ainda inicializando, aguarde alguns segundos e tente novamente.");
             }
             try {
                 const msg = await window.__rk.enviarDataloggerCompleto(num);
