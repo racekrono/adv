@@ -475,18 +475,53 @@
         async function enviarDatalogger() {
             const num = window.__rk.carroAtivo || localStorage.getItem('rally_carro_ativo');
             if (!num) return alert("Nenhuma sessão ativa.");
-            // Aguarda o boot.js (módulo ES) terminar de carregar — pode demorar no navegador web
-            let tentativas = 0;
-            while ((!window.__rk || !window.__rk.enviarDataloggerCompleto) && tentativas < 50) {
-                await new Promise(r => setTimeout(r, 100));
-                tentativas++;
-            }
-            if (!window.__rk || !window.__rk.enviarDataloggerCompleto) {
-                return alert("Sistema offline ainda inicializando, aguarde alguns segundos e tente novamente.");
-            }
             try {
-                const msg = await window.__rk.enviarDataloggerCompleto(num);
-                alert(msg);
+                if (window.__rk && window.__rk.enviarDataloggerCompleto) {
+                    const msg = await window.__rk.enviarDataloggerCompleto(num);
+                    return alert(msg);
+                }
+
+                // Fallback WEB: quando o index.html roda direto no navegador e o boot.js não carregou,
+                // envia o datalogger usando o rastro que já está no Firebase.
+                const snap = await db.ref('rastros/' + num).once('value');
+                const pontos = [];
+                snap.forEach(child => {
+                    const p = child.val() || {};
+                    if (typeof p.lat === 'number' && typeof p.lng === 'number') {
+                        pontos.push({
+                            lat: p.lat,
+                            lng: p.lng,
+                            vel: p.vel || 0,
+                            acc: p.acc || 0,
+                            ts: p.ts || Date.now()
+                        });
+                    }
+                });
+
+                if (pontos.length === 0) {
+                    const atualSnap = await db.ref('posicoes/' + num).once('value');
+                    const atual = atualSnap.val() || {};
+                    if (typeof atual.lat === 'number' && typeof atual.lng === 'number') {
+                        pontos.push({
+                            lat: atual.lat,
+                            lng: atual.lng,
+                            vel: atual.vel || 0,
+                            acc: atual.acc || 0,
+                            ts: atual.ts || Date.now()
+                        });
+                    }
+                }
+
+                if (pontos.length === 0) return alert("Nenhum ponto de GPS para enviar.");
+
+                const ts = Date.now();
+                await db.ref(`rastros_completos/${num}/${ts}`).set({
+                    enviadoEm: ts,
+                    totalPontos: pontos.length,
+                    pontos
+                });
+
+                alert(`✅ Datalogger enviado: ${pontos.length} pontos.`);
             } catch (e) {
                 alert("Falha ao enviar datalogger: " + (e.message || e));
             }
