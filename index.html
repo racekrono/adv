@@ -270,13 +270,14 @@
             });
 
             if (proximoItemIdx !== -1) {
+                const itemAlvo = document.getElementById('rb-item-' + proximoItemIdx);
+                itemAlvo.classList.add('rb-item-ativo');
+                
                 if (proximoItemIdx !== ultimoIndiceAtivo) {
                     if (ultimoIndiceAtivo !== -1) somTrocaReferencia();
                     ultimoIndiceAtivo = proximoItemIdx;
+                    itemAlvo.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
-                const itemAlvo = document.getElementById('rb-item-' + proximoItemIdx);
-                itemAlvo.classList.add('rb-item-ativo');
-                itemAlvo.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         }
 
@@ -412,6 +413,8 @@
         function zerarOdo() {
             if(confirm("Zerar odômetro?")) {
                 odoTotal = 0;
+                ultimaPos = null;
+                ultimoIndiceAtivo = -1;
                 somClique();
                 atualizarTelaOdo();
             }
