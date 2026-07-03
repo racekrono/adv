@@ -39,4 +39,359 @@
 
         .pdf-temp-table { color: black !important; background: white !important; width: 100%; border-collapse: collapse; }
         .pdf-temp-table th { background: #eee !important; color: black !important; border: 1px solid #ccc !important; }
-        .pdf-temp
+        .pdf-temp-table td { border: 1px solid #ccc !important; color: black !important; }
+        .pdf-temp-table img { width: 60px; height: 60px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="controles">
+        <div>
+            <h2>🛠️ Editor Race Krono</h2>
+            <span id="aviso-save">✓ Alterações salvas no cache</span>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
+            <button class="btn-acao" onclick="window.location.href='admin.html'" style="background: #38a169; color: white;">⬅️ VOLTAR</button>
+            <button class="btn-acao" onclick="limparEditor()" style="background:#e74c3c; color:white;">🗑️ LIMPAR</button>
+            <button class="btn-acao" onclick="document.getElementById('importInput').click()" style="background:#3498db; color:white;">📂 IMPORTAR</button>
+            <button class="btn-acao" onclick="gerarPDF()" style="background:#9b59b6; color:white;">📄 PDF</button>
+            <button class="btn-acao btn-save" onclick="salvarJSON()">📥 JSON</button>
+        </div>
+    </div>
+
+    <input type="file" id="importInput" style="display:none" accept=".json" onchange="importarJSON(this)">
+
+    <table id="tabelaDados">
+        <thead>
+            <tr>
+                <th style="width: 150px;">KM</th>
+                <th style="width: 100px;">TULIPA</th>
+                <th>OBSERVAÇÃO</th>
+                <th class="col-acao" style="width: 40px;"></th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    <button class="btn-acao" onclick="adicionarLinha()" style="background: #2ecc71; color: white; width: 100%; margin-top: 15px;">+ ADICIONAR NOVO PONTO</button>
+</div>
+
+<div id="modal">
+    <div class="modal-content">
+        <h3>Selecione ou Desenhe a Tulipa</h3>
+        <div class="abas">
+            <div class="aba ativa" onclick="mudarAba('frente', this)">Frente</div>
+            <div class="aba" onclick="mudarAba('esquerda', this)">Esquerda</div>
+            <div class="aba" onclick="mudarAba('direita', this)">Direita</div>
+            <div class="aba" onclick="mudarAba('desenhar', this)" style="border: 1px dashed var(--amarelo);">✏️ Desenhar Nova</div>
+        </div>
+        
+        <div class="galeria" id="galeria"></div>
+
+        <div class="container-desenho" id="containerDesenho">
+            <div class="toolbar-desenho">
+                <button class="btn-tool ativo" id="tool-livre" onclick="definirFerramenta('livre')">✏️ Mão Livre</button>
+                <button class="btn-tool" id="tool-reta" onclick="definirFerramenta('reta')">📏 Linha Reta</button>
+                <button class="btn-tool" id="tool-seta" onclick="definirFerramenta('seta')">🏹 Seta Perfeita</button>
+            </div>
+            <canvas id="canvasTulipa" width="250" height="250"></canvas>
+            <div class="botoes-desenho">
+                <button class="btn-acao" onclick="limparCanvas()" style="background:#7f8c8d; color:white;">Limpar Tela</button>
+                <button class="btn-acao" onclick="aplicarDesenho()" style="background:#2ecc71; color:white;">Confirmar Desenho</button>
+            </div>
+        </div>
+
+        <br>
+        <button class="btn-acao" onclick="fecharModal()" style="background:#e74c3c; color:white; width: 100%;">FECHAR</button>
+    </div>
+</div>
+
+<script>
+    const URL_BASE = "https://raw.githubusercontent.com/racekrono/adv/refs/heads/main/tulipas/";
+    const imagensPorPasta = { frente: 141, esquerda: 126, direita: 200 };
+    let linhaSendoEditada = null;
+    let abaAtual = 'frente';
+
+    // Variáveis Globais do Canvas Avançado
+    let canvas, ctx, desenhando = false;
+    let ferramentaAtual = 'livre'; // livre, reta, seta
+    let startX = 0, startY = 0;
+    let snapshot daImagem = null; // Guarda o estado do canvas para renderização elástica da reta/seta
+
+    function gravarCache() {
+        const linhas = document.querySelectorAll("#tabelaDados tbody tr");
+        const rascunho = Array.from(linhas).map(linha => ({
+            km: Math.abs(linha.querySelector(".km").value),
+            tulipa: linha.querySelector(".btn-tulipa-seletor img").dataset.url,
+            obs: linha.querySelector(".obs").value
+        }));
+        localStorage.setItem('rascunho_racekrono', JSON.stringify(rascunho));
+        
+        const aviso = document.getElementById('aviso-save');
+        aviso.style.display = 'block';
+        setTimeout(() => aviso.style.display = 'none', 2000);
+    }
+
+    function restaurarCache() {
+        const salvo = localStorage.getItem('rascunho_racekrono');
+        if (salvo) {
+            const dados = JSON.parse(salvo);
+            if (dados.length > 0 && confirm("Restaurar rascunho anterior?")) {
+                document.querySelector("#tabelaDados tbody").innerHTML = "";
+                dados.forEach(item => adicionarLinha(item));
+            } else { adicionarLinha(); }
+        } else { adicionarLinha(); }
+        inicializarCanvas();
+    }
+
+    function limparEditor() {
+        if(confirm("Apagar todo o rascunho?")) {
+            localStorage.removeItem('rascunho_racekrono');
+            location.reload();
+        }
+    }
+
+    function adicionarLinha(dados = null) {
+        const tbody = document.querySelector("#tabelaDados tbody");
+        const tr = document.createElement("tr");
+        const imgPath = (dados && dados.tulipa) ? dados.tulipa : (URL_BASE + "frente/1.png");
+
+        tr.innerHTML = `
+            <td><input type="number" step="0.001" class="km" value="${dados ? dados.km : ''}" oninput="gravarCache()"></td>
+            <td>
+                <div class="btn-tulipa-seletor" onclick="abrirModal(this)">
+                    <img src="${imgPath}" data-url="${imgPath}">
+                </div>
+            </td>
+            <td><input type="text" class="obs" value="${dados ? dados.obs : ''}" oninput="gravarCache()" placeholder="..."></td>
+            <td class="col-acao"><button onclick="this.parentElement.parentElement.remove(); gravarCache();" style="background:none; border:none; color:#e74c3c; cursor:pointer;">✕</button></td>
+        `;
+        tbody.appendChild(tr);
+    }
+
+    function abrirModal(elemento) { 
+        linhaSendoEditada = elemento.querySelector("img"); 
+        document.getElementById("modal").style.display = "flex"; 
+        mudarAba('frente', document.querySelector('.aba'));
+    }
+    
+    function fecharModal() { 
+        document.getElementById("modal").style.display = "none"; 
+        gravarCache(); 
+    }
+    
+    function mudarAba(pasta, elemento) {
+        abaAtual = pasta;
+        document.querySelectorAll('.aba').forEach(a => a.classList.remove('ativa'));
+        elemento.classList.add('ativa');
+        
+        const galeria = document.getElementById("galeria");
+        const containerDesenho = document.getElementById("containerDesenho");
+
+        if (pasta === 'desenhar') {
+            galeria.style.display = "none";
+            containerDesenho.style.display = "flex";
+            definirFerramenta('livre');
+            limparCanvas();
+        } else {
+            containerDesenho.style.display = "none";
+            galeria.style.display = "grid";
+            renderizarGaleria();
+        }
+    }
+
+    function renderizarGaleria() {
+        const galeria = document.getElementById("galeria");
+        galeria.innerHTML = "";
+        for (let i = 1; i <= imagensPorPasta[abaAtual]; i++) {
+            const img = document.createElement("img");
+            const url = `${URL_BASE}${abaAtual}/${i}.png`;
+            img.src = url;
+            img.onclick = function() { linhaSendoEditada.src = url; linhaSendoEditada.dataset.url = url; fecharModal(); };
+            galeria.appendChild(img);
+        }
+    }
+
+    // --- MOTOR DE DESENHO GEOMÉTRICO (CANVAS V2) ---
+    function inicializarCanvas() {
+        canvas = document.getElementById("canvasTulipa");
+        ctx = canvas.getContext("2d");
+
+        // Configuração estrutural do traço técnico
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = 5;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+
+        // Mapeamento de Eventos (Mouse)
+        canvas.addEventListener("mousedown", iniciarPasso);
+        canvas.addEventListener("mousemove", moverPasso);
+        canvas.addEventListener("mouseup", encerrarPasso);
+        canvas.addEventListener("mouseleave", encerrarPasso);
+
+        // Mapeamento de Eventos (Touchscreen)
+        canvas.addEventListener("touchstart", (e) => { iniciarPasso(e.touches[0]); e.preventDefault(); });
+        canvas.addEventListener("touchmove", (e) => { moverPasso(e.touches[0]); e.preventDefault(); });
+        canvas.addEventListener("touchend", encerrarPasso);
+    }
+
+    function definirFerramenta(ferramenta) {
+        ferramentaAtual = ferramenta;
+        document.querySelectorAll('.btn-tool').forEach(b => b.classList.remove('ativo'));
+        document.getElementById(`tool-${ferramenta}`).classList.add('ativo');
+    }
+
+    function obterCoordenadas(e) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top
+        };
+    }
+
+    function iniciarPasso(e) {
+        desenhando = true;
+        const coords = obterCoordenadas(e);
+        startX = coords.x;
+        startY = coords.y;
+
+        // Salva o canvas atual para permitir o efeito elástico nas formas geométricas
+        snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+        if (ferramentaAtual === 'livre') {
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+        }
+    }
+
+    function moverPasso(e) {
+        if (!desenhando) return;
+        const coords = obterCoordenadas(e);
+
+        if (ferramentaAtual === 'livre') {
+            ctx.lineTo(coords.x, coords.y);
+            ctx.stroke();
+        } else {
+            // Restaura o estado anterior antes de desenhar a nova prévia geométrica
+            ctx.putImageData(snapshot, 0, 0);
+            
+            if (ferramentaAtual === 'reta') {
+                desenharLinhaReta(startX, startY, coords.x, coords.y);
+            } else if (ferramentaAtual === 'seta') {
+                desenharSetaMecanica(startX, startY, coords.x, coords.y);
+            }
+        }
+    }
+
+    function encerrarPasso() {
+        desenhando = false;
+    }
+
+    function desenharLinhaReta(x1, y1, x2, y2) {
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+    }
+
+    function desenharSetaMecanica(x1, y1, x2, y2) {
+        // Desenha a linha guia principal
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+
+        // Cálculo vetorial para a ponta geométrica da seta
+        const angulo = Math.atan2(y2 - y1, x2 - x1);
+        const comprimentoPonta = 18; // Tamanho ideal da seta na proporção do canvas
+
+        ctx.beginPath();
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(x2 - comprimentoPonta * Math.cos(angulo - Math.PI / 6), y2 - comprimentoPonta * Math.sin(angulo - Math.PI / 6));
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(x2 - comprimentoPonta * Math.cos(angulo + Math.PI / 6), y2 - comprimentoPonta * Math.sin(angulo + Math.PI / 6));
+        ctx.stroke();
+    }
+
+    function limparCanvas() {
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Círculo regulamentar de partida (Bolinha de Rally no meio inferior)
+        ctx.fillStyle = "#000000";
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2, canvas.height - 30, 8, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    function aplicarDesenho() {
+        const dataURL = canvas.toDataURL("image/png");
+        linhaSendoEditada.src = dataURL;
+        linhaSendoEditada.dataset.url = dataURL;
+        fecharModal();
+    }
+
+    function salvarJSON() {
+        const linhas = document.querySelectorAll("#tabelaDados tbody tr");
+        const data = Array.from(linhas).map(linha => {
+            const kmVal = Self.querySelector(".km").value;
+            return {
+                km: kmVal === "" ? 0 : parseFloat(kmVal),
+                tulipa: linha.querySelector(".btn-tulipa-seletor img").dataset.url,
+                media: "--",
+                obs: (linha.querySelector(".obs").value || "").toUpperCase()
+            };
+        });
+
+        data.sort((a, b) => a.km - b.km);
+        if (data.length === 0) return alert("Não há dados para salvar.");
+
+        const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "planilha_prova.json";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    function gerarPDF() {
+        const original = document.getElementById("tabelaDados");
+        const clone = original.cloneNode(true);
+        clone.classList.add("pdf-temp-table");
+        clone.querySelectorAll(".col-acao").forEach(el => el.remove());
+
+        clone.querySelectorAll("input").forEach(input => {
+            const texto = document.createTextNode(input.value || "-");
+            input.parentNode.replaceChild(texto, input);
+        });
+
+        const opt = {
+            margin: 10,
+            filename: 'planilha_racekrono.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        html2pdf().set(opt).from(clone).save();
+    }
+
+    function importarJSON(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const importados = JSON.parse(e.target.result);
+                document.querySelector("#tabelaDados tbody").innerHTML = "";
+                importados.forEach(item => adicionarLinha(item));
+                gravarCache();
+            } catch(err) { alert("Erro ao ler arquivo JSON."); }
+        };
+        reader.readAsText(file);
+    }
+
+    window.onload = restaurarCache;
+</script>
+</body>
+</html>
