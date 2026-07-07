@@ -257,40 +257,28 @@
         }
 
         function atualizarScrollRoadbook() {
-    const itens = document.querySelectorAll('.roadbook-item');
-    if (itens.length === 0) return;
+            const itens = document.querySelectorAll('.roadbook-item');
+            if (itens.length === 0) return;
+            let proximoItemIdx = -1;
 
-    const margemTolerancia = 0.001; // 1 metro
-    let indiceAtivo = 0; // Por padrão, começa na primeira referência (0.000)
+            itens.forEach((div, index) => {
+                const kmItem = parseFloat(div.querySelector('.rb-col-km').innerText);
+                div.classList.remove('rb-item-ativo');
+                if (proximoItemIdx === -1 && odoTotal < kmItem) {
+                    proximoItemIdx = index;
+                }
+            });
 
-    for (let index = 0; index < itens.length; index++) {
-        const div = itens[index];
-        div.classList.remove('rb-item-ativo'); // Limpa a seleção visual anterior
-        
-        const kmItem = parseFloat(div.querySelector('.rb-col-km').innerText);
-        
-        // Se o odômetro avançou mais do que o Km desta referência + 1 metro,
-        // significa que você já passou dela e a planilha deve focar na próxima.
-        if (odoTotal > (kmItem + margemTolerancia)) {
-            if (index + 1 < itens.length) {
-                indiceAtivo = index + 1;
+            if (proximoItemIdx !== -1) {
+                if (proximoItemIdx !== ultimoIndiceAtivo) {
+                    if (ultimoIndiceAtivo !== -1) somTrocaReferencia();
+                    ultimoIndiceAtivo = proximoItemIdx;
+                }
+                const itemAlvo = document.getElementById('rb-item-' + proximoItemIdx);
+                itemAlvo.classList.add('rb-item-ativo');
+                itemAlvo.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         }
-    }
-
-    // Gerencia o som de transição de referência
-    if (indiceAtivo !== ultimoIndiceAtivo) {
-        if (ultimoIndiceAtivo !== -1) somTrocaReferencia();
-        ultimoIndiceAtivo = indiceAtivo;
-    }
-
-    // Aplica o destaque na referência correta e rola a tela
-    const itemAlvo = document.getElementById('rb-item-' + indiceAtivo);
-    if (itemAlvo) {
-        itemAlvo.classList.add('rb-item-ativo');
-        itemAlvo.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-}
 
         function calcularDistancia(lat1, lon1, lat2, lon2) {
             const R = 6371;
