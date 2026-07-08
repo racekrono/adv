@@ -5,13 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Race Krono</title>
 
-    <link rel="manifest" href="/manifest.json">
+    <!-- Ajuste de Caminhos Relativos para o GitHub Pages -->
+    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0d0af0">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Race Krono">
-    <link rel="apple-touch-icon" href="/icons/icon-192.png">
-    <link rel="icon" href="/icons/icon-192.png">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <link rel="icon" href="icons/icon-192.png">
     <meta name="mobile-web-app-capable" content="yes">
 
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
@@ -197,9 +198,6 @@
             menuOpcoes.style.display = 'none';
         };
 
-        // Restauração de sessão delegada ao boot.js (lê IndexedDB primeiro, com fallback localStorage)
-        // Boot.js chamará window.__rk.restaurarSessao() depois de carregar a camada offline.
-
         db.ref('configuracoes/comandoLogoff').on('value', (snap) => {
             const timestampLogoff = snap.val();
             const tempoLogin = localStorage.getItem('rally_timestamp_login') || 0;
@@ -211,7 +209,6 @@
         function carregarRoadbook() {
             const rbList = document.getElementById('roadbookList');
 
-            // Render local primeiro (offline-first)
             if (window.__rk && window.__rk.lerRoadbookLocal) {
                 window.__rk.lerRoadbookLocal().then(dados => {
                     if (dados && dados.length) renderizarRoadbook(dados);
@@ -227,7 +224,6 @@
                     return;
                 }
                 renderizarRoadbook(dados);
-                // Persistir cópia local para uso offline
                 if (window.__rk && window.__rk.salvarRoadbookLocal) {
                     window.__rk.salvarRoadbookLocal(dados);
                 }
@@ -296,7 +292,6 @@
             }
         }
 
-        // Callback unificado: chamado tanto pelo watchPosition web quanto pelo BackgroundGeolocation nativo
         function processarPontoGps(num, lat, lng, accuracy, kmh) {
             if (accuracy > 25) return;
 
@@ -314,11 +309,9 @@
             document.getElementById('viewVel').innerText = kmh.toFixed(1);
             const dados = { lat, lng, vel: kmh, acc: accuracy, ts: Date.now() };
 
-            // Camada offline-first: grava SEMPRE no IndexedDB; sync.js envia ao Firebase quando possível
             if (window.__rk && window.__rk.registrarPontoGps) {
                 window.__rk.registrarPontoGps(num, dados);
             } else {
-                // Fallback (boot.js ainda não carregado)
                 db.ref('posicoes/' + num).set(dados);
                 db.ref('rastros/' + num).push(dados);
             }
@@ -338,7 +331,6 @@
                 if (snap.val() === true) {
                     msg.innerText = "● TRANSMITINDO AO VIVO";
                     msg.classList.remove('status-offline');
-                    // Reconectou — drena fila pendente
                     if (window.__rk && window.__rk.drenarFila) window.__rk.drenarFila();
                 } else {
                     msg.innerText = "SEM INTERNET - DADOS PROTEGIDOS";
@@ -346,7 +338,6 @@
                 }
             });
 
-            // GPS: se Capacitor nativo + boot.js carregado, usa background-geolocation
             if (window.__rk && window.__rk.iniciarGpsNativo) {
                 window.__rk.iniciarGpsNativo(num);
             } else {
@@ -375,7 +366,6 @@
 
                 const snapshot = await db.ref('competidores/' + num).once('value');
                 if (snapshot.exists()) {
-                    // Permite reentrar se for o mesmo carro/nome desta sessão local (reinstalação, app fechado, etc.)
                     const existente = snapshot.val() || {};
                     const mesmoNome = (existente.nome || '').trim().toLowerCase() === nomeRaw.toLowerCase();
                     const carroLocal = localStorage.getItem('rally_carro_ativo');
@@ -384,7 +374,6 @@
                     if (!mesmoNome && !ehMinhaSessao) {
                         return alert("Este número de carro já existe!\n\nEscolha outro número ou peça ao organizador para liberar.");
                     }
-                    // Mesmo carro/nome → segue, sobrescrevendo categoria se mudou
                 }
 
                 somClique();
@@ -393,7 +382,6 @@
                 localStorage.setItem('rally_carro_ativo', num);
                 localStorage.setItem('rally_timestamp_login', Date.now());
 
-                // Persiste sessão no IndexedDB para reabertura offline
                 if (window.__rk && window.__rk.salvarSessao) {
                     await window.__rk.salvarSessao({ carro: num, nome: nomeRaw, categoria: cat, login: Date.now() });
                 }
@@ -420,7 +408,6 @@
         function atualizarTelaOdo() {
             document.getElementById('displayOdo').innerText = odoTotal.toFixed(3);
             atualizarScrollRoadbook();
-            // Persiste odômetro no IndexedDB
             if (window.__rk && window.__rk.salvarOdometro) {
                 window.__rk.salvarOdometro(odoTotal);
             }
@@ -442,7 +429,6 @@
             }
         }
 
-        // --- FUNÇÃO DE SAIR (CORREÇÃO) ---
         function encerrarSessao() {
             if (confirm("Deseja realmente sair da prova?")) {
                 pararGps();
@@ -471,18 +457,15 @@
             }
         }
 
-        // --- ENVIAR DATALOGGER: força envio do rastro completo ---
         async function enviarDatalogger() {
             const num = window.__rk.carroAtivo || localStorage.getItem('rally_carro_ativo');
-            if (!num) return alert("Nenhuma sessão ativa.");
+            if (!num) return alert("Nenhuma sessão activa.");
             try {
                 if (window.__rk && window.__rk.enviarDataloggerCompleto) {
                     const msg = await window.__rk.enviarDataloggerCompleto(num);
                     return alert(msg);
                 }
 
-                // Fallback WEB: quando o index.html roda direto no navegador e o boot.js não carregou,
-                // envia o datalogger usando o rastro que já está no Firebase.
                 const snap = await db.ref('rastros/' + num).once('value');
                 const pontos = [];
                 snap.forEach(child => {
@@ -527,7 +510,6 @@
             }
         }
 
-        // --- VER RASTRO: abre página externa com ?carro=NN ---
         function verRastro() {
             const num = window.__rk.carroAtivo || localStorage.getItem('rally_carro_ativo');
             if (!num) {
@@ -535,7 +517,6 @@
                 return;
             }
             const url = `https://racekrono.github.io/adv/rastropiloto.html?carro=${encodeURIComponent(num)}`;
-            // Em ambiente Capacitor, abre no browser do sistema; web abre nova aba
             if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser) {
                 window.Capacitor.Plugins.Browser.open({ url });
             } else {
@@ -543,11 +524,6 @@
             }
         }
 
-        // ============================================================
-        // RESTAURAÇÃO DE SESSÃO (WEB PURO - independente do boot.js)
-        // Roda mesmo quando o app está hospedado como HTML estático
-        // (GitHub Pages, etc.) e o /src/boot.js não existe.
-        // ============================================================
         (function restaurarSessaoWeb() {
           function tentar() {
             if (document.getElementById('ativo').style.display === 'flex') return;
@@ -569,10 +545,7 @@
           }
         })();
 
-        // ============================================================
-        // PWA — registra Service Worker (habilita "Instalar app")
-        // Só registra em produção real (HTTPS), fora do preview Lovable.
-        // ============================================================
+        // CORREÇÃO PWA: Registro configurado com Escopo do GitHub Pages
         (function registrarPWA() {
           if (!('serviceWorker' in navigator)) return;
           const h = location.hostname;
@@ -587,7 +560,8 @@
           if (location.protocol !== 'https:' && h !== 'localhost') return;
 
           window.addEventListener('load', () => {
-            navigator.serviceWorker.register('sw.js').catch((e) => {
+            // Correção aqui: Adicionado o scopo da subpasta /adv/
+            navigator.serviceWorker.register('sw.js', { scope: '/adv/' }).catch((e) => {
               console.warn('[PWA] SW falhou:', e);
             });
           });
@@ -607,7 +581,6 @@
         })();
     </script>
 
-    <!-- Camada offline-first + Capacitor (só carrega quando servido pelo Vite/Lovable) -->
     <script type="module" src="/src/boot.js" onerror="console.info('[boot.js] indisponível — modo web puro')"></script>
 </body>
 </html>
