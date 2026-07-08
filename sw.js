@@ -3,23 +3,21 @@ const ASSETS = [
   './',
   './index.html',
   './manifest.json',
-  'https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js',
-  'https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js',
-  'https://raw.githubusercontent.com/racekrono/adv/refs/heads/main/Logo.png'
+  './sw.js'
 ];
 
-// Instalação e Cache
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+    caches.open(CACHE_NAME).then((cache) => {
+      return Promise.all(
+        ASSETS.map(url => cache.add(url).catch(err => console.warn('Falha no cache:', url, err)))
+      );
+    })
   );
 });
 
-// Responde do Cache se estiver offline
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
-    })
+    caches.match(event.request).then((response) => response || fetch(event.request))
   );
 });
