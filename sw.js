@@ -1,40 +1,44 @@
-// sw.js - Service Worker do Race Krono
-const CACHE_NAME = 'racekrono-v3';
-const ASSETS_TO_CACHE = [
-  '/',
-  'index.html',
-  'https://raw.githubusercontent.com/racekrono/adv/refs/heads/main/Logo.png'
-];
+// Race Krono — Service Worker mínimo para habilitar PWA (instalação)
+// Estratégia network-first: nunca serve HTML velho.
+const CACHE = 'racekrono-v1';
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
-  );
+self.addEventListener('install', (e) => {
   self.skipWaiting();
 });
 
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) => Promise.all(
-      keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
-    ))
-  );
+self.addEventListener('activate', (e) => {
+  e.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)));
+    await self.clients.claim();
+  })());
 });
 
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) return cachedResponse;
-      return fetch(event.request).then((networkResponse) => {
-        // Cacheia automaticamente novas tulipas que forem carregadas via GitHub
-        if (event.request.url.includes('githubusercontent')) {
-          return caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, networkResponse.clone());
-            return networkResponse;
-          });
-        }
-        return networkResponse;
-      });
-    })
-  );
+  const req = event.request;
+  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+  // Nunca intercepta Firebase / APIs externas
+  if (url.origin !== self.location.origin) return;
+
+  event.respondWith((async () => {
+    try {
+      const fresh = await fetch(req);
+      // Cacheia estáticos (imagens/icones) para offline básico
+      if (/\.(png|jpg|jpeg|svg|webp|ico|json|css|js)$/i.test(url.pathname)) {
+        const cache = await caches.open(CACHE);
+        cache.put(req, fresh.clone()).catch(() => {});
+      }
+      return fresh;
+    } catch (_) {
+      const cached = await caches.match(req);
+      if (cached) return cached;
+      // Fallback: se pediu navegação HTML, devolve index em cache
+      if (req.mode === 'navigate') {
+        const idx = await caches.match('/index.html') || await caches.match('/');
+        if (idx) return idx;
+      }
+      throw _;
+    }
+  })());
 });
