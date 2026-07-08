@@ -260,7 +260,10 @@
             itens.forEach((div, index) => {
                 const kmItem = parseFloat(div.querySelector('.rb-col-km').innerText);
                 div.classList.remove('rb-item-ativo');
-                if (proximoItemIdx === -1 && odoTotal < kmItem) {
+                
+                // AJUSTE: Só considera que passou para o próximo item 
+                // se o odômetro total for MAIOR do que o KM do item + 1 metro (0.001)
+                if (proximoItemIdx === -1 && odoTotal <= (kmItem + 0.001)) {
                     proximoItemIdx = index;
                 }
             });
