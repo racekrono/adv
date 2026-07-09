@@ -13,23 +13,29 @@
         /* Sidebar escondida por padrão para privacidade */
         #sidebar { display: none; }
 
-        /* Botão flutuante para voltar ao painel principal 
+        /* Botão flutuante para voltar ao painel principal */
         .btn-voltar { 
             position: absolute;
             top: 15px;
             left: 15px;
             z-index: 1000;
-            background: #f80303;
-            color: white;
+            background: #FFD700;
+            color: #000000;
             padding: 12px 20px;
-            border-radius: 8px;
+            border-radius: 6px;
             text-decoration: none;
             font-weight: bold;
             font-size: 14px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            border: none;
+            border: 1px solid #000;
             cursor: pointer;
-        } */
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-voltar:active {
+            background: #ccac00;
+        }
 
         /* Card de resumo flutuante para o piloto ver suas penalidades */
         #resumo-flutuante {
@@ -53,6 +59,9 @@
 </head>
 <body>
 
+    <!-- Botão de Voltar Integrado -->
+    <button class="btn-voltar" onclick="voltarAoApp()">← Voltar Prova</button>
+
      <div id="resumo-flutuante">
         <div id="resumoContent">Carregando telemetria...</div>
     </div>
@@ -67,11 +76,22 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 
     <script>
+        // Função para manipulação e fechamento da tela de rastro
+        function voltarAoApp() {
+            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser) {
+                window.Capacitor.Plugins.Browser.close();
+            } else if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.close();
+            }
+        }
+
         // Lê o carro da URL (?carro=NN) ou do localStorage como fallback
-    const carroURL = new URLSearchParams(location.search).get('carro');
-    if (carroURL) {
-        localStorage.setItem('rally_carro_ativo', carroURL);
-    }
+        const carroURL = new URLSearchParams(location.search).get('carro');
+        if (carroURL) {
+            localStorage.setItem('rally_carro_ativo', carroURL);
+        }
         var map = L.map('map').setView([-12.26, -38.96], 13);
         var sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Esri' }).addTo(map);
         var rua = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
