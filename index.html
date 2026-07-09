@@ -546,6 +546,9 @@
             }
         }
 
+        // ============================================================
+        // RESTAURAÇÃO DE SESSÃO (WEB PURO - COM CORREÇÃO OFFLINE)
+        // ============================================================
         (function restaurarSessaoWeb() {
           function tentar() {
             if (document.getElementById('ativo').style.display === 'flex') return;
@@ -554,8 +557,11 @@
             const num = parseInt(carro);
             if (!num) return;
             try {
-              iniciarFluxoRastreio(num);
+              // 1. CARREGA A PLANILHA PRIMEIRO (Garante o offline instantâneo)
               carregarRoadbook();
+              
+              // 2. DEPOIS INICIA O RASTREIO (Se o Firebase travar, a planilha já está na tela)
+              iniciarFluxoRastreio(num);
             } catch (e) {
               console.error('[restaurarSessaoWeb] falhou:', e);
             }
@@ -567,7 +573,9 @@
           }
         })();
 
-        // CORREÇÃO PWA: Registro configurado com Escopo do GitHub Pages
+        // ============================================================
+        // PWA — registra Service Worker (habilita "Instalar app")
+        // ============================================================
         (function registrarPWA() {
           if (!('serviceWorker' in navigator)) return;
           const h = location.hostname;
@@ -582,7 +590,6 @@
           if (location.protocol !== 'https:' && h !== 'localhost') return;
 
           window.addEventListener('load', () => {
-            // Correção aqui: Adicionado o scopo da subpasta /adv/
             navigator.serviceWorker.register('sw.js', { scope: '/adv/' }).catch((e) => {
               console.warn('[PWA] SW falhou:', e);
             });
@@ -600,7 +607,7 @@
               deferredPrompt = null;
             };
           });
-        })();
+        })();)();
     </script>
 
     <script type="module" src="/src/boot.js" onerror="console.info('[boot.js] indisponível — modo web puro')"></script>
