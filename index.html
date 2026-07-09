@@ -209,12 +209,21 @@
         function carregarRoadbook() {
             const rbList = document.getElementById('roadbookList');
 
-            if (window.__rk && window.__rk.lerRoadbookLocal) {
-                window.__rk.lerRoadbookLocal().then(dados => {
-                    if (dados && dados.length) renderizarRoadbook(dados);
-                });
+            // 1. TENTA CARREGAR DO CACHE LOCAL IMEDIATAMENTE (Offline-First)
+            try {
+                const planilhaSalva = localStorage.getItem('rally_planilha_cache');
+                if (planilhaSalva) {
+                    const dadosLocais = JSON.parse(planilhaSalva);
+                    if (dadosLocais && dadosLocais.length) {
+                        renderizarRoadbook(dadosLocais);
+                        console.log('[PWA] Planilha offline carregada do cache local.');
+                    }
+                }
+            } catch (e) {
+                console.error('[PWA] Erro ao ler planilha do localStorage:', e);
             }
 
+            // 2. ESCUTA ATUALIZAÇÕES DO FIREBASE (Quando houver internet)
             db.ref('prova_atual').on('value', (snapshot) => {
                 const dados = snapshot.val();
                 if (!dados) {
@@ -223,7 +232,17 @@
                     }
                     return;
                 }
+                
+                // Renderiza a versão mais recente da internet
                 renderizarRoadbook(dados);
+                
+                // Salva ou atualiza a cópia local para o próximo apagão de internet
+                try {
+                    localStorage.setItem('rally_planilha_cache', JSON.stringify(dados));
+                } catch (e) {
+                    console.error('[PWA] Não foi possível salvar o cache da planilha:', e);
+                }
+
                 if (window.__rk && window.__rk.salvarRoadbookLocal) {
                     window.__rk.salvarRoadbookLocal(dados);
                 }
