@@ -40,7 +40,7 @@
         db.ref('competidores').on('value', snap => {
             const data = snap.val();
             let html = "";
-            ["UTV", "BAIANO 4x2", "BAIANO 4x4", "INICIANTE 4x2", "INICIANTE 4x4", "ANTIGOS"].forEach(c => {
+            ["UTV", "BAIANO 4x2", "BAIANO 4x4", "INICIANTE", "ANTIGOS"].forEach(c => {
                 let list = [];
                 for(let id in data) {
                     if(data[id].categoria === c) {
