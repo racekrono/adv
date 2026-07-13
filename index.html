@@ -147,9 +147,8 @@
 
         let wakeLock = null;
         let watchID = null;
-        let odoTotal = 0;
-        let odoDeslocamento = 0; // Armazena a diferença acumulada ao zerar o parcial
-        let ultimaPos = null;
+        let odoTotal = 0; // Este passa a representar o odômetro parcial do piloto
+        let indiceTrechoAtual = 0; // Índice da planilha de onde começa o trecho atual
         let ultimoIndiceAtivo = -1;
 
         let audioCtx = null;
@@ -277,24 +276,43 @@
             if (itens.length === 0) return;
             let proximoItemIdx = -1;
 
-            itens.forEach((div, index) => {
+            for (let i = indiceTrechoAtual; i < itens.length; i++) {
+                const div = itens[i];
                 const kmItem = parseFloat(div.querySelector('.rb-col-km').innerText);
                 div.classList.remove('rb-item-ativo');
                 
-                // AJUSTE: Continua considerando o odoTotal absoluto para avançar as tulipas sem saltos
-                if (proximoItemIdx === -1 && odoTotal <= (kmItem + 0.001)) {
-                    proximoItemIdx = index;
+                // Se encontrarmos um KM 0.000 adiante do ponto inicial atual, significa que pertence ao próximo trecho.
+                // Interrompemos a busca automática do GPS para não pular de trecho sozinho.
+                if (i > indiceTrechoAtual && kmItem === 0) {
+                    break;
                 }
-            });
+
+                if (proximoItemIdx === -1 && odoTotal <= (kmItem + 0.001)) {
+                    proximoItemIdx = i;
+                }
+            }
+
+            // Se o odômetro passou de todas as marcas do trecho atual, mantém o último ativo deste trecho
+            if (proximoItemIdx === -1) {
+                for (let i = indiceTrechoAtual; i < itens.length; i++) {
+                    if (i > indiceTrechoAtual && parseFloat(itens[i].querySelector('.rb-col-km').innerText) === 0) {
+                        break;
+                    }
+                    proximoItemIdx = i;
+                }
+            }
 
             if (proximoItemIdx !== -1) {
+                itens.forEach(div => div.classList.remove('rb-item-ativo'));
                 if (proximoItemIdx !== ultimoIndiceAtivo) {
                     if (ultimoIndiceAtivo !== -1) somTrocaReferencia();
                     ultimoIndiceAtivo = proximoItemIdx;
                 }
                 const itemAlvo = document.getElementById('rb-item-' + proximoItemIdx);
-                itemAlvo.classList.add('rb-item-ativo');
-                itemAlvo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                if (itemAlvo) {
+                    itemAlvo.classList.add('rb-item-ativo');
+                    itemAlvo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
             }
         }
 
@@ -420,20 +438,30 @@
         }
 
         function zerarOdo() {
-            if(confirm("Zerar odômetro?")) {
-                // Salva o total atual para criar o ponto zero virtual do parcial
-                odoDeslocamento = odoTotal;
+            if(confirm("Zerar odômetro e avançar trecho?")) {
+                odoTotal = 0; // Zera o hodômetro na tela
                 somClique();
+
+                // Busca a próxima referência que tenha KM igual a 0.000 para mudar de seção na planilha
+                const itens = document.querySelectorAll('.roadbook-item');
+                let encontrouProximo = false;
+
+                for (let i = ultimoIndiceAtivo + 1; i < itens.length; i++) {
+                    const kmItem = parseFloat(itens[i].querySelector('.rb-col-km').innerText);
+                    if (kmItem === 0) {
+                        indiceTrechoAtual = i;
+                        encontrouProximo = true;
+                        break;
+                    }
+                }
+
+                // Caso não ache nenhum outro "0.000" adiante, assume que é apenas um ajuste e mantém o trecho final
                 atualizarTelaOdo();
             }
         }
 
         function atualizarTelaOdo() {
-            // Mostra na tela a diferença (odômetro parcial corrigido)
-            let odoParcial = Math.max(0, odoTotal - odoDeslocamento);
-            document.getElementById('displayOdo').innerText = odoParcial.toFixed(3);
-            
-            // Atualiza a planilha usando o odoTotal contínuo
+            document.getElementById('displayOdo').innerText = odoTotal.toFixed(3);
             atualizarScrollRoadbook();
             if (window.__rk && window.__rk.salvarOdometro) {
                 window.__rk.salvarOdometro(odoTotal);
@@ -445,13 +473,11 @@
         };
 
         function ajusteManualOdo() {
-            let odoParcialAtual = Math.max(0, odoTotal - odoDeslocamento);
-            let n = prompt("Ajustar Odômetro (KM):", odoParcialAtual.toFixed(3));
+            let n = prompt("Ajustar Odômetro (KM):", odoTotal.toFixed(3));
             if(n !== null) {
                 let val = parseFloat(n.replace(',','.'));
                 if(!isNaN(val)) {
-                    // Recalcula o odoTotal somando o novo parcial ao deslocamento atual
-                    odoTotal = odoDeslocamento + Math.max(0, val);
+                    odoTotal = Math.max(0, val);
                     somClique();
                     atualizarTelaOdo();
                 }
