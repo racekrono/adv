@@ -5,287 +5,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Race Krono - Navegação</title>
     <style>
-        :root {
-            --amarelo: #f1c40f;
-            --bg: #121212;
-            --card: #1e1e1e;
-            --texto: #ffffff;
-            --borda: #333;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            -webkit-user-select: none;
-            user-select: none;
-        }
-
-        body {
-            font-family: system-ui, -apple-system, sans-serif;
-            background: #000000;
-            color: var(--texto);
-            overflow: hidden;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        /* Moldura do Dispositivo */
-        .app-container {
-            width: 100%;
-            max-width: 450px;
-            height: 100vh;
-            background: #1a1a1a;
-            border-radius: 16px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            position: relative;
-        }
-
-        /* Cabeçalho superior: Carro e Velocidade */
-        .header-status {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 10px;
-        }
-
-        .carro-identificador {
-            font-size: 20px;
-            font-weight: bold;
-            color: #ffffff;
-        }
-
-        .velocidade-container {
-            display: flex;
-            align-items: baseline;
-            gap: 4px;
-        }
-
-        .velocidade-valor {
-            font-size: 38px;
-            font-weight: 900;
-            color: var(--amarelo);
-        }
-
-        .velocidade-unidade {
-            font-size: 11px;
-            color: #888;
-            font-weight: bold;
-        }
-
-        .btn-menu-topo {
-            background: #333;
-            border: none;
-            color: white;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            font-size: 18px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10;
-        }
-
-        /* CARD CENTRAL DO ODÔMETRO ORIGINAL */
-        .card-odometro {
-            background: #111111;
-            border: 1px solid #252525;
-            border-radius: 12px;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            position: relative;
-        }
-
-        .header-odometro-labels {
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            padding: 0 5px;
-            font-size: 11px;
-            font-weight: bold;
-            color: #666;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .odometro-total-pequeno {
-            color: #666;
-            font-family: monospace;
-            font-size: 12px;
-        }
-
-        .odometro-total-pequeno span {
-            color: #aaa;
-        }
-
-        /* Display do Odômetro Parcial Grande e Amarelo */
-        .odometro-principal-amarelo {
-            font-size: 72px;
-            font-weight: bold;
-            color: var(--amarelo);
-            line-height: 1.1;
-            font-family: monospace, sans-serif;
-            font-variant-numeric: tabular-nums;
-        }
-
-        /* Botões de Ajuste Fino */
-        .ajustes-grade {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 6px;
-            width: 100%;
-            margin-top: 10px;
-        }
-
-        .btn-ajuste-original {
-            background: #262626;
-            border: 1px solid #3a3a3a;
-            color: #ffffff;
-            padding: 8px 0;
-            font-size: 12px;
-            font-weight: bold;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        .btn-ajuste-original.btn-zerar-vermelho {
-            background: #c0392b;
-            border-color: #e74c3c;
-            color: white;
-            text-transform: uppercase;
-        }
-
-        /* CONTAINER DO ROADBOOK INTERNO */
-        .roadbook-box {
-            flex: 1;
-            background: #000000;
-            border: 1px solid #222;
-            border-radius: 12px;
-            overflow-y: auto;
-            position: relative;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        tr {
-            border-bottom: 1px solid #1a1a1a;
-            height: 90px;
-            transition: background 0.2s ease;
-        }
-
-        tr.linha-atual {
-            background: #1c2331;
-            border-left: 5px solid var(--amarelo);
-        }
-
-        tr.linha-zera {
-            border-left: 5px solid #e74c3c;
-        }
-
-        td {
-            padding: 10px;
-            vertical-align: middle;
-            color: white;
-        }
-
-        .col-km {
-            width: 25%;
-            font-size: 22px;
-            font-weight: bold;
-            color: var(--amarelo);
-            font-family: monospace;
-            text-align: center;
-        }
-
-        .col-tulipa {
-            width: 30%;
-            text-align: center;
-        }
-
-        .col-tulipa img {
-            width: 70px;
-            height: 70px;
-            background: white;
-            padding: 4px;
-            border-radius: 4px;
-            object-fit: contain;
-        }
-
-        .col-obs {
-            width: 45%;
-            font-size: 16px;
-            font-weight: bold;
-            text-align: left;
-            padding-left: 10px;
-        }
-
-        /* Rodapé original: Transmitindo ao Vivo */
-        .footer-live {
-            text-align: center;
-            font-size: 12px;
-            font-weight: bold;
-            color: #2ecc71;
-            padding: 5px 0;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        /* Banner de aviso discreto */
-        #status-alert {
-            position: fixed;
-            top: 20px;
-            background: #e74c3c;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: bold;
-            z-index: 1000;
-            display: none;
-        }
-
-        /* PAINEL DE CONFIGURAÇÕES */
-        .menu-lateral {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.95);
-            border-radius: 16px;
-            z-index: 50;
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            gap: 20px;
-            padding: 40px;
-        }
-
-        .btn-menu-acao {
-            width: 100%;
-            padding: 15px;
-            font-size: 16px;
-            font-weight: bold;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            text-transform: uppercase;
-        }
+        :root { --amarelo: #f1c40f; --bg: #121212; --card: #1e1e1e; --texto: #ffffff; }
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-user-select: none; user-select: none; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: #000000; color: var(--texto); overflow: hidden; height: 100vh; display: flex; justify-content: center; align-items: center; }
+        .app-container { width: 100%; max-width: 450px; height: 100vh; background: #1a1a1a; border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative; }
+        .header-status { display: flex; justify-content: space-between; align-items: center; padding: 0 10px; }
+        .carro-identificador { font-size: 20px; font-weight: bold; color: #ffffff; }
+        .velocidade-container { display: flex; align-items: baseline; gap: 4px; }
+        .velocidade-valor { font-size: 38px; font-weight: 900; color: var(--amarelo); }
+        .velocidade-unidade { font-size: 11px; color: #888; font-weight: bold; }
+        .btn-menu-topo { background: #333; border: none; color: white; width: 40px; height: 40px; border-radius: 50%; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10; }
+        .card-odometro { background: #111111; border: 1px solid #252525; border-radius: 12px; padding: 15px; display: flex; flex-direction: column; align-items: center; position: relative; }
+        .header-odometro-labels { width: 100%; display: flex; justify-content: space-between; padding: 0 5px; font-size: 11px; font-weight: bold; color: #666; text-transform: uppercase; letter-spacing: 1px; }
+        .odometro-total-pequeno { color: #666; font-family: monospace; font-size: 12px; }
+        .odometro-total-pequeno span { color: #aaa; }
+        .odometro-principal-amarelo { font-size: 72px; font-weight: bold; color: var(--amarelo); line-height: 1.1; font-family: monospace, sans-serif; font-variant-numeric: tabular-nums; }
+        .ajustes-grade { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; width: 100%; margin-top: 10px; }
+        .btn-ajuste-original { background: #262626; border: 1px solid #3a3a3a; color: #ffffff; padding: 8px 0; font-size: 12px; font-weight: bold; border-radius: 4px; cursor: pointer; }
+        .btn-ajuste-original.btn-zerar-vermelho { background: #c0392b; border-color: #e74c3c; color: white; text-transform: uppercase; }
+        .roadbook-box { flex: 1; background: #000000; border: 1px solid #222; border-radius: 12px; overflow-y: auto; position: relative; }
+        table { width: 100%; border-collapse: collapse; }
+        tr { border-bottom: 1px solid #1a1a1a; height: 90px; transition: background 0.2s ease; }
+        tr.linha-atual { background: #1c2331; border-left: 5px solid var(--amarelo); }
+        tr.linha-zera { border-left: 5px solid #e74c3c; }
+        td { padding: 10px; vertical-align: middle; color: white; }
+        .col-km { width: 25%; font-size: 22px; font-weight: bold; color: var(--amarelo); font-family: monospace; text-align: center; }
+        .col-tulipa { width: 30%; text-align: center; }
+        .col-tulipa img { width: 70px; height: 70px; background: white; padding: 4px; border-radius: 4px; object-fit: contain; }
+        .col-obs { width: 45%; font-size: 16px; font-weight: bold; text-align: left; padding-left: 10px; }
+        .footer-live { text-align: center; font-size: 12px; font-weight: bold; color: #2ecc71; padding: 5px 0; text-transform: uppercase; letter-spacing: 1px; }
+        #status-alert { position: fixed; top: 20px; background: #e74c3c; color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; font-weight: bold; z-index: 1000; display: none; }
+        .menu-lateral { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); border-radius: 16px; z-index: 50; display: none; flex-direction: column; justify-content: center; align-items: center; gap: 20px; padding: 40px; }
+        .btn-menu-acao { width: 100%; padding: 15px; font-size: 16px; font-weight: bold; color: white; border: none; border-radius: 8px; cursor: pointer; text-transform: uppercase; }
         .btn-menu-gps { background: #38a169; }
         .btn-menu-reset { background: #c0392b; }
         .btn-menu-fechar { background: #333; }
@@ -296,8 +47,6 @@
 <div id="status-alert">⚠️ PARCIAL ZERADO</div>
 
 <div class="app-container">
-    
-    <!-- MENU LATERAL -->
     <div class="menu-lateral" id="menuLateral">
         <h2 style="color: var(--amarelo); margin-bottom: 20px;">Configurações Prova</h2>
         <button class="btn-menu-acao btn-menu-gps" id="btnGPSMenu" onclick="alternarGPS()">Ligar/Desligar GPS</button>
@@ -305,7 +54,6 @@
         <button class="btn-menu-acao btn-menu-fechar" onclick="toggleMenu()">Fechar Menu</button>
     </div>
     
-    <!-- HEADER -->
     <div class="header-status">
         <div class="carro-identificador">Carro 444</div>
         <div class="velocidade-container">
@@ -315,17 +63,12 @@
         <button class="btn-menu-topo" onclick="toggleMenu()">☰</button>
     </div>
 
-    <!-- CARD DO ODÔMETRO -->
     <div class="card-odometro">
         <div class="header-odometro-labels">
-            <span>ODÔMETRO PARCIAL</span>
-            <div class="odometro-total-pequeno">ODÔMETRO TOTAL: <span id="displayTotal">0.000</span></div>
+            <span>ODÔMETRO</span>
+            <div class="odometro-total-pequeno">TOT: <span id="displayTotal">0.000</span></div>
         </div>
-        
-        <!-- Valor Amarelo Gigante Original (Parcial) -->
         <div class="odometro-principal-amarelo" id="displayParcial">0.000</div>
-
-        <!-- Grade de botões original -->
         <div class="ajustes-grade">
             <button class="btn-ajuste-original" onclick="ajustarParcial(-0.010)">-10m</button>
             <button class="btn-ajuste-original" onclick="ajustarParcial(-0.001)">-1m</button>
@@ -335,7 +78,6 @@
         </div>
     </div>
 
-    <!-- PLANILHA INTERNA -->
     <div class="roadbook-box" id="roadbook">
         <table id="tabelaNavegacao">
             <tbody>
@@ -344,18 +86,13 @@
         </table>
     </div>
 
-    <!-- FOOTER LIVE -->
-    <div class="footer-live">
-        • TRANSMITINDO AO VIVO
-    </div>
+    <div class="footer-live">• TRANSMITINDO AO VIVO</div>
 </div>
 
-<!-- SCRIPTS DO FIREBASE SINCRONIZADOS COM SEU PAINEL ADMIN -->
 <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 
 <script>
-    // Configurações idênticas ao seu painel Admin para sincronia perfeita
     const firebaseConfig = {
         apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
         authDomain: "cronometro-rally.firebaseapp.com",
@@ -372,7 +109,6 @@
     let odometroTotal = 0.000;      
     let odometroParcial = 0.000;    
     let ultimoKmZeradoAbsoluto = 0.000; 
-    
     let planilha = [];
     let watchID = null;
     let ultimaCoordenada = null;
@@ -387,19 +123,16 @@
         menu.style.display = (menu.style.display === "flex") ? "none" : "flex";
     }
 
-    // CONEXÃO EM TEMPO REAL VIA FIREBASE COM A ROTA 'prova_atual'
     function conectarEouvirServidor() {
         db.ref('prova_atual').on('value', snap => {
             if (snap.exists()) {
                 const dados = snap.val();
                 processarDadosPlanilha(dados);
-                // Salva localmente em cache para contingência offline na pista
                 localStorage.setItem('racekrono_planilha_ativa', JSON.stringify(dados));
             } else {
-                tbody.innerHTML = `<tr><td colspan="3" style="color: #666; text-align:center; padding: 40px;">Nenhuma planilha ativa no servidor.</td></tr>`;
+                document.querySelector("#tabelaNavegacao tbody").innerHTML = `<tr><td colspan="3" style="color: #666; text-align:center; padding: 40px;">Nenhuma planilha ativa no servidor.</td></tr>`;
             }
         }, erro => {
-            console.log("Erro ao escutar Firebase, usando dados de contingência local.");
             let local = localStorage.getItem('racekrono_planilha_ativa');
             if (local) processarDadosPlanilha(JSON.parse(local));
         });
@@ -407,12 +140,11 @@
 
     function processarDadosPlanilha(dados) {
         if (!dados) return;
-        
         let listaPontos = Array.isArray(dados) ? dados : Object.values(dados);
+        planilha = listaPontos.filter(p => p && p.km !== null && p.km !== undefined);
         
-        // Remove lixos e ordena estritamente por KM progressivo
-        planilha = listaPontos.filter(p => p && p.km !== null && p.km !== undefined && p.km !== "");
-        planilha.sort((a, b) => parseFloat(a.km) - parseFloat(b.km));
+        // CORREÇÃO DEFINITIVA: Ordena pela ordem física sequencial em vez do valor numérico do KM
+        planilha.sort((a, b) => (a.ordemSequencial || 0) - (b.ordemSequencial || 0));
         
         renderizarPlanilha();
     }
@@ -425,10 +157,8 @@
     function ajustarParcial(valor) {
         odometroParcial += valor;
         if (odometroParcial < 0) odometroParcial = 0;
-        
         odometroTotal += valor;
         if (odometroTotal < 0) odometroTotal = 0;
-
         atualizarDisplays();
         atualizarPosicaoPlanilha();
         salvarEstadoNavegacao();
@@ -445,67 +175,55 @@
     function renderizarPlanilha() {
         const tbody = document.querySelector("#tabelaNavegacao tbody");
         tbody.innerHTML = "";
-
         if (planilha.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="3" style="color: #444; text-align:center; padding: 40px;">Planilha vazia ou inválida.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="3" style="color: #444; text-align:center; padding: 40px;">Planilha vazia.</td></tr>`;
             return;
         }
-
         planilha.forEach((ponto, index) => {
             const tr = document.createElement("tr");
             tr.id = `referencia-${index}`;
             if (ponto.zera) tr.classList.add("linha-zera");
-
             tr.innerHTML = `
-                <td class="col-km">${parseFloat(ponto.km).toFixed(3)}</td>
+                <td class="col-km">${parseFloat(ponto.km).toFixed(2)}</td>
                 <td class="col-tulipa"><img src="${ponto.tulipa || ''}" onerror="this.style.display='none'"></td>
                 <td class="col-obs">${ponto.obs || '--'}</td>
             `;
             tbody.appendChild(tr);
         });
-
         atualizarPosicaoPlanilha();
     }
 
-    // CÁLCULO CORRIGIDO: ROLAGEM AUTOMÁTICA VIA CÁLCULO DE RECT MATEMÁTICO 
     function atualizarPosicaoPlanilha() {
         if (planilha.length === 0) return;
 
         let indiceAtual = 0;
+        // Percorre a ordem cronológica mapeando com base na variação do odômetro parcial/total
         for (let i = 0; i < planilha.length; i++) {
-            if (odometroTotal >= parseFloat(planilha[i].km)) {
-                indiceAtual = i;
+            let kmReferencia = parseFloat(planilha[i].km);
+            if (planilha[i].zera || kmReferencia === 0) {
+                if (odometroParcial >= kmReferencia) indiceAtual = i;
             } else {
-                break;
+                if (odometroParcial >= kmReferencia || odometroTotal >= kmReferencia) indiceAtual = i;
             }
         }
 
-        document.querySelectorAll("#tabelaNavegacao tbody tr").forEach(tr => {
-            tr.classList.remove("linha-atual");
-        });
-
+        document.querySelectorAll("#tabelaNavegacao tbody tr").forEach(tr => tr.classList.remove("linha-atual"));
         const linhaAtiva = document.getElementById(`referencia-${indiceAtual}`);
+        
         if (linhaAtiva) {
             linhaAtiva.classList.add("linha-atual");
-            
             const container = document.getElementById("roadbook");
-            
-            // Mede a distância física exata entre o contêiner e a linha ativa
             const containerRect = container.getBoundingClientRect();
             const linhaRect = linhaAtiva.getBoundingClientRect();
-            
-            // Movimenta o scroll matematicamente jogando a linha ativa exatamente para o meio vertical
             const diferencaDePosicao = (linhaRect.top - containerRect.top) - (containerRect.height / 2) + (linhaRect.height / 2);
-            
             container.scrollTop += diferencaDePosicao;
         }
 
-        // Auto-Zerar se o ponto da planilha mandar zerar
+        // Evento de auto-zero se a linha atual possuir a marcação ativa
         const pontoAtual = planilha[indiceAtual];
-        if (pontoAtual && pontoAtual.zera && ultimoKmZeradoAbsoluto !== parseFloat(pontoAtual.km)) {
-            ultimoKmZeradoAbsoluto = parseFloat(pontoAtual.km);
+        if (pontoAtual && pontoAtual.zera && ultimoKmZeradoAbsoluto !== odometroTotal && odometroParcial >= parseFloat(pontoAtual.km)) {
+            ultimoKmZeradoAbsoluto = odometroTotal;
             odometroParcial = 0.000;
-            
             dispararAlertaVisual();
             atualizarDisplays();
             salvarEstadoNavegacao();
@@ -519,31 +237,21 @@
     }
 
     function salvarEstadoNavegacao() {
-        const estado = {
-            odometroTotal: odometroTotal,
-            ultimoKmZeradoAbsoluto: ultimoKmZeradoAbsoluto,
-            timestamp: Date.now()
-        };
+        const estado = { odometroTotal: odometroTotal, ultimoKmZeradoAbsoluto: ultimoKmZeradoAbsoluto, timestamp: Date.now() };
         localStorage.setItem('racekrono_estado_corrida', JSON.stringify(estado));
     }
 
     function restaurarEstadoNavegacao() {
         let local = localStorage.getItem('racekrono_planilha_ativa');
-        if (local) {
-            planilha = JSON.parse(local);
-            renderizarPlanilha();
-        }
-
+        if (local) { planilha = JSON.parse(local); renderizarPlanilha(); }
         const estadoSalvo = localStorage.getItem('racekrono_estado_corrida');
         if (estadoSalvo) {
             const estado = JSON.parse(estadoSalvo);
             if (Date.now() - estado.timestamp < 12 * 60 * 60 * 1000) {
                 odometroTotal = estado.odometroTotal;
                 ultimoKmZeradoAbsoluto = estado.ultimoKmZeradoAbsoluto;
-                
                 odometroParcial = odometroTotal - ultimoKmZeradoAbsoluto;
                 if (odometroParcial < 0) odometroParcial = 0;
-                
                 atualizarDisplays();
                 setTimeout(atualizarPosicaoPlanilha, 300); 
             }
@@ -553,12 +261,8 @@
     function limparCorrida() {
         if (confirm("Deseja resetar a prova atual do zero?")) {
             localStorage.removeItem('racekrono_estado_corrida');
-            odometroTotal = 0.000;
-            odometroParcial = 0.000;
-            ultimoKmZeradoAbsoluto = 0.000;
-            atualizarDisplays();
-            atualizarPosicaoPlanilha();
-            toggleMenu();
+            odometroTotal = 0.000; odometroParcial = 0.000; ultimoKmZeradoAbsoluto = 0.000;
+            atualizarDisplays(); atualizarPosicaoPlanilha(); toggleMenu();
         }
     }
 
@@ -566,15 +270,12 @@
         const btn = document.getElementById("btnGPSMenu");
         if (watchID !== null) {
             navigator.geolocation.clearWatch(watchID);
-            watchID = null;
-            ultimaCoordenada = null;
+            watchID = null; ultimaCoordenada = null;
             document.getElementById("txtVelocidade").innerText = "0.0";
-            btn.innerText = "Ligar GPS";
-            btn.style.background = "#38a169";
+            btn.innerText = "Ligar GPS"; btn.style.background = "#38a169";
         } else {
             if (!navigator.geolocation) return;
-            btn.innerText = "Desligar GPS";
-            btn.style.background = "#c0392b";
+            btn.innerText = "Desligar GPS"; btn.style.background = "#c0392b";
             watchID = navigator.geolocation.watchPosition(
                 processarMovimentoGPS,
                 (erro) => console.log(erro.message),
@@ -586,26 +287,19 @@
 
     function processarMovimentoGPS(position) {
         if (position.coords.accuracy > 25) return;
-
         if (position.coords.speed !== null && position.coords.speed !== undefined) {
-            let kmh = position.coords.speed * 3.6;
-            document.getElementById("txtVelocidade").innerText = kmh.toFixed(1);
+            document.getElementById("txtVelocidade").innerText = (position.coords.speed * 3.6).toFixed(1);
         }
-
         if (ultimaCoordenada !== null) {
             const distKM = calcularDistanciaHaversine(
                 ultimaCoordenada.latitude, ultimaCoordenada.longitude,
                 position.coords.latitude, position.coords.longitude
             );
-
             if (distKM > 0.002) { 
                 odometroTotal += distKM;
                 odometroParcial = odometroTotal - ultimoKmZeradoAbsoluto;
                 if (odometroParcial < 0) odometroParcial = 0;
-
-                atualizarDisplays();
-                atualizarPosicaoPlanilha();
-                salvarEstadoNavegacao();
+                atualizarDisplays(); atualizarPosicaoPlanilha(); salvarEstadoNavegacao();
             }
         }
         ultimaCoordenada = position.coords;
@@ -615,12 +309,8 @@
         const R = 6371;
         const dLat = (lat2 - lat1) * Math.PI / 180;
         const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a = 
-            Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-            Math.sin(dLon/2) * Math.sin(dLon/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        return R * c; 
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+        return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))); 
     }
 </script>
 </body>
