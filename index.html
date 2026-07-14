@@ -32,7 +32,7 @@
             align-items: center;
         }
 
-        /* Moldura do Dispositivo conforme seu print original */
+        /* Moldura do Dispositivo */
         .app-container {
             width: 100%;
             max-width: 450px;
@@ -108,7 +108,7 @@
             width: 100%;
             display: flex;
             justify-content: space-between;
-            padding: 0 10px;
+            padding: 0 5px;
             font-size: 11px;
             font-weight: bold;
             color: #666;
@@ -116,7 +116,17 @@
             letter-spacing: 1px;
         }
 
-        /* Display do Odômetro Parcial Grande e Amarelo do seu Layout */
+        .odometro-total-pequeno {
+            color: #666;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .odometro-total-pequeno span {
+            color: #aaa;
+        }
+
+        /* Display do Odômetro Parcial Grande e Amarelo */
         .odometro-principal-amarelo {
             font-size: 72px;
             font-weight: bold;
@@ -126,7 +136,7 @@
             font-variant-numeric: tabular-nums;
         }
 
-        /* Botões de Ajuste Fino do Layout Original */
+        /* Botões de Ajuste Fino */
         .ajustes-grade {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
@@ -260,14 +270,15 @@
         <button class="btn-menu-topo" onclick="alternarGPS()">☰</button>
     </div>
 
-    <!-- CARD DO ODÔMETRO ORIGINAL -->
+    <!-- CARD DO ODÔMETRO -->
     <div class="card-odometro">
         <div class="header-odometro-labels">
             <span>ODÔMETRO</span>
-            <span style="color:#888;">TOTAL: <span id="displayTotal" style="color:#aaa;">0.000</span> KM</span>
+            <!-- Adicionado o Odômetro Total aqui de forma limpa e discreta -->
+            <div class="odometro-total-pequeno">TOT: <span id="displayTotal">0.000</span></div>
         </div>
         
-        <!-- Valor Amarelo Gigante Original (Agora controlando o Parcial) -->
+        <!-- Valor Amarelo Gigante Original (Parcial) -->
         <div class="odometro-principal-amarelo" id="displayParcial">0.000</div>
 
         <!-- Grade de botões original -->
@@ -308,7 +319,6 @@
         sincronizarPlanilhaAutomatica();
         restaurarEstadoNavegacao();
         
-        // Fica checando o LocalStorage continuamente para atualizações instantâneas vindas do admin
         window.addEventListener('storage', function(e) {
             if (e.key === 'rascunho_racekrono' || e.key === 'racekrono_planilha_ativa') {
                 sincronizarPlanilhaAutomatica();
@@ -316,14 +326,12 @@
         });
     };
 
-    // Puxa a planilha ativa do cache de gravação compartilhado com o admin.html
     function sincronizarPlanilhaAutomatica() {
         let dadosPlanilha = localStorage.getItem('racekrono_planilha_ativa') || localStorage.getItem('rascunho_racekrono');
         
         if (dadosPlanilha) {
             try {
                 planilha = JSON.parse(dadosPlanilha);
-                // Filtra possíveis KMs corrompidos ou em branco
                 planilha = planilha.filter(p => p.km !== null && p.km !== undefined && p.km !== "");
                 planilha.sort((a, b) => a.km - b.km);
                 
@@ -364,7 +372,7 @@
         tbody.innerHTML = "";
 
         if (planilha.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="3" style="color: #444; text-align:center; padding: 40px;">Aguardando planilha do editor...</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="3" style="color: #444; text-align:center; padding: 40px;">Aguardando planilha...</td></tr>`;
             return;
         }
 
@@ -406,7 +414,6 @@
             linhaAtiva.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
-        // Execução da zerada mecânica/automática por cruzamento de ponto de rota
         const pontoAtual = planilha[indiceAtual];
         if (pontoAtual && pontoAtual.zera && ultimoKmZeradoAbsoluto !== pontoAtual.km) {
             ultimoKmZeradoAbsoluto = pontoAtual.km;
@@ -469,7 +476,6 @@
     function processarMovimentoGPS(position) {
         if (position.coords.accuracy > 25) return;
 
-        // Atualização dinâmica da velocidade no cabeçalho original
         if (position.coords.speed !== null && position.coords.speed !== undefined) {
             let kmh = position.coords.speed * 3.6;
             document.getElementById("txtVelocidade").innerText = kmh.toFixed(1);
