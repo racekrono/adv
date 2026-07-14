@@ -191,8 +191,8 @@
             btn.innerText = "ZERADO";
             tr.classList.add("linha-zera");
             
-            if (!obsInput.value.toUpperCase().includes("ZERA")) {
-                obsInput.value = (obsInput.value + " [ZERAR ODÔMETRO]").trim().toUpperCase();
+            if (!obsInput.value.toUpperCase().includes("ZERAR ODÔMETRO")) {
+                obsInput.value = ("[ZERAR ODÔMETRO] " + obsInput.value).trim().toUpperCase();
             }
         }
         gravarCache();
@@ -207,7 +207,7 @@
         if (isZera) tr.className = "linha-zera";
 
         tr.innerHTML = `
-            <td><input type="number" step="0.001" class="km" value="${dados ? dados.km : ''}" oninput="gravarCache()"></td>
+            <td><input type="number" step="0.01" class="km" value="${dados ? dados.km : ''}" oninput="gravarCache()"></td>
             <td>
                 <div class="btn-tulipa-seletor" onclick="abrirModal(this)">
                     <img src="${imgPath}" data-url="${imgPath}">
@@ -337,7 +337,7 @@
     }
 
     function definirFerramenta(ferramenta) {
-        ferramentaAtual = herramienta;
+        ferramentaAtual = ferramenta;
         document.querySelectorAll('.btn-tool').forEach(b => b.classList.remove('ativo'));
         document.getElementById(`tool-${ferramenta}`).classList.add('ativo');
     }
@@ -428,10 +428,15 @@
 
     function salvarJSON() {
         const lines = document.querySelectorAll("#tabelaDados tbody tr");
+        let temErro = false;
+        
         const data = Array.from(lines).map(linha => {
             const kmVal = linha.querySelector(".km").value;
+            if (kmVal === "") {
+                temErro = true;
+            }
             return {
-                km: kmVal === "" ? 0 : parseFloat(kmVal),
+                km: kmVal === "" ? null : parseFloat(kmVal),
                 tulipa: linha.querySelector(".btn-tulipa-seletor img").dataset.url,
                 media: "--",
                 obs: (linha.querySelector(".obs").value || "").toUpperCase(),
@@ -439,10 +444,12 @@
             };
         });
 
-        if (data.length === 0) {
-            alert("Não há dados para salvar.");
+        if (temErro) {
+            alert("⚠️ Atenção: Há pontos com o KM em branco! Preencha a quilometragem de todos os pontos antes de salvar.");
             return;
         }
+
+        data.sort((a, b) => a.km - b.km);
 
         const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
         const a = document.createElement("a");
