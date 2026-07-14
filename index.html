@@ -183,6 +183,7 @@
         tr {
             border-bottom: 1px solid #1a1a1a;
             height: 90px;
+            transition: background 0.2s ease;
         }
 
         tr.linha-atual {
@@ -256,7 +257,7 @@
             display: none;
         }
 
-        /* PAINEL DE CONFIGURAÇÕES (MENU) */
+        /* PAINEL DE CONFIGURAÇÕES */
         .menu-lateral {
             position: absolute;
             top: 0;
@@ -285,7 +286,7 @@
             cursor: pointer;
             text-transform: uppercase;
         }
-        .btn-menu-gps { background: #2ecc71; }
+        .btn-menu-gps { background: #38a169; }
         .btn-menu-reset { background: #c0392b; }
         .btn-menu-fechar { background: #333; }
     </style>
@@ -296,12 +297,12 @@
 
 <div class="app-container">
     
-    <!-- MENU LATERAL SEGREDO -->
+    <!-- MENU LATERAL -->
     <div class="menu-lateral" id="menuLateral">
         <h2 style="color: var(--amarelo); margin-bottom: 20px;">Configurações Prova</h2>
-        <button class="btn-menu acao btn-menu-gps" id="btnGPSMenu" onclick="alternarGPS()">Ligar/Desligar GPS</button>
-        <button class="btn-menu acao btn-menu-reset" onclick="limparCorrida()">Resetar Odômetros</button>
-        <button class="btn-menu acao btn-menu-fechar" onclick="toggleMenu()">Fechar Menu</button>
+        <button class="btn-menu-acao btn-menu-gps" id="btnGPSMenu" onclick="alternarGPS()">Ligar/Desligar GPS</button>
+        <button class="btn-menu-acao btn-menu-reset" onclick="limparCorrida()">Resetar Odômetros</button>
+        <button class="btn-menu-acao btn-menu-fechar" onclick="toggleMenu()">Fechar Menu</button>
     </div>
     
     <!-- HEADER -->
@@ -338,7 +339,7 @@
     <div class="roadbook-box" id="roadbook">
         <table id="tabelaNavegacao">
             <tbody>
-                <!-- Inserido dinamicamente via sincronização automática -->
+                <tr><td colspan="3" style="color: #666; text-align:center; padding: 40px;">Conectando ao servidor...</td></tr>
             </tbody>
         </table>
     </div>
@@ -349,9 +350,27 @@
     </div>
 </div>
 
+<!-- SCRIPTS DO FIREBASE SINCRONIZADOS COM SEU PAINEL ADMIN -->
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
 <script>
-    let odometroTotal = 0.000;      // Move a planilha linearmente
-    let odometroParcial = 0.000;    // Exibido no display amarelo gigante
+    // Configurações idênticas ao seu painel Admin para sincronia perfeita
+    const firebaseConfig = {
+        apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
+        authDomain: "cronometro-rally.firebaseapp.com",
+        databaseURL: "https://cronometro-rally-default-rtdb.firebaseio.com",
+        projectId: "cronometro-rally",
+        storageBucket: "cronometro-rally.firebasestorage.app",
+        messagingSenderId: "341731891354",
+        appId: "1:341731891354:web:d0c34265be68015e98a723"
+    };
+
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.database(app);
+
+    let odometroTotal = 0.000;      
+    let odometroParcial = 0.000;    
     let ultimoKmZeradoAbsoluto = 0.000; 
     
     let planilha = [];
@@ -359,15 +378,8 @@
     let ultimaCoordenada = null;
 
     window.onload = function() {
-        sincronizarPlanilhaAutomatica();
         restaurarEstadoNavegacao();
-        
-        // Fica ouvindo alterações instantâneas do admin
-        window.addEventListener('storage', function(e) {
-            if (e.key === 'rascunho_racekrono' || e.key === 'racekrono_planilha_ativa') {
-                sincronizarPlanilhaAutomatica();
-            }
-        });
+        conectarEouvirServidor();
     };
 
     function toggleMenu() {
@@ -375,20 +387,34 @@
         menu.style.display = (menu.style.display === "flex") ? "none" : "flex";
     }
 
-    function sincronizarPlanilhaAutomatica() {
-        let dadosPlanilha = localStorage.getItem('racekrono_planilha_ativa') || localStorage.getItem('rascunho_racekrono');
-        
-        if (dadosPlanilha) {
-            try {
-                planilha = JSON.parse(dadosPlanilha);
-                planilha = planilha.filter(p => p.km !== null && p.km !== undefined && p.km !== "");
-                planilha.sort((a, b) => a.km - b.km);
-                
-                renderizarPlanilha();
-            } catch(e) {
-                console.log("Erro na leitura automática da planilha.");
+    // CONEXÃO EM TEMPO REAL VIA FIREBASE COM A ROTA 'prova_atual'
+    function conectarEouvirServidor() {
+        db.ref('prova_atual').on('value', snap => {
+            if (snap.exists()) {
+                const dados = snap.val();
+                processarDadosPlanilha(dados);
+                // Salva localmente em cache para contingência offline na pista
+                localStorage.setItem('racekrono_planilha_ativa', JSON.stringify(dados));
+            } else {
+                tbody.innerHTML = `<tr><td colspan="3" style="color: #666; text-align:center; padding: 40px;">Nenhuma planilha ativa no servidor.</td></tr>`;
             }
-        }
+        }, erro => {
+            console.log("Erro ao escutar Firebase, usando dados de contingência local.");
+            let local = localStorage.getItem('racekrono_planilha_ativa');
+            if (local) processarDadosPlanilha(JSON.parse(local));
+        });
+    }
+
+    function processarDadosPlanilha(dados) {
+        if (!dados) return;
+        
+        let listaPontos = Array.isArray(dados) ? dados : Object.values(dados);
+        
+        // Remove lixos e ordena estritamente por KM progressivo
+        planilha = listaPontos.filter(p => p && p.km !== null && p.km !== undefined && p.km !== "");
+        planilha.sort((a, b) => parseFloat(a.km) - parseFloat(b.km));
+        
+        renderizarPlanilha();
     }
 
     function atualizarDisplays() {
@@ -421,7 +447,7 @@
         tbody.innerHTML = "";
 
         if (planilha.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="3" style="color: #444; text-align:center; padding: 40px;">Aguardando planilha...</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="3" style="color: #444; text-align:center; padding: 40px;">Planilha vazia ou inválida.</td></tr>`;
             return;
         }
 
@@ -432,7 +458,7 @@
 
             tr.innerHTML = `
                 <td class="col-km">${parseFloat(ponto.km).toFixed(3)}</td>
-                <td class="col-tulipa"><img src="${ponto.tulipa}"></td>
+                <td class="col-tulipa"><img src="${ponto.tulipa || ''}" onerror="this.style.display='none'"></td>
                 <td class="col-obs">${ponto.obs || '--'}</td>
             `;
             tbody.appendChild(tr);
@@ -441,13 +467,13 @@
         atualizarPosicaoPlanilha();
     }
 
-    // CORREÇÃO DA ROLAGEM FORÇADA E SEGURA
+    // CÁLCULO CORRIGIDO: ROLAGEM AUTOMÁTICA VIA CÁLCULO DE RECT MATEMÁTICO 
     function atualizarPosicaoPlanilha() {
         if (planilha.length === 0) return;
 
         let indiceAtual = 0;
         for (let i = 0; i < planilha.length; i++) {
-            if (odometroTotal >= planilha[i].km) {
+            if (odometroTotal >= parseFloat(planilha[i].km)) {
                 indiceAtual = i;
             } else {
                 break;
@@ -462,19 +488,22 @@
         if (linhaAtiva) {
             linhaAtiva.classList.add("linha-atual");
             
-            // Força a rolagem matemática baseada na posição do contêiner box do roadbook
             const container = document.getElementById("roadbook");
-            const topoLinha = linhaAtiva.offsetTop;
-            const alturaLinha = linhaAtiva.offsetHeight;
-            const alturaContainer = container.offsetHeight;
-
-            // Centraliza o card perfeitamente no meio do campo escuro
-            container.scrollTop = topoLinha - (alturaContainer / 2) + (alturaLinha / 2);
+            
+            // Mede a distância física exata entre o contêiner e a linha ativa
+            const containerRect = container.getBoundingClientRect();
+            const linhaRect = linhaAtiva.getBoundingClientRect();
+            
+            // Movimenta o scroll matematicamente jogando a linha ativa exatamente para o meio vertical
+            const diferencaDePosicao = (linhaRect.top - containerRect.top) - (containerRect.height / 2) + (linhaRect.height / 2);
+            
+            container.scrollTop += diferencaDePosicao;
         }
 
+        // Auto-Zerar se o ponto da planilha mandar zerar
         const pontoAtual = planilha[indiceAtual];
-        if (pontoAtual && pontoAtual.zera && ultimoKmZeradoAbsoluto !== pontoAtual.km) {
-            ultimoKmZeradoAbsoluto = pontoAtual.km;
+        if (pontoAtual && pontoAtual.zera && ultimoKmZeradoAbsoluto !== parseFloat(pontoAtual.km)) {
+            ultimoKmZeradoAbsoluto = parseFloat(pontoAtual.km);
             odometroParcial = 0.000;
             
             dispararAlertaVisual();
@@ -499,6 +528,12 @@
     }
 
     function restaurarEstadoNavegacao() {
+        let local = localStorage.getItem('racekrono_planilha_ativa');
+        if (local) {
+            planilha = JSON.parse(local);
+            renderizarPlanilha();
+        }
+
         const estadoSalvo = localStorage.getItem('racekrono_estado_corrida');
         if (estadoSalvo) {
             const estado = JSON.parse(estadoSalvo);
@@ -510,7 +545,7 @@
                 if (odometroParcial < 0) odometroParcial = 0;
                 
                 atualizarDisplays();
-                setTimeout(atualizarPosicaoPlanilha, 100); // Aguarda render inicial
+                setTimeout(atualizarPosicaoPlanilha, 300); 
             }
         }
     }
@@ -535,7 +570,7 @@
             ultimaCoordenada = null;
             document.getElementById("txtVelocidade").innerText = "0.0";
             btn.innerText = "Ligar GPS";
-            btn.style.background = "#2ecc71";
+            btn.style.background = "#38a169";
         } else {
             if (!navigator.geolocation) return;
             btn.innerText = "Desligar GPS";
