@@ -44,6 +44,7 @@
             flex-direction: column;
             gap: 12px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            position: relative;
         }
 
         /* Cabeçalho superior: Carro e Velocidade */
@@ -90,6 +91,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            z-index: 10;
         }
 
         /* CARD CENTRAL DO ODÔMETRO ORIGINAL */
@@ -170,6 +172,7 @@
             border: 1px solid #222;
             border-radius: 12px;
             overflow-y: auto;
+            position: relative;
         }
 
         table {
@@ -252,6 +255,39 @@
             z-index: 1000;
             display: none;
         }
+
+        /* PAINEL DE CONFIGURAÇÕES (MENU) */
+        .menu-lateral {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            border-radius: 16px;
+            z-index: 50;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            padding: 40px;
+        }
+
+        .btn-menu-acao {
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+        .btn-menu-gps { background: #2ecc71; }
+        .btn-menu-reset { background: #c0392b; }
+        .btn-menu-fechar { background: #333; }
     </style>
 </head>
 <body>
@@ -260,6 +296,14 @@
 
 <div class="app-container">
     
+    <!-- MENU LATERAL SEGREDO -->
+    <div class="menu-lateral" id="menuLateral">
+        <h2 style="color: var(--amarelo); margin-bottom: 20px;">Configurações Prova</h2>
+        <button class="btn-menu acao btn-menu-gps" id="btnGPSMenu" onclick="alternarGPS()">Ligar/Desligar GPS</button>
+        <button class="btn-menu acao btn-menu-reset" onclick="limparCorrida()">Resetar Odômetros</button>
+        <button class="btn-menu acao btn-menu-fechar" onclick="toggleMenu()">Fechar Menu</button>
+    </div>
+    
     <!-- HEADER -->
     <div class="header-status">
         <div class="carro-identificador">Carro 444</div>
@@ -267,14 +311,13 @@
             <span class="velocidade-valor" id="txtVelocidade">0.0</span>
             <span class="velocidade-unidade">KM/H</span>
         </div>
-        <button class="btn-menu-topo" onclick="alternarGPS()">☰</button>
+        <button class="btn-menu-topo" onclick="toggleMenu()">☰</button>
     </div>
 
     <!-- CARD DO ODÔMETRO -->
     <div class="card-odometro">
         <div class="header-odometro-labels">
             <span>ODÔMETRO</span>
-            <!-- Adicionado o Odômetro Total aqui de forma limpa e discreta -->
             <div class="odometro-total-pequeno">TOT: <span id="displayTotal">0.000</span></div>
         </div>
         
@@ -319,12 +362,18 @@
         sincronizarPlanilhaAutomatica();
         restaurarEstadoNavegacao();
         
+        // Fica ouvindo alterações instantâneas do admin
         window.addEventListener('storage', function(e) {
             if (e.key === 'rascunho_racekrono' || e.key === 'racekrono_planilha_ativa') {
                 sincronizarPlanilhaAutomatica();
             }
         });
     };
+
+    function toggleMenu() {
+        const menu = document.getElementById("menuLateral");
+        menu.style.display = (menu.style.display === "flex") ? "none" : "flex";
+    }
 
     function sincronizarPlanilhaAutomatica() {
         let dadosPlanilha = localStorage.getItem('racekrono_planilha_ativa') || localStorage.getItem('rascunho_racekrono');
@@ -392,6 +441,7 @@
         atualizarPosicaoPlanilha();
     }
 
+    // CORREÇÃO DA ROLAGEM FORÇADA E SEGURA
     function atualizarPosicaoPlanilha() {
         if (planilha.length === 0) return;
 
@@ -411,7 +461,15 @@
         const linhaAtiva = document.getElementById(`referencia-${indiceAtual}`);
         if (linhaAtiva) {
             linhaAtiva.classList.add("linha-atual");
-            linhaAtiva.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // Força a rolagem matemática baseada na posição do contêiner box do roadbook
+            const container = document.getElementById("roadbook");
+            const topoLinha = linhaAtiva.offsetTop;
+            const alturaLinha = linhaAtiva.offsetHeight;
+            const alturaContainer = container.offsetHeight;
+
+            // Centraliza o card perfeitamente no meio do campo escuro
+            container.scrollTop = topoLinha - (alturaContainer / 2) + (alturaLinha / 2);
         }
 
         const pontoAtual = planilha[indiceAtual];
@@ -452,24 +510,42 @@
                 if (odometroParcial < 0) odometroParcial = 0;
                 
                 atualizarDisplays();
-                atualizarPosicaoPlanilha();
+                setTimeout(atualizarPosicaoPlanilha, 100); // Aguarda render inicial
             }
         }
     }
 
+    function limparCorrida() {
+        if (confirm("Deseja resetar a prova atual do zero?")) {
+            localStorage.removeItem('racekrono_estado_corrida');
+            odometroTotal = 0.000;
+            odometroParcial = 0.000;
+            ultimoKmZeradoAbsoluto = 0.000;
+            atualizarDisplays();
+            atualizarPosicaoPlanilha();
+            toggleMenu();
+        }
+    }
+
     function alternarGPS() {
+        const btn = document.getElementById("btnGPSMenu");
         if (watchID !== null) {
             navigator.geolocation.clearWatch(watchID);
             watchID = null;
             ultimaCoordenada = null;
             document.getElementById("txtVelocidade").innerText = "0.0";
+            btn.innerText = "Ligar GPS";
+            btn.style.background = "#2ecc71";
         } else {
             if (!navigator.geolocation) return;
+            btn.innerText = "Desligar GPS";
+            btn.style.background = "#c0392b";
             watchID = navigator.geolocation.watchPosition(
                 processarMovimentoGPS,
                 (erro) => console.log(erro.message),
                 { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
             );
+            toggleMenu();
         }
     }
 
