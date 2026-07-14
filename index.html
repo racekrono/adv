@@ -31,7 +31,7 @@
             flex-direction: column;
         }
 
-        /* PAINEL DO ODÔMETRO (TOPO) */
+        /* PAINEL DO ODÔMETRO (Mantido idêntico ao seu original) */
         .painel-odometros {
             background: #000000;
             border-bottom: 4px solid var(--amarelo);
@@ -55,7 +55,7 @@
             letter-spacing: 2px;
         }
 
-        /* Odômetro Parcial - Gigante para visualização rápida */
+        /* Odômetro Principal (Parcial) - Grande e em Destaque */
         .odometros-valores {
             font-size: 84px;
             font-weight: 900;
@@ -65,7 +65,7 @@
             font-variant-numeric: tabular-nums;
         }
 
-        /* Odômetro Total - Menor, logo abaixo */
+        /* Novo Odômetro Total - Pequeno e discreto */
         .container-total {
             margin-top: 5px;
             font-size: 24px;
@@ -78,7 +78,7 @@
             color: var(--amarelo);
         }
 
-        /* Botões rápidos de ajuste fino do odômetro */
+        /* Botões de ajuste rápido */
         .ajustes-odometro {
             display: flex;
             gap: 15px;
@@ -105,7 +105,7 @@
             color: black;
         }
 
-        /* ÁREA DA PLANILHA (ROADBOOK) */
+        /* ÁREA DA PLANILHA (ROADBOOK - Mantida igual) */
         .roadbook-container {
             flex: 1;
             overflow-y: auto;
@@ -123,13 +123,11 @@
             transition: background 0.3s;
         }
 
-        /* Linha atual em foco na tela */
         tr.linha-atual {
             background: rgba(241, 196, 15, 0.15);
             border-left: 8px solid var(--amarelo);
         }
 
-        /* Indicação visual de linha que gera zerada */
         tr.linha-zera {
             border-left: 8px solid #e74c3c;
         }
@@ -174,7 +172,7 @@
             font-weight: bold;
         }
 
-        /* MENU DE CONTROLES INFERIORES */
+        /* MENU INFERIOR ORIGINAL */
         .menu-inferior {
             background: #000;
             border-top: 3px solid #333;
@@ -199,7 +197,7 @@
         .btn-vermelho { background: #e74c3c; color: white; }
         .btn-cinza { background: #333; color: white; }
 
-        /* Estilo do Alerta Sonoro de Zerada */
+        /* Banner de Aviso de Zerada */
         #status-alert {
             position: fixed;
             top: 20px;
@@ -225,20 +223,21 @@
 </head>
 <body>
 
-<div id="status-alert">⚠️ ODÔMETRO ZERADO!</div>
+<div id="status-alert">⚠️ ODÔMETRO PARCIAL ZERADO!</div>
 
 <!-- PAINEL DOS ODÔMETROS -->
 <div class="painel-odometros">
     <div class="container-parcial">
         <div class="label-odometro">Parcial (Trecho)</div>
+        <!-- O Odômetro Principal agora representa o Parcial de forma gigante -->
         <div class="odometros-valores" id="displayParcial">0.000</div>
     </div>
     
+    <!-- O Odômetro Total agora é exibido menor, logo abaixo -->
     <div class="container-total">
         TOTAL: <span id="displayTotal">0.000</span> KM
     </div>
 
-    <!-- Ajustes finos rápidos para o piloto bater o dedo no painel -->
     <div class="ajustes-odometro">
         <button class="btn-ajuste" onclick="ajustarParcial(-0.010)">-10m</button>
         <button class="btn-ajuste" onclick="ajustarParcial(0.010)">+10m</button>
@@ -246,16 +245,16 @@
     </div>
 </div>
 
-<!-- CONTAINER DA PLANILHA (ROADBOOK) -->
+<!-- PLANILHA -->
 <div class="roadbook-container" id="roadbook">
     <table id="tabelaNavegacao">
         <tbody>
-            <!-- Linhas inseridas dinamicamente pelo arquivo carregado -->
+            <!-- Carregado via JSON -->
         </tbody>
     </table>
 </div>
 
-<!-- CONTROLES DE SIMULAÇÃO / TESTE DE GPS -->
+<!-- BOTÕES DE CONTROLE -->
 <div class="menu-inferior">
     <input type="file" id="arquivoInput" style="display:none" accept=".json" onchange="importarPlanilha(this)">
     <button class="btn-menu btn-cinza" onclick="document.getElementById('arquivoInput').click()">Carregar Planilha</button>
@@ -264,32 +263,28 @@
 </div>
 
 <script>
-    // Variáveis de Controle dos Odômetros
-    let odometroTotal = 0.000;      // Controla a rolagem e posição da planilha
-    let odometroParcial = 0.000;    // Controla o odômetro gigante visualizado pelo piloto
-    let ultimoKmZeradoAbsoluto = 0.000; // Guarda onde foi o último ponto de reset do odômetro parcial
+    let odometroTotal = 0.000;      // Comanda a rolagem da planilha (nunca zera sozinho)
+    let odometroParcial = 0.000;    // Exibido gigante para o piloto (zera de referência em referência)
+    let ultimoKmZeradoAbsoluto = 0.000; // Ponto de referência global do último reset do parcial
     
-    let planilha = [];              // Guarda os dados carregados da planilha
-    let watchID = null;             // Guarda o watchPosition do GPS
-    let ultimaCoordenada = null;    // Para cálculo de distância por fórmula Haversine
+    let planilha = [];
+    let watchID = null;
+    let ultimaCoordenada = null;
 
-    // Inicialização da Página
     window.onload = function() {
         restaurarEstadoNavegacao();
     };
 
-    // Atualiza os displays dos odômetros na tela
     function atualizarDisplays() {
         document.getElementById('displayParcial').innerText = odometroParcial.toFixed(3);
         document.getElementById('displayTotal').innerText = odometroTotal.toFixed(3);
     }
 
-    // AJUSTES MANUAIS DO ODÔMETRO PARCIAL
+    // Ajustes finos incrementam proporcionalmente os dois odômetros para manter a física do deslocamento
     function ajustarParcial(valor) {
         odometroParcial += valor;
         if (odometroParcial < 0) odometroParcial = 0;
         
-        // Ajustamos proporcionalmente o total para manter a sincronia física
         odometroTotal += valor;
         if (odometroTotal < 0) odometroTotal = 0;
 
@@ -308,7 +303,6 @@
         }
     }
 
-    // IMPORTAR PLANILHA (JSON EXPORTADO DO EDITOR)
     function importarPlanilha(input) {
         const file = input.files[0];
         if (!file) return;
@@ -316,21 +310,19 @@
         reader.onload = function(e) {
             try {
                 planilha = JSON.parse(e.target.result);
-                // Ordena por garantia pelo KM absoluto
+                // Ordenação segura (ignora valores nulos de KMs vazios)
+                planilha = planilha.filter(p => p.km !== null);
                 planilha.sort((a, b) => a.km - b.km);
                 
-                // Salva a planilha importada no localStorage para persistência de falhas
                 localStorage.setItem('racekrono_planilha_ativa', JSON.stringify(planilha));
-                
                 renderizarPlanilha();
             } catch(err) {
-                alert("Erro ao ler planilha JSON válida.");
+                alert("Erro ao ler o arquivo JSON.");
             }
         };
         reader.readAsText(file);
     }
 
-    // RENDERIZAÇÃO DA PLANILHA NA TELA
     function renderizarPlanilha() {
         const tbody = document.querySelector("#tabelaNavegacao tbody");
         tbody.innerHTML = "";
@@ -356,7 +348,6 @@
                 </td>
                 <td class="col-obs">
                     ${ponto.obs}
-                    ${ponto.zera ? '<br><span style="color: #e74c3c; font-size: 13px;">[ZERAR ODÔMETRO]</span>' : ''}
                 </td>
             `;
             tbody.appendChild(tr);
@@ -365,13 +356,12 @@
         atualizarPosicaoPlanilha();
     }
 
-    // ATUALIZAR POSIÇÃO DA PLANILHA E DETECTAR ZERADAS AUTOMÁTICAS
+    // Acompanha a planilha com base no Odômetro Total (Absoluto)
     function atualizarPosicaoPlanilha() {
         if (planilha.length === 0) return;
 
         let indiceAtual = 0;
 
-        // Varre a planilha procurando a tulipa mais próxima correspondente ao KM TOTAL
         for (let i = 0; i < planilha.length; i++) {
             if (odometroTotal >= planilha[i].km) {
                 indiceAtual = i;
@@ -380,26 +370,21 @@
             }
         }
 
-        // Remove destaques anteriores
         document.querySelectorAll("#tabelaNavegacao tbody tr").forEach(tr => {
             tr.classList.remove("linha-atual");
         });
 
-        // Adiciona destaque na linha ativa
         const linhaAtiva = document.getElementById(`referencia-${indiceAtual}`);
         if (linhaAtiva) {
             linhaAtiva.classList.add("linha-atual");
-            
-            // Foca o scroll automático na linha ativa
             linhaAtiva.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
-        // DETECTAR SE A LINHA ATUAL PEDE ZERADA AUTOMÁTICA
+        // Lógica automática de zerada por aproximação/cruzamento de KM
         const pontoAtual = planilha[indiceAtual];
         if (pontoAtual && pontoAtual.zera && ultimoKmZeradoAbsoluto !== pontoAtual.km) {
-            // Realiza a zerada automática do parcial
             ultimoKmZeradoAbsoluto = pontoAtual.km;
-            odometroParcial = 0.000;
+            odometroParcial = 0.000; // Zera apenas o parcial
             
             dispararAlertaVisual();
             atualizarDisplays();
@@ -407,14 +392,12 @@
         }
     }
 
-    // ALERTA VISUAL RÁPIDO DE ZERADA
     function dispararAlertaVisual() {
         const alerta = document.getElementById("status-alert");
         alerta.style.display = "block";
         setTimeout(() => { alerta.style.display = "none"; }, 3000);
     }
 
-    // PERSISTÊNCIA DO ESTADO DE CORRIDA (PROTEÇÃO CONTRA ATUALIZAÇÃO DA PÁGINA)
     function salvarEstadoNavegacao() {
         const estado = {
             odometroTotal: odometroTotal,
@@ -425,30 +408,25 @@
     }
 
     function restaurarEstadoNavegacao() {
-        // Primeiro, restaura a planilha se houver
         const planilhaSalva = localStorage.getItem('racekrono_planilha_ativa');
         if (planilhaSalva) {
             planilha = JSON.parse(planilhaSalva);
             renderizarPlanilha();
         }
 
-        // Restaura as variáveis dos odômetros
         const estadoSalvo = localStorage.getItem('racekrono_estado_corrida');
         if (estadoSalvo) {
             const estado = JSON.parse(estadoSalvo);
             
-            // Aceita o backup se tiver menos de 12 horas para evitar erros de provas passadas
             if (Date.now() - estado.timestamp < 12 * 60 * 60 * 1000) {
                 odometroTotal = estado.odometroTotal;
                 ultimoKmZeradoAbsoluto = estado.ultimoKmZeradoAbsoluto;
                 
-                // O parcial é calculado de forma segura a partir da diferença
                 odometroParcial = odometroTotal - ultimoKmZeradoAbsoluto;
                 if (odometroParcial < 0) odometroParcial = 0;
                 
                 atualizarDisplays();
                 atualizarPosicaoPlanilha();
-                console.log("Recuperado com sucesso do backup!");
             }
         }
     }
@@ -464,7 +442,6 @@
         }
     }
 
-    // ENGENHARIA DE RASTREAMENTO GPS (CÁLCULO EXTREMAMENTE PRECISO)
     function alternarGPS() {
         const btn = document.getElementById("btnGPS");
         
@@ -492,7 +469,6 @@
     }
 
     function processarMovimentoGPS(position) {
-        // Ignora coordenadas imprecisas demais de antenas de celular
         if (position.coords.accuracy > 25) return;
 
         if (ultimaCoordenada !== null) {
@@ -501,7 +477,6 @@
                 position.coords.latitude, position.coords.longitude
             );
 
-            // Filtro para ruídos de GPS estático (parado sob árvores, etc)
             if (distKM > 0.002) { 
                 odometroTotal += distKM;
                 odometroParcial = odometroTotal - ultimoKmZeradoAbsoluto;
@@ -515,9 +490,8 @@
         ultimaCoordenada = position.coords;
     }
 
-    // Fórmula Matemática Haversine para cálculo preciso de coordenadas GPS
     function calcularDistanciaHaversine(lat1, lon1, lat2, lon2) {
-        const R = 6371; // Raio médio da Terra em KM
+        const R = 6371;
         const dLat = (lat2 - lat1) * Math.PI / 180;
         const dLon = (lon2 - lon1) * Math.PI / 180;
         const a = 
