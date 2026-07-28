@@ -148,7 +148,7 @@
         let wakeLock = null;
         let watchID = null;
         let odoTotal = 0;      // Quilometragem real acumulada pelo GPS
-        let tripOffset = 0;    // Ponto onde o trip foi zerado/ajustado
+        let tripOffset = 0;    // Offset ajustado pelos botões zerar/alterar
         let ultimaPos = null;
         let ultimoIndiceAtivo = -1;
 
@@ -210,7 +210,6 @@
         function carregarRoadbook() {
             const rbList = document.getElementById('roadbookList');
 
-            // 1. TENTA CARREGAR DO CACHE LOCAL IMEDIATAMENTE (Offline-First)
             try {
                 const planilhaSalva = localStorage.getItem('rally_planilha_cache');
                 if (planilhaSalva) {
@@ -224,7 +223,6 @@
                 console.error('[PWA] Erro ao ler planilha do localStorage:', e);
             }
 
-            // 2. ESCUTA ATUALIZAÇÕES DO FIREBASE (Quando houver internet)
             db.ref('prova_atual').on('value', (snapshot) => {
                 const dados = snapshot.val();
                 if (!dados) {
@@ -234,10 +232,8 @@
                     return;
                 }
                 
-                // Renderiza a versão mais recente da internet
                 renderizarRoadbook(dados);
                 
-                // Salva ou atualiza a cópia local para o próximo apagão de internet
                 try {
                     localStorage.setItem('rally_planilha_cache', JSON.stringify(dados));
                 } catch (e) {
@@ -272,33 +268,34 @@
             atualizarScrollRoadbook();
         }
 
-        // CORREÇÃO: O Scroll da planilha SEMPRE usa o odoTotal (distância real acumulada),
-        // permitindo que o trip no painel seja zerado sem atrapalhar a posição da planilha.
+        // LÓGICA DE ROLAGEM DA PLANILHA (CORRIGIDA):
+        // Encontra a maior tulipa cujo KM é menor ou igual ao KM atual do percurso.
         function atualizarScrollRoadbook() {
             const itens = document.querySelectorAll('.roadbook-item');
             if (itens.length === 0) return;
-            let proximoItemIdx = -1;
+
+            let indiceAlvo = 0;
 
             itens.forEach((div, index) => {
                 const kmItem = parseFloat(div.querySelector('.rb-col-km').innerText);
                 div.classList.remove('rb-item-ativo');
                 
-                // Avalia com base na quilometragem acumulada real da prova (odoTotal)
-                if (proximoItemIdx === -1 && odoTotal <= (kmItem + 0.001)) {
-                    proximoItemIdx = index;
+                // Se o percurso acumulado já passou do KM dessa tulipa, ela se torna a ativa atual
+                if (odoTotal >= kmItem) {
+                    indiceAlvo = index;
                 }
             });
 
-            if (proximoItemIdx !== -1) {
-                if (proximoItemIdx !== ultimoIndiceAtivo) {
-                    if (ultimoIndiceAtivo !== -1) somTrocaReferencia();
-                    ultimoIndiceAtivo = proximoItemIdx;
-                }
-                const itemAlvo = document.getElementById('rb-item-' + proximoItemIdx);
-                if (itemAlvo) {
-                    itemAlvo.classList.add('rb-item-ativo');
-                    itemAlvo.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
+            // Aplica a classe ativa e faz o scroll suave até a tulipa correspondente
+            if (indiceAlvo !== ultimoIndiceAtivo) {
+                if (ultimoIndiceAtivo !== -1) somTrocaReferencia();
+                ultimoIndiceAtivo = indiceAlvo;
+            }
+
+            const itemAlvo = document.getElementById('rb-item-' + indiceAlvo);
+            if (itemAlvo) {
+                itemAlvo.classList.add('rb-item-ativo');
+                itemAlvo.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
         }
 
@@ -323,7 +320,7 @@
 
             if (ultimaPos) {
                 const dist = calcularDistancia(ultimaPos.lat, ultimaPos.lng, lat, lng);
-                if (dist > 0.004) {
+                if (dist > 0.004) { // Incrementa a cada ~4m percorridos
                     odoTotal += dist;
                     atualizarTelaOdo();
                     ultimaPos = { lat, lng };
@@ -417,14 +414,14 @@
             } catch (e) { alert("Erro de conexão."); }
         };
 
-        // CORREÇÃO: Ajusta apenas a referência parcial sem resetar a distância total da prova
+        // Altera o offset e o odoTotal para manter a coerência
         function alterarOdo(v) {
-            tripOffset -= v;
+            odoTotal = Math.max(0, odoTotal + v);
             somClique();
             atualizarTelaOdo();
         }
 
-        // CORREÇÃO: Grava a marcação atual em tripOffset sem zerar o odoTotal
+        // ZERA O VISOR SEM VOLTAR A PLANILHA
         function zerarOdo() {
             if(confirm("Zerar odômetro?")) {
                 tripOffset = odoTotal;
@@ -433,11 +430,13 @@
             }
         }
 
-        // CORREÇÃO: Exibe o valor calculado (odoTotal - tripOffset) no display amarelo
         function atualizarTelaOdo() {
             const odoExibicao = Math.max(0, odoTotal - tripOffset);
             document.getElementById('displayOdo').innerText = odoExibicao.toFixed(3);
+            
+            // Rola a planilha com base no odoTotal (quilometragem real percorrida)
             atualizarScrollRoadbook();
+            
             if (window.__rk && window.__rk.salvarOdometro) {
                 window.__rk.salvarOdometro(odoTotal);
             }
