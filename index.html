@@ -43,16 +43,15 @@
             background: #000;
             border-radius: 8px;
             overflow-y: auto;
-            flex-grow: 0;
+            flex-grow: 1;
             border: 2px solid #333;
-            min-height: 260px;
+            min-height: 220px;
+            max-height: 260px;
             margin-bottom: 10px;
             scroll-behavior: smooth;
-            height: 260px;
-            max-height: 260px;
             position: relative;
         }
-        .roadbook-item { display: flex; align-items: center; border-bottom: 1px solid #222; padding: 6px 4px; gap: 8px; transition: background 0.3s; cursor: pointer; }
+        .roadbook-item { display: flex; align-items: center; border-bottom: 1px solid #222; padding: 6px 4px; gap: 8px; transition: background 0.3s; cursor: pointer; box-sizing: border-box; }
         .rb-item-ativo { background-color: #262d37 !important; border-left: 6px solid #FF0000 ; }
         .rb-col-km { flex: 0 0 55px; font-family: monospace; font-weight: bold; color: #f1c40f; font-size: 18px; text-align: right; }
         .rb-col-tulipa { flex: 0 0 80px; background: white; padding: 2px; border-radius: 4px; display: flex; justify-content: center; align-items: center; min-height: 70px; }
@@ -149,7 +148,7 @@
         let odoTotal = 0;      
         let tripOffset = 0;    
         let ultimaPos = null;
-        let indiceTulipaAtual = 0; // Guarda a posição atual de progresso
+        let indiceTulipaAtual = 0; 
         let dadosRoadbookAtual = []; 
 
         let audioCtx = null;
@@ -238,7 +237,6 @@
                 const div = document.createElement('div');
                 div.className = 'roadbook-item';
                 div.id = 'rb-item-' + index;
-                // Permite clicar manualmente na tulipa caso precise forçar um alinhamento
                 div.onclick = () => selecionarTulipaManualmente(index);
                 
                 const imgUrl = item.tulipa || '';
@@ -261,17 +259,14 @@
             destacarTulipa(index, true);
         }
 
-        // LÓGICA COM TRAVA DE MEMÓRIA (SÓ AVANÇA NUNCA VOLTA SOZINHO):
         function atualizarScrollRoadbook() {
             if (!dadosRoadbookAtual || dadosRoadbookAtual.length === 0) return;
 
             const odoExibicao = Math.max(0, odoTotal - tripOffset);
 
-            // Verifica apenas do índice atual para a FRENTE
             if (indiceTulipaAtual + 1 < dadosRoadbookAtual.length) {
                 const proximoKm = parseFloat(dadosRoadbookAtual[indiceTulipaAtual + 1].km);
                 
-                // Se o odômetro alcançou o valor do próximo item
                 if (odoExibicao >= (proximoKm - 0.0005)) {
                     indiceTulipaAtual++;
                     destacarTulipa(indiceTulipaAtual, true);
@@ -288,8 +283,8 @@
                 itemAlvo.classList.add('rb-item-ativo');
                 if (tocarSom) somTrocaReferencia();
                 
-                const container = document.getElementById('roadbookList');
-                container.scrollTop = itemAlvo.offsetTop - container.offsetTop;
+                // ROLAGEM CORRIGIDA: garante enquadramento perfeito sem cortar
+                itemAlvo.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
         }
 
@@ -396,13 +391,11 @@
             atualizarTelaOdo();
         }
 
-        // LÓGICA DE ZERAR INTELIGENTE:
         function zerarOdo() {
             if(confirm("Zerar odômetro?")) {
                 tripOffset = odoTotal;
                 somClique();
                 
-                // Procura a próxima tulipa 0.000 a partir da posição atual
                 if (dadosRoadbookAtual && dadosRoadbookAtual.length) {
                     for (let i = indiceTulipaAtual; i < dadosRoadbookAtual.length; i++) {
                         const km = parseFloat(dadosRoadbookAtual[i].km);
