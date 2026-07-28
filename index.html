@@ -149,7 +149,7 @@
         let odoTotal = 0;      
         let tripOffset = 0;    
         let ultimaPos = null;
-        let indiceTulipaAtual = 0; // Controla estritamente em qual posição da planilha estamos
+        let indiceTulipaAtual = 0; // Guarda a posição atual de progresso
         let dadosRoadbookAtual = []; 
 
         let audioCtx = null;
@@ -238,7 +238,7 @@
                 const div = document.createElement('div');
                 div.className = 'roadbook-item';
                 div.id = 'rb-item-' + index;
-                // Permite ao piloto clicar diretamente na tulipa se quiser focar manualmente
+                // Permite clicar manualmente na tulipa caso precise forçar um alinhamento
                 div.onclick = () => selecionarTulipaManualmente(index);
                 
                 const imgUrl = item.tulipa || '';
@@ -261,17 +261,17 @@
             destacarTulipa(index, true);
         }
 
-        // LÓGICA DE AVANÇO ESTRITAMENTE SEQUENCIAL:
+        // LÓGICA COM TRAVA DE MEMÓRIA (SÓ AVANÇA NUNCA VOLTA SOZINHO):
         function atualizarScrollRoadbook() {
             if (!dadosRoadbookAtual || dadosRoadbookAtual.length === 0) return;
 
             const odoExibicao = Math.max(0, odoTotal - tripOffset);
 
-            // Verifica se atingiu a PRÓXIMA tulipa na ordem da prova
+            // Verifica apenas do índice atual para a FRENTE
             if (indiceTulipaAtual + 1 < dadosRoadbookAtual.length) {
                 const proximoKm = parseFloat(dadosRoadbookAtual[indiceTulipaAtual + 1].km);
                 
-                // Se o odômetro exibido ultrapassou o KM da próxima referência
+                // Se o odômetro alcançou o valor do próximo item
                 if (odoExibicao >= (proximoKm - 0.0005)) {
                     indiceTulipaAtual++;
                     destacarTulipa(indiceTulipaAtual, true);
@@ -396,10 +396,24 @@
             atualizarTelaOdo();
         }
 
+        // LÓGICA DE ZERAR INTELIGENTE:
         function zerarOdo() {
             if(confirm("Zerar odômetro?")) {
                 tripOffset = odoTotal;
                 somClique();
+                
+                // Procura a próxima tulipa 0.000 a partir da posição atual
+                if (dadosRoadbookAtual && dadosRoadbookAtual.length) {
+                    for (let i = indiceTulipaAtual; i < dadosRoadbookAtual.length; i++) {
+                        const km = parseFloat(dadosRoadbookAtual[i].km);
+                        if (km === 0) {
+                            indiceTulipaAtual = i;
+                            destacarTulipa(indiceTulipaAtual, true);
+                            break;
+                        }
+                    }
+                }
+                
                 atualizarTelaOdo();
             }
         }
