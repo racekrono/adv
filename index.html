@@ -3,250 +3,386 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Roadbook Digital - Rally</title>
+  <title>Race Krono - Roadbook Digital</title>
   <style>
-    :root {
-      --bg-color: #121212;
-      --card-bg: #1e1e1e;
-      --accent-yellow: #ffcc00;
-      --text-color: #ffffff;
-      --text-secondary: #aaaaaa;
-      --border-color: #333333;
-    }
-
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
     body {
-      background-color: var(--bg-color);
-      color: var(--text-color);
+      background-color: #0d0e10;
+      color: #ffffff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    /* Container Principal da Aplicação */
+    .app-card {
+      background-color: #1a1c20;
+      border: 1px solid #2a2d34;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 420px;
+      padding: 16px;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.6);
       display: flex;
       flex-direction: column;
-      height: 100vh;
-      overflow: hidden;
+      gap: 16px;
     }
 
-    /* Painel do Hodômetro / Painel Principal */
-    .dashboard {
-      background-color: var(--card-bg);
-      padding: 15px;
+    /* Header: Carro e Velocidade */
+    .header {
       display: flex;
-      justify-content: space-around;
+      justify-content: space-between;
       align-items: center;
-      border-bottom: 2px solid var(--border-color);
-      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+      padding: 4px 8px;
     }
 
-    .display-box {
+    .car-name {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .speed-container {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+
+    .speed-value {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: #ffcc00;
+      line-height: 1;
+    }
+
+    .speed-unit {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #8a8f9d;
+    }
+
+    .menu-btn {
+      background: #2a2d34;
+      border: none;
+      color: #ffffff;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.2rem;
+    }
+
+    /* Section Odômetro */
+    .odometer-section {
+      background-color: #121316;
+      border-radius: 12px;
+      padding: 12px;
       text-align: center;
+      border: 1px solid #24272e;
     }
 
-    .display-label {
-      font-size: 0.8rem;
-      color: var(--text-secondary);
+    .odometer-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #6c7280;
+      letter-spacing: 1px;
       text-transform: uppercase;
-      font-weight: bold;
+      margin-bottom: 4px;
     }
 
-    .display-value {
-      font-size: 2rem;
-      font-weight: bold;
-      font-family: 'Courier New', Courier, monospace;
-      color: var(--accent-yellow);
+    .odometer-value {
+      font-size: 3.2rem;
+      font-weight: 900;
+      color: #ffcc00;
+      font-family: monospace;
+      letter-spacing: -1px;
+      margin: 4px 0;
+    }
+
+    /* Controls: Botões de Microajuste e Zerar */
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1.2fr 1fr 1fr;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .btn-ctrl {
+      background-color: #2a2d34;
+      color: #ffffff;
+      border: none;
+      padding: 8px 0;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+
+    .btn-ctrl:active {
+      background-color: #3b3f49;
     }
 
     .btn-zerar {
-      background-color: var(--accent-yellow);
-      color: #000;
-      border: none;
-      padding: 12px 20px;
-      font-size: 1rem;
-      font-weight: bold;
-      border-radius: 6px;
-      cursor: pointer;
-      text-transform: uppercase;
-      transition: background 0.2s;
+      background-color: #cc0000;
+      color: #ffffff;
     }
 
     .btn-zerar:active {
-      transform: scale(0.98);
-      background-color: #e6b800;
+      background-color: #ff0000;
     }
 
-    /* Modulo do Roadbook (Planilha Solta / Scrollable) */
+    /* Roadbook Container (Tulipas) */
     .roadbook-container {
-      flex: 1;
+      background-color: #0d0e10;
+      border-radius: 12px;
+      height: 280px;
       overflow-y: auto;
-      padding: 10px;
-      scroll-behavior: smooth;
+      border: 1px solid #24272e;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
     }
 
-    .tulipa-card {
-      background-color: var(--card-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      margin-bottom: 12px;
-      padding: 15px;
+    /* Tulipa Card */
+    .tulipa-row {
+      background-color: #0d0e10;
       display: grid;
-      grid-template-columns: 80px 100px 1fr;
+      grid-template-columns: 70px 100px 1fr;
       align-items: center;
-      gap: 15px;
-      transition: border-color 0.2s, background-color 0.2s;
+      min-height: 80px;
+      border-bottom: 1px solid #1a1c20;
+      position: relative;
     }
 
-    /* Destaque para a tulipa ativa no momento */
-    .tulipa-card.active {
-      border: 2px solid var(--accent-yellow);
-      background-color: #2a2a1a;
+    /* Borda lateral da Tulipa Ativa */
+    .tulipa-row.active {
+      background-color: #1a1d24;
+    }
+
+    .tulipa-row.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background-color: #cc0000;
     }
 
     .tulipa-km {
-      font-size: 1.2rem;
-      font-weight: bold;
-      color: var(--accent-yellow);
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #ffcc00;
+      padding-left: 12px;
+      font-family: monospace;
     }
 
-    .tulipa-id {
-      font-size: 0.9rem;
-      color: var(--text-secondary);
+    .tulipa-icon-box {
+      background-color: #ffffff;
+      width: 70px;
+      height: 60px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto;
     }
 
-    .tulipa-desc {
+    .tulipa-icon-box svg {
+      width: 40px;
+      height: 40px;
+    }
+
+    .tulipa-info {
+      color: #8a8f9d;
+      font-weight: 700;
       font-size: 1rem;
+      padding-right: 12px;
+      text-align: right;
+    }
+
+    /* Footer: Status Transmitindo */
+    .footer-status {
+      background-color: #121316;
+      border-radius: 8px;
+      padding: 8px;
+      text-align: center;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #00ff66;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: 1px solid #24272e;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      background-color: #00ff66;
+      border-radius: 50%;
     }
   </style>
 </head>
 <body>
 
-  <!-- PAINEL SUPERIOR -->
-  <div class="dashboard">
-    <div class="display-box">
-      <div class="display-label">Total (KM)</div>
-      <div class="display-value" id="totalKmDisplay">0.00</div>
+  <div class="app-card">
+    <!-- Header -->
+    <div class="header">
+      <div class="car-name">Carro 444</div>
+      <div class="speed-container">
+        <span class="speed-value" id="speedDisplay">0.0</span>
+        <span class="speed-unit">KM/H</span>
+      </div>
+      <button class="menu-btn">&#9776;</button>
     </div>
 
-    <div class="display-box">
-      <div class="display-label">Trip Parcial (KM)</div>
-      <div class="display-value" id="tripKmDisplay">0.00</div>
+    <!-- Painel do Odômetro -->
+    <div class="odometer-section">
+      <div class="odometer-label">Odômetro</div>
+      <div class="odometer-value" id="odometroDisplay">0.000</div>
+      
+      <div class="controls-grid">
+        <button class="btn-ctrl" onclick="ajustarTrip(-10)">-10m</button>
+        <button class="btn-ctrl" onclick="ajustarTrip(-1)">-1m</button>
+        <button class="btn-ctrl btn-zerar" onclick="zerarTrip()">ZERAR</button>
+        <button class="btn-ctrl" onclick="ajustarTrip(1)">+1m</button>
+        <button class="btn-ctrl" onclick="ajustarTrip(10)">+10m</button>
+      </div>
     </div>
 
-    <button class="btn-zerar" onclick="zerarTrip()">Zerar Trip</button>
-  </div>
+    <!-- Roadbook / Planilha de Tulipas -->
+    <div class="roadbook-container" id="roadbookContainer">
+      <!-- As tulipas são inseridas dinamicamente pelo JS -->
+    </div>
 
-  <!-- ROADBOOK / PLANILHA -->
-  <div class="roadbook-container" id="roadbookContainer">
-    <!-- As tulipas serão renderizadas via JavaScript -->
+    <!-- Status Footer -->
+    <div class="footer-status">
+      <span class="status-dot"></span> TRANSMITINDO AO VIVO
+    </div>
   </div>
 
   <script>
-    // 1. DADOS DE EXEMPLO DO ROADBOOK (Planilha)
-    const planilha = [
-      { id: 1, kmTotal: 0.00, desc: "Largada - Seguir em frente na via principal" },
-      { id: 2, kmTotal: 0.85, desc: "Virar à direita no mata-burro" },
-      { id: 3, kmTotal: 1.40, desc: "Manter à esquerda na bifurcação" },
-      { id: 4, kmTotal: 2.10, desc: "Lombada alta - Atenção!" },
-      { id: 5, kmTotal: 3.55, desc: "Entrar à esquerda na estrada de terra" },
-      { id: 6, kmTotal: 4.80, desc: "Ponte estreita - Reduzir" },
-      { id: 7, kmTotal: 6.20, desc: "Chegada / Ponto de Controle (PC)" }
+    // 1. DADOS DA PLANILHA DE TULIPAS
+    const planilhaData = [
+      { id: 0, km: 0.020, info: "--" },
+      { id: 1, km: 0.040, info: "--" },
+      { id: 2, km: 0.060, info: "--" },
+      { id: 3, km: 0.080, info: "--" },
+      { id: 4, km: 0.100, info: "PC 1" },
+      { id: 5, km: 0.120, info: "--" }
     ];
 
-    // 2. VARIÁVEIS DE ESTADO
-    let totalKmAcumulado = 0.00; // Distância REAL vinda do GPS/Sensor
-    let tripOffset = 0.00;        // Ponto de referência onde o Trip foi zerado
-    let currentTulipaIndex = 0;   // Índice da tulipa selecionada/visível
+    // 2. CONTROLE DE DISTÂNCIA
+    let totalKmPercorrido = 0.000; // Distância acumulada real pelo GPS
+    let tripOffset = 0.000;        // Ponto onde o botão ZERAR foi clicado
+    let activeIndex = 0;           // Tulipa atual mantida na tela
 
-    // 3. INICIALIZAÇÃO
-    function init() {
-      renderRoadbook();
-      atualizarDisplays();
-      
-      // Simulação: Incrementa a distância a cada 2 segundos para testar o movimento
-      setInterval(() => {
-        totalKmAcumulado += 0.10; // Avança 100 metros
-        checarProgressoRoadbook();
-        atualizarDisplays();
-      }, 2000);
-    }
+    // SVG do ícone da tulipa conforme o seu layout original
+    const tulipaIconSvg = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="19" r="1" fill="black" />
+        <path d="M 12 18 V 5" />
+        <path d="M 12 5 L 8 9" />
+        <path d="M 12 12 Q 16 13 16 16" />
+      </svg>
+    `;
 
-    // 4. RENDERIZA A PLANILHA NA TELA
-    function renderRoadbook() {
+    // 3. INICIALIZAR A INTERFACE
+    function renderPlanilha() {
       const container = document.getElementById('roadbookContainer');
       container.innerHTML = '';
 
-      planilha.forEach((item, index) => {
-        const card = document.createElement('div');
-        card.className = `tulipa-card ${index === currentTulipaIndex ? 'active' : ''}`;
-        card.id = `tulipa-${index}`;
+      planilhaData.forEach((item, index) => {
+        const row = document.createElement('div');
+        row.className = `tulipa-row ${index === activeIndex ? 'active' : ''}`;
+        row.id = `tulipa-row-${index}`;
 
-        card.innerHTML = `
-          <div>
-            <div class="tulipa-id">#${item.id}</div>
-            <div class="tulipa-km">${item.kmTotal.toFixed(2)}</div>
-          </div>
-          <div style="font-weight: bold; color: #888;">[ TULIPA ]</div>
-          <div class="tulipa-desc">${item.desc}</div>
+        row.innerHTML = `
+          <div class="tulipa-km">${item.km.toFixed(3)}</div>
+          <div class="tulipa-icon-box">${tulipaIconSvg}</div>
+          <div class="tulipa-info">${item.info}</div>
         `;
 
-        container.appendChild(card);
+        container.appendChild(row);
       });
     }
 
-    // 5. ATUALIZA OS DISPLAYS DO PAINEL
-    function atualizarDisplays() {
-      // O Trip Parcial é o Total percorrido MINUS a marcação onde ele foi zerado
-      const tripParcial = totalKmAcumulado - tripOffset;
-
-      document.getElementById('totalKmDisplay').innerText = totalKmAcumulado.toFixed(2);
-      document.getElementById('tripKmDisplay').innerText = tripParcial.toFixed(2);
-    }
-
-    // 6. LÓGICA CORRIGIDA DO BOTÃO ZERAR
+    // 4. LÓGICA DO BOTÃO ZERAR (SEM PERDER A POSIÇÃO DA TULIPA)
     function zerarTrip() {
-      // ✅ Atualiza apenas o Offset do Trip com o valor do Hodômetro Total
-      tripOffset = totalKmAcumulado;
-
-      // ✅ Atualiza a tela imediatamente
-      atualizarDisplays();
-
-      // 🛑 IMPORTANTE: NÃO alteramos 'currentTulipaIndex' e nem resetamos o 'scrollTop'!
-      // O Roadbook permanece focado e posicionado na mesma linha.
+      // Grava o ponto atual do hodômetro para subtrair no visor
+      tripOffset = totalKmPercorrido;
+      atualizarDisplayOdometro();
+      
+      // ✅ IMPORTANTE: Não alteramos activeIndex nem resetamos o scrollTop da planilha!
     }
 
-    // 7. AVANÇA A PLANILHA COM BASE NO HODÔMETRO TOTAL (Não pelo Trip)
-    function checarProgressoRoadbook() {
-      // A planilha deve rodar usando o kmTotal real do percurso!
-      for (let i = planilha.length - 1; i >= 0; i--) {
-        if (totalKmAcumulado >= planilha[i].kmTotal) {
-          if (currentTulipaIndex !== i) {
-            currentTulipaIndex = i;
-            destacarEAncorarTulipa(i);
+    // 5. BOTÕES -10m, -1m, +1m, +10m
+    function ajustarTrip(metros) {
+      const deltaKm = metros / 1000;
+      tripOffset -= deltaKm; // Ajusta a diferença offset
+      atualizarDisplayOdometro();
+    }
+
+    // 6. ATUALIZA APENAS O VISOR DO ODÔMETRO
+    function atualizarDisplayOdometro() {
+      const tripAtual = Math.max(0, totalKmPercorrido - tripOffset);
+      document.getElementById('odometroDisplay').innerText = tripAtual.toFixed(3);
+    }
+
+    // 7. SIMULAÇÃO DE GPS / MOVIMENTO DO VEÍCULO
+    function simularMovimentoGps() {
+      // Avança a distância total
+      totalKmPercorrido += 0.005;
+      
+      // Atualiza o visor do odômetro
+      atualizarDisplayOdometro();
+
+      // Checa a linha ativa usando SEMPRE a distância total (totalKmPercorrido)
+      for (let i = planilhaData.length - 1; i >= 0; i--) {
+        if (totalKmPercorrido >= planilhaData[i].km) {
+          if (activeIndex !== i) {
+            activeIndex = i;
+            atualizarFocoTulipa(i);
           }
           break;
         }
       }
     }
 
-    // 8. DESTACA E ROLA A TELA ATÉ A TULIPA ATUAL
-    function destacarEAncorarTulipa(index) {
-      // Remove classe 'active' de todos
-      document.querySelectorAll('.tulipa-card').forEach(el => el.classList.remove('active'));
-
-      // Adiciona na atual
-      const cardAtivo = document.getElementById(`tulipa-${index}`);
-      if (cardAtivo) {
-        cardAtivo.classList.add('active');
-        
-        // Rola a tela até o item mantendo o contexto (Scroll suave)
-        cardAtivo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // 8. DESTACA E DESLOCA O SCROLL DA PLANILHA QUANDO COMPLETA O TRECHO
+    function atualizarFocoTulipa(index) {
+      document.querySelectorAll('.tulipa-row').forEach(el => el.classList.remove('active'));
+      
+      const elAtivo = document.getElementById(`tulipa-row-${index}`);
+      if (elAtivo) {
+        elAtivo.classList.add('active');
+        elAtivo.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
     }
 
-    // Executa na inicialização
-    window.onload = init;
+    // Startup
+    window.onload = () => {
+      renderPlanilha();
+      atualizarDisplayOdometro();
+      
+      // Simulação: incrementa movimento a cada 3 segundos
+      setInterval(simularMovimentoGps, 3000);
+    };
   </script>
 </body>
 </html>
