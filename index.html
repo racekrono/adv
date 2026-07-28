@@ -51,6 +51,7 @@
             scroll-behavior: smooth;
             height: 260px;
             max-height: 260px;
+            position: relative;
         }
         .roadbook-item { display: flex; align-items: center; border-bottom: 1px solid #222; padding: 6px 4px; gap: 8px; transition: background 0.3s; }
         .rb-item-ativo { background-color: #262d37 !important; border-left: 6px solid #FF0000 ; }
@@ -151,6 +152,7 @@
         let tripOffset = 0;    // Offset ajustado pelos botões zerar/alterar
         let ultimaPos = null;
         let ultimoIndiceAtivo = -1;
+        let dadosRoadbookAtual = []; // Guarda os dados brutos da planilha para cálculo exato
 
         let audioCtx = null;
 
@@ -247,6 +249,7 @@
         }
 
         function renderizarRoadbook(dados) {
+            dadosRoadbookAtual = dados; // Salva o array de dados puro
             const rbList = document.getElementById('roadbookList');
             rbList.innerHTML = '';
             dados.forEach((item, index) => {
@@ -268,34 +271,39 @@
             atualizarScrollRoadbook();
         }
 
-        // LÓGICA DE ROLAGEM DA PLANILHA (CORRIGIDA):
-        // Encontra a maior tulipa cujo KM é menor ou igual ao KM atual do percurso.
+        // LÓGICA DE ROLAGEM CORRIGIDA E GARANTIDA:
         function atualizarScrollRoadbook() {
-            const itens = document.querySelectorAll('.roadbook-item');
-            if (itens.length === 0) return;
+            if (!dadosRoadbookAtual || dadosRoadbookAtual.length === 0) return;
 
+            // Encontra qual é a tulipa correta com base na quilometragem real percorrida
             let indiceAlvo = 0;
-
-            itens.forEach((div, index) => {
-                const kmItem = parseFloat(div.querySelector('.rb-col-km').innerText);
-                div.classList.remove('rb-item-ativo');
-                
-                // Se o percurso acumulado já passou do KM dessa tulipa, ela se torna a ativa atual
-                if (odoTotal >= kmItem) {
-                    indiceAlvo = index;
+            for (let i = 0; i < dadosRoadbookAtual.length; i++) {
+                const kmItem = parseFloat(dadosRoadbookAtual[i].km);
+                // Dá uma tolerância minúscula de 0.0005 para evitar erros de ponto flutuante
+                if (odoTotal >= (kmItem - 0.0005)) {
+                    indiceAlvo = i;
+                } else {
+                    break;
                 }
-            });
-
-            // Aplica a classe ativa e faz o scroll suave até a tulipa correspondente
-            if (indiceAlvo !== ultimoIndiceAtivo) {
-                if (ultimoIndiceAtivo !== -1) somTrocaReferencia();
-                ultimoIndiceAtivo = indiceAlvo;
             }
 
+            // Remove destaque de todos os itens
+            const todosItens = document.querySelectorAll('.roadbook-item');
+            todosItens.forEach(el => el.classList.remove('rb-item-ativo'));
+
+            // Destaca e rola o elemento ativo
             const itemAlvo = document.getElementById('rb-item-' + indiceAlvo);
             if (itemAlvo) {
                 itemAlvo.classList.add('rb-item-ativo');
-                itemAlvo.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+                if (indiceAlvo !== ultimoIndiceAtivo) {
+                    if (ultimoIndiceAtivo !== -1) somTrocaReferencia();
+                    ultimoIndiceAtivo = indiceAlvo;
+                    
+                    // Rolagem direta no container para garantir precisão e suporte em qualquer navegador
+                    const container = document.getElementById('roadbookList');
+                    container.scrollTop = itemAlvo.offsetTop - container.offsetTop;
+                }
             }
         }
 
@@ -414,14 +422,12 @@
             } catch (e) { alert("Erro de conexão."); }
         };
 
-        // Altera o offset e o odoTotal para manter a coerência
         function alterarOdo(v) {
             odoTotal = Math.max(0, odoTotal + v);
             somClique();
             atualizarTelaOdo();
         }
 
-        // ZERA O VISOR SEM VOLTAR A PLANILHA
         function zerarOdo() {
             if(confirm("Zerar odômetro?")) {
                 tripOffset = odoTotal;
@@ -434,7 +440,7 @@
             const odoExibicao = Math.max(0, odoTotal - tripOffset);
             document.getElementById('displayOdo').innerText = odoExibicao.toFixed(3);
             
-            // Rola a planilha com base no odoTotal (quilometragem real percorrida)
+            // Atualiza a rolagem da planilha imediatamente
             atualizarScrollRoadbook();
             
             if (window.__rk && window.__rk.salvarOdometro) {
