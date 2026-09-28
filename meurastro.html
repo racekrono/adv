@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RaceKrono - Portal do Piloto</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Teko:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0f19;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(225, 29, 72, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(234, 88, 12, 0.1) 0px, transparent 50%),
+                linear-gradient(to bottom, rgba(11, 15, 25, 0.8), rgba(11, 15, 25, 0.95)),
+                repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.01) 0, rgba(255, 255, 255, 0.01) 1px, transparent 0, transparent 50px);
+            background-attachment: fixed;
+        }
+
+        .font-racing {
+            font-family: 'Teko', sans-serif;
+            letter-spacing: 0.05em;
+        }
+
+        .carbon-pattern {
+            background-color: #111625;
+            background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 0);
+            background-size: 12px 12px;
+        }
+
+        .glow-red {
+            box-shadow: 0 0 25px -5px rgba(225, 29, 72, 0.5);
+        }
+
+        .glow-red-hover:hover {
+            box-shadow: 0 0 30px 0px rgba(225, 29, 72, 0.7);
+        }
+
+        /* Animação do fundo estilo pista de corrida */
+        .speed-lines {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .speed-line {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(225, 29, 72, 0.3), transparent);
+            animation: speedLine 3s infinite linear;
+        }
+
+        @keyframes speedLine {
+            0% { transform: translateX(-100%); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateX(100vw); opacity: 0; }
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-100 flex flex-col justify-between relative overflow-x-hidden">
+
+    <div class="speed-lines">
+        <div class="speed-line w-1/2 top-12 left-0" style="animation-duration: 2.5s; animation-delay: 0s;"></div>
+        <div class="speed-line w-2/3 top-1/3 left-0" style="animation-duration: 4s; animation-delay: 1s;"></div>
+        <div class="speed-line w-1/3 top-2/3 left-0" style="animation-duration: 3s; animation-delay: 0.5s;"></div>
+        <div class="speed-line w-3/4 top-3/4 left-0" style="animation-duration: 3.5s; animation-delay: 1.8s;"></div>
+    </div>
+
+    <header class="w-full max-w-6xl mx-auto px-4 py-6 flex justify-between items-center relative z-10">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-600 to-orange-500 flex items-center justify-center shadow-lg shadow-rose-600/30">
+                <i data-lucide="gauge" class="w-6 h-6 text-white"></i>
+            </div>
+            <div>
+                <h1 class="font-racing text-3xl leading-none tracking-wider text-white">
+                    RACE<span class="text-rose-500">KRONO</span>
+                </h1>
+                <p class="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">Telemetry & Live Timing</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/80 border border-slate-800 text-xs text-slate-300">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="font-mono">SISTEMA ATIVO</span>
+        </div>
+    </header>
+
+    <main class="w-full max-w-xl mx-auto px-4 py-8 flex-1 flex flex-col justify-center relative z-10">
+        <div class="carbon-pattern rounded-3xl p-6 sm:p-10 border border-slate-800/80 shadow-2xl backdrop-blur-md relative overflow-hidden">
+            
+            <!-- Detalhe decorativo no topo do card -->
+            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-rose-500 to-transparent"></div>
+
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold uppercase tracking-wider mb-3">
+                    <i data-lucide="trophy" class="w-3.5 h-3.5"></i>
+                    Portal do Piloto
+                </div>
+                <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                    Acesse seu Desempenho
+                </h2>
+                <p class="text-slate-400 text-sm mt-2">
+                    Digite o número do seu veículo para visualizar tempos de volta, rastro e dados de telemetria em tempo real.
+                </p>
+            </div>
+
+            <form id="carForm" onsubmit="handleSubmit(event)" class="space-y-5">
+                <div class="space-y-2">
+                    <label for="carNumber" class="block text-xs font-semibold uppercase tracking-wider text-slate-300">
+                        Número do Veículo / Carro
+                    </label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500">
+                            <i data-lucide="car" class="w-5 h-5"></i>
+                        </div>
+                        <input 
+                            type="number" 
+                            id="carNumber" 
+                            placeholder="Ex: 44" 
+                            min="0"
+                            max="9999"
+                            required
+                            class="w-full pl-12 pr-4 py-4 bg-slate-900/90 border border-slate-700/80 rounded-2xl text-2xl font-mono text-white placeholder-slate-600 focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 transition-all shadow-inner"
+                        />
+                        <div class="absolute inset-y-0 right-0 pr-4 flex items-center text-xs font-mono text-slate-500 pointer-events-none">
+                            #CAR
+                        </div>
+                    </div>
+                    <!-- Mensagem de erro -->
+                    <p id="errorMessage" class="hidden text-rose-400 text-xs flex items-center gap-1 mt-1">
+                        <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i>
+                        <span>Por favor, insira um número válido.</span>
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2">
+                    <button 
+                        type="submit" 
+                        class="sm:col-span-3 w-full bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white font-semibold py-4 px-6 rounded-2xl transition-all duration-200 flex items-center justify-center gap-2 glow-red glow-red-hover group active:scale-[0.98]">
+                        <span>Acessar Desempenho</span>
+                        <i data-lucide="arrow-right" class="w-5 h-5 group-hover:translate-x-1 transition-transform"></i>
+                    </button>
+                    
+                    <button 
+                        type="button" 
+                        onclick="openInModal()"
+                        title="Visualizar sem sair da página"
+                        class="sm:col-span-1 w-full bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-medium py-4 px-3 rounded-2xl transition-all duration-200 flex items-center justify-center gap-1.5 active:scale-[0.98]">
+                        <i data-lucide="maximize-2" class="w-4 h-4"></i>
+                        <span class="text-xs sm:hidden">Preview</span>
+                    </button>
+                </div>
+            </form>
+
+            <div id="recentContainer" class="mt-8 pt-6 border-t border-slate-800/80 hidden">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <i data-lucide="history" class="w-3.5 h-3.5 text-slate-500"></i>
+                        Acessos Recentes
+                    </span>
+                    <button onclick="clearRecent()" class="text-[11px] text-slate-500 hover:text-slate-400 transition-colors">Limpar</button>
+                </div>
+                <div id="recentList" class="flex flex-wrap gap-2">
+                    <!-- Gerado dinamicamente via JS -->
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Dica informativa abaixo do card -->
+        <div class="mt-6 text-center flex items-center justify-center gap-2 text-xs text-slate-500">
+            <i data-lucide="shield-check" class="w-4 h-4 text-rose-500/70"></i>
+            <span>Plataforma oficial RaceKrono Telemetry Systems</span>
+        </div>
+    </main>
+
+    <div id="previewModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 hidden flex-col transition-opacity duration-300">
+        <div class="flex items-center justify-between px-6 py-4 bg-slate-900 border-b border-slate-800">
+            <div class="flex items-center gap-3">
+                <span id="modalCarTitle" class="font-racing text-2xl text-rose-500">CARRO #--</span>
+                <span class="text-xs text-slate-400 border-l border-slate-700 pl-3">Desempenho em Tempo Real</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="externalLinkBtn" target="_blank" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-medium text-slate-200 flex items-center gap-1.5 transition-colors">
+                    <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                    Abrir em nova aba
+                </button>
+                <button onclick="closeModal()" class="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </div>
+        <div class="flex-1 w-full bg-slate-950 relative">
+            <iframe id="previewIframe" class="w-full h-full border-0" src="" title="Desempenho do Piloto"></iframe>
+        </div>
+    </div>
+
+    <footer class="w-full max-w-6xl mx-auto px-4 py-6 text-center text-xs text-slate-600 relative z-10">
+        <p>&copy; <span id="year"></span> RaceKrono. Todos os direitos reservados.</p>
+    </footer>
+
+    <script>
+        // Inicializa os ícones do Lucide
+        lucide.createIcons();
+
+        // Atualiza o ano atual no footer
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        const baseUrl = "http://racekrono.github.io/adv/rastropiloto.html?carro=";
+
+        // Auto-foco no campo ao carregar
+        window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('carNumber').focus();
+            loadRecentCars();
+        });
+
+        // Função principal para direcionamento
+        function redirectCar(carNum) {
+            if (!carNum || carNum.trim() === '') return false;
+            saveRecentCar(carNum);
+            const targetUrl = baseUrl + encodeURIComponent(carNum.trim());
+            window.location.href = targetUrl;
+            return true;
+        }
+
+        // Submissão do Formulário
+        function handleSubmit(e) {
+            e.preventDefault();
+            const carInput = document.getElementById('carNumber');
+            const carValue = carInput.value.trim();
+            const errorMsg = document.getElementById('errorMessage');
+
+            if (!carValue || isNaN(carValue) || Number(carValue) < 0) {
+                errorMsg.classList.remove('hidden');
+                carInput.classList.add('border-rose-500');
+                return;
+            }
+
+            errorMsg.classList.add('hidden');
+            carInput.classList.remove('border-rose-500');
+            redirectCar(carValue);
+        }
+
+        // Abrir em Modal (iFrame) sem sair totalmente da página se o piloto preferir
+        function openInModal() {
+            const carInput = document.getElementById('carNumber');
+            const carValue = carInput.value.trim();
+            const errorMsg = document.getElementById('errorMessage');
+
+            if (!carValue || isNaN(carValue)) {
+                errorMsg.classList.remove('hidden');
+                carInput.classList.add('border-rose-500');
+                return;
+            }
+
+            errorMsg.classList.add('hidden');
+            carInput.classList.remove('border-rose-500');
+
+            saveRecentCar(carValue);
+
+            const targetUrl = baseUrl + encodeURIComponent(carValue);
+            document.getElementById('modalCarTitle').textContent = `VEÍCULO #${carValue}`;
+            document.getElementById('previewIframe').src = targetUrl;
+            document.getElementById('externalLinkBtn').onclick = () => window.open(targetUrl, '_blank');
+
+            const modal = document.getElementById('previewModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('previewModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.getElementById('previewIframe').src = "";
+        }
+
+        // Gerenciamento do LocalStorage para Veículos Recentes
+        function saveRecentCar(num) {
+            let list = JSON.parse(localStorage.getItem('racekrono_recent') || '[]');
+            // Remove duplicações e mantém no máximo 5 números
+            list = list.filter(item => item !== num);
+            list.unshift(num);
+            if (list.length > 5) list.pop();
+            localStorage.setItem('racekrono_recent', JSON.stringify(list));
+            loadRecentCars();
+        }
+
+        function loadRecentCars() {
+            const list = JSON.parse(localStorage.getItem('racekrono_recent') || '[]');
+            const container = document.getElementById('recentContainer');
+            const recentList = document.getElementById('recentList');
+
+            if (list.length === 0) {
+                container.classList.add('hidden');
+                return;
+            }
+
+            container.classList.remove('hidden');
+            recentList.innerHTML = '';
+
+            list.forEach(car => {
+                const badge = document.createElement('button');
+                badge.type = 'button';
+                badge.className = 'px-3 py-1.5 bg-slate-900 hover:bg-rose-600/20 hover:border-rose-500/50 border border-slate-700/70 rounded-xl font-mono text-xs text-slate-200 transition-all flex items-center gap-1 group';
+                badge.innerHTML = `<span class="text-slate-500 group-hover:text-rose-400">#</span>${car}`;
+                badge.onclick = () => {
+                    document.getElementById('carNumber').value = car;
+                    redirectCar(car);
+                };
+                recentList.appendChild(badge);
+            });
+        }
+
+        function clearRecent() {
+            localStorage.removeItem('racekrono_recent');
+            loadRecentCars();
+        }
+    </script>
+</body>
+</html>
