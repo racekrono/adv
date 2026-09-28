@@ -80,7 +80,6 @@
             <button id="btnMenu">☰</button>
             <div id="menuOpcoes">
                 <button onclick="enviarDatalogger()">📤 Enviar Datalogger</button>
-                
             </div>
         </div>
 
@@ -197,6 +196,43 @@
             menuOpcoes.style.display = 'none';
         };
 
+        async function enviarDatalogger() {
+            menuOpcoes.style.display = 'none';
+            
+            // Verifica se existe implementação nativa
+            if (window.__rk && window.__rk.enviarDataloggerNativo) {
+                window.__rk.enviarDataloggerNativo();
+                return;
+            }
+
+            // Caso web/fallback utilizando Firebase
+            const numCarro = window.__rk.carroAtivo || localStorage.getItem('rally_carro_ativo');
+            if (!numCarro) {
+                alert("Nenhum carro ativo identificado para enviar o datalogger.");
+                return;
+            }
+
+            try {
+                const dataloggerLocal = localStorage.getItem('rally_datalogger_' + numCarro);
+                if (!dataloggerLocal) {
+                    alert("Nenhum dado pendente no Datalogger.");
+                    return;
+                }
+
+                const pontos = JSON.parse(dataloggerLocal);
+                await db.ref('datalogger/' + numCarro).push({
+                    dataEnvio: Date.now(),
+                    pontos: pontos
+                });
+
+                localStorage.removeItem('rally_datalogger_' + numCarro);
+                alert("Datalogger enviado com sucesso!");
+            } catch (erro) {
+                console.error("Erro ao enviar datalogger:", erro);
+                alert("Falha ao enviar datalogger. Verifique sua conexão.");
+            }
+        }
+
         db.ref('configuracoes/comandoLogoff').on('value', (snap) => {
             const timestampLogoff = snap.val();
             const tempoLogin = localStorage.getItem('rally_timestamp_login') || 0;
@@ -282,7 +318,6 @@
                 itemAlvo.classList.add('rb-item-ativo');
                 if (tocarSom) somTrocaReferencia();
                 
-                // ROLAGEM CORRIGIDA: garante enquadramento perfeito sem cortar
                 itemAlvo.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
         }
