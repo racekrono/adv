@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RaceKrono - Monitoramento de Rastro</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Teko:wght@600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c;
+            color: #f0f6fc;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* Top Header */
+        header {
+            background: #2d3748;
+            border-bottom: 1px solid #4a5568;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 9999;
+            flex-shrink: 0;
+        }
+
+        .brand-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-title {
+            font-family: 'Teko', sans-serif;
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #fff;
+            line-height: 1;
+        }
+
+        .brand-title span {
+            color: #ff3333;
+        }
+
+        .live-badge {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid #ef4444;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            text-transform: uppercase;
+        }
+
+        .live-pulse {
+            width: 8px;
+            height: 8px;
+            background-color: #ef4444;
+            border-radius: 50%;
+            box-shadow: 0 0 0 rgba(239, 68, 68, 0.7);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .select-car {
+            background: #1a202c;
+            color: #ffffff;
+            border: 1px solid #4a5568;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .btn-nav {
+            background: #4a5568;
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: filter 0.2s;
+        }
+
+        .btn-nav:hover {
+            filter: brightness(1.2);
+        }
+
+        /* Área principal */
+        .workspace {
+            display: flex;
+            flex-grow: 1;
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+            height: calc(100vh - 57px);
+        }
+
+        /* Elemento do Mapa */
+        #map {
+            flex-grow: 1;
+            height: 100%;
+            width: 100%;
+            background: #a0aec0;
+            z-index: 1;
+        }
+
+        /* Marcador de Carro */
+        .car-marker-label {
+            background: #ed8936;
+            border: 2px solid white;
+            border-radius: 50%;
+            color: white;
+            font-weight: bold;
+            text-align: center;
+            line-height: 26px;
+            width: 30px !important;
+            height: 30px !important;
+            font-size: 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+        }
+
+        /* Painel Lateral de Veículos */
+        .side-panel {
+            width: 320px;
+            background: #1a202c;
+            border-left: 1px solid #4a5568;
+            display: flex;
+            flex-direction: column;
+            z-index: 2;
+            flex-shrink: 0;
+        }
+
+        .panel-header {
+            padding: 12px 16px;
+            background: #2d3748;
+            border-bottom: 1px solid #4a5568;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .panel-header h3 {
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #cbd5e0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .car-count-badge {
+            background: #3182ce;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .car-list {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .car-card {
+            background: #2d3748;
+            border: 1px solid #4a5568;
+            border-radius: 6px;
+            padding: 10px 12px;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        .car-card:hover {
+            border-color: #ed8936;
+            background: #3a4a61;
+        }
+
+        .car-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .car-number-badge {
+            background: #ed8936;
+            color: #fff;
+            font-weight: 800;
+            font-size: 13px;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .car-pilot-name {
+            font-weight: 600;
+            font-size: 13px;
+            color: #f7fafc;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 190px;
+        }
+
+        .car-card-details {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #a0aec0;
+        }
+
+        .speed-highlight {
+            color: #48bb78;
+            font-weight: 700;
+        }
+
+        @media (max-width: 600px) {
+            .side-panel {
+                width: 100%;
+                height: 200px;
+                border-left: none;
+                border-top: 1px solid #4a5568;
+            }
+            .workspace {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        <!-- Header -->
+        <header>
+            <div class="brand-container">
+                <div class="brand-title">Race<span>Krono</span></div>
+                <div class="live-badge">
+                    <span class="live-pulse"></span>
+                    Ao Vivo
+                </div>
+            </div>
+
+            <div class="header-controls">
+                <select id="carSelectorHeader" class="select-car" onchange="focarCarro(this.value)">
+                    <option value="">Selecionar Carro...</option>
+                </select>
+
+                <button class="btn-nav" onclick="centralizarTodos()" style="background: #3182ce;">
+                    <i class="fa-solid fa-expand"></i> Ver Todos
+                </button>
+
+                <a href="admin.html" class="btn-nav" style="background: #805ad5;">
+                    <i class="fa-solid fa-gear"></i> Painel Admin
+                </a>
+            </div>
+        </header>
+
+        <!-- Área Principal -->
+        <div class="workspace">
+            <div id="map"></div>
+
+            <div class="side-panel">
+                <div class="panel-header">
+                    <h3><i class="fa-solid fa-car"></i> Veículos em Prova</h3>
+                    <span id="carCountBadge" class="car-count-badge">0</span>
+                </div>
+                <div id="carList" class="car-list">
+                    <!-- Lista dinâmica de carros -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts do Leaflet e Firebase -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
+    <script>
+        // Firebase Configuração Oficial
+        const firebaseConfig = {
+            apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
+            authDomain: "cronometro-rally.firebaseapp.com",
+            databaseURL: "https://cronometro-rally-default-rtdb.firebaseio.com",
+            projectId: "cronometro-rally",
+            storageBucket: "cronometro-rally.firebasestorage.app",
+            messagingSenderId: "341731891354",
+            appId: "1:341731891354:web:d0c34265be68015e98a723"
+        };
+
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.database(app);
+
+        let map;
+        let markers = {};
+        let posicoesCarros = {};
+        let nomesCompetidores = {};
+
+        function initMap() {
+            const camadaRuas = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+            const camadaSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
+
+            map = L.map('map', {
+                center: [-12.26, -38.96],
+                zoom: 13,
+                layers: [camadaRuas]
+            });
+
+            L.control.layers({ "Mapa": camadaRuas, "Satélite": camadaSat }).addTo(map);
+
+            carregarTrajeto();
+            carregarNomesCompetidores();
+            rastrearCarrosAoVivo();
+
+            // FORÇA O REDIMENSIONAMENTO DO MAPA PARA EVITAR TELA PRETA
+            setTimeout(() => {
+                map.invalidateSize();
+            }, 500);
+
+            window.addEventListener('resize', () => {
+                map.invalidateSize();
+            });
+        }
+
+        function carregarTrajeto() {
+            db.ref('configuracoes/percurso').once('value', snap => {
+                if(snap.exists()) {
+                    L.geoJSON(snap.val(), {
+                        pointToLayer: (f, latlng) => f.properties?.type === 'circle' ? L.circle(latlng, { radius: f.properties.radius }) : null,
+                        style: function(f) {
+                            if(f.geometry.type === 'Polygon') return { color: '#e53e3e', weight: 2 };
+                            return { color: '#3182ce', weight: 4 };
+                        }
+                    }).addTo(map);
+                }
+            });
+        }
+
+        function carregarNomesCompetidores() {
+            db.ref('competidores').on('value', snap => {
+                nomesCompetidores = {};
+                snap.forEach(c => {
+                    nomesCompetidores[c.key] = c.val().nome || "Piloto Não Cadastrado";
+                });
+                atualizarListaLateral();
+            });
+        }
+
+        function rastrearCarrosAoVivo() {
+            db.ref('posicoes').on('value', snap => {
+                posicoesCarros = snap.val() || {};
+                const carIds = Object.keys(posicoesCarros);
+
+                document.getElementById('carCountBadge').innerText = carIds.length;
+                atualizarSeletorCarros(carIds);
+
+                carIds.forEach(id => {
+                    const p = posicoesCarros[id];
+                    if(!p || !p.lat || !p.lng) return;
+
+                    const latlng = [p.lat, p.lng];
+                    const nome = nomesCompetidores[id] || "Piloto";
+                    const velText = p.vel !== undefined ? `<br>Velocidade: ${p.vel} km/h` : "";
+
+                    if (markers[id]) {
+                        markers[id].setLatLng(latlng);
+                        markers[id].getPopup().setContent(`<b>Carro: ${id}</b><br>Piloto: ${nome}${velText}`);
+                    } else {
+                        markers[id] = L.marker(latlng, {
+                            icon: L.divIcon({ className: 'car-marker-label', html: id, iconSize: [30, 30] })
+                        }).addTo(map);
+
+                        markers[id].bindPopup(`<b>Carro: ${id}</b><br>Piloto: ${nome}${velText}`);
+                    }
+                });
+
+                // Remove marcadores antigos de carros que não existem mais
+                Object.keys(markers).forEach(id => {
+                    if (!posicoesCarros[id]) {
+                        map.removeLayer(markers[id]);
+                        delete markers[id];
+                    }
+                });
+
+                atualizarListaLateral();
+            });
+        }
+
+        function atualizarListaLateral() {
+            const container = document.getElementById('carList');
+            container.innerHTML = '';
+
+            const ids = Object.keys(posicoesCarros);
+
+            if (ids.length === 0) {
+                container.innerHTML = `<div style="text-align:center; color:#a0aec0; padding:15px; font-size:12px;">Nenhum carro em movimento.</div>`;
+                return;
+            }
+
+            ids.forEach(id => {
+                const p = posicoesCarros[id];
+                const nome = nomesCompetidores[id] || "Não cadastrado";
+                const vel = p.vel !== undefined ? p.vel : 0;
+                const hora = p.ts ? new Date(p.ts).toLocaleTimeString('pt-BR') : '--:--';
+
+                const card = document.createElement('div');
+                card.className = 'car-card';
+                card.onclick = () => focarCarro(id);
+
+                card.innerHTML = `
+                    <div class="car-card-header">
+                        <span class="car-number-badge">#${id}</span>
+                        <span class="car-pilot-name">${nome}</span>
+                    </div>
+                    <div class="car-card-details">
+                        <span>Vel: <strong class="speed-highlight">${vel} KM/H</strong></span>
+                        <span>Hora: ${hora}</span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function atualizarSeletorCarros(carIds) {
+            const select = document.getElementById('carSelectorHeader');
+            const atual = select.value;
+
+            select.innerHTML = '<option value="">Selecionar Carro...</option>';
+            carIds.forEach(id => {
+                const opt = document.createElement('option');
+                opt.value = id;
+                opt.textContent = `Carro ${id} - ${nomesCompetidores[id] || ''}`;
+                select.appendChild(opt);
+            });
+
+            select.value = atual;
+        }
+
+        function focarCarro(id) {
+            if (!id || !posicoesCarros[id]) return;
+            const p = posicoesCarros[id];
+            map.setView([p.lat, p.lng], 16);
+            if (markers[id]) markers[id].openPopup();
+        }
+
+        function centralizarTodos() {
+            map.invalidateSize();
+            const coords = Object.values(posicoesCarros).map(p => [p.lat, p.lng]);
+            if (coords.length > 0) {
+                const bounds = L.latLngBounds(coords);
+                map.fitBounds(bounds, { padding: [40, 40] });
+            }
+        }
+
+        window.onload = initMap;
+    </script>
+</body>
+</html>
