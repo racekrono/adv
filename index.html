@@ -75,7 +75,16 @@
 </head>
 <body>
 
-    <div id="setup">
+    <div class="card">
+        <div id="menuContainer">
+            <button id="btnMenu">☰</button>
+            <div id="menuOpcoes">
+                <button onclick="enviarDatalogger()">📤 Enviar Datalogger</button>
+                
+            </div>
+        </div>
+
+        <div id="setup">
             <img src="https://raw.githubusercontent.com/racekrono/adv/refs/heads/main/Logo.png" class="logo">
             <h2 style="color:#ffffff; text-align:center; margin-top: 0; font-size: 1.2rem;">Rally de Aventura</h2>
             <input type="text" id="nome" placeholder="Nome do Piloto" oninput="this.value = this.value.replace(/[0-9]/g, '')">
