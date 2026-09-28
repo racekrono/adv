@@ -350,6 +350,7 @@
         let markers = {};
         let posicoesCarros = {};
         let nomesCompetidores = {};
+        let primeiraCarga = true; // Controla a centralização inicial ao carregar a página
 
         function initMap() {
             const camadaRuas = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
@@ -438,6 +439,14 @@
                 });
 
                 atualizarListaLateral();
+
+                // Centraliza automaticamente no enquadramento de todos os carros assim que forem carregados
+                if (primeiraCarga && carIds.length > 0) {
+                    setTimeout(() => {
+                        centralizarTodos();
+                    }, 300);
+                    primeiraCarga = false;
+                }
             });
         }
 
