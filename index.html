@@ -244,7 +244,7 @@
                 </div>
             </div>
 
-            <label class="input-label">NOME</label>
+            <label class="input-label">NOME e copiloto</label>
             <input type="text" id="nome" placeholder="Ex.: João da Silva" oninput="this.value = this.value.replace(/[0-9]/g, '')">
 
             <label class="input-label">Nº DO CARRO</label>
@@ -657,28 +657,48 @@
     if (n !== null) {
         let val = parseFloat(n.replace(',', '.'));
         if (!isNaN(val)) {
-            // 1. Reajusta o offset do odômetro com base no valor inserido
+            // 1. Reajusta o offset do odômetro
             tripOffset = odoTotal - Math.max(0, val);
             somClique();
 
-            // 2. Busca a tulipa correta correspondente ao novo KM inserido
             if (dadosRoadbookAtual && dadosRoadbookAtual.length) {
-                let novoIndice = 0;
-                for (let i = 0; i < dadosRoadbookAtual.length; i++) {
+                // 2. Identifica onde começa o bloco atual (procura a última zeragem para trás)
+                let inicioBloco = 0;
+                for (let i = indiceTulipaAtual; i >= 0; i--) {
                     const kmTulipa = parseFloat(dadosRoadbookAtual[i].km);
-                    if (val >= kmTulipa) {
-                        novoIndice = i; // Guarda a tulipa mais próxima (ou anterior) ao KM digitado
-                    } else {
-                        break; // Como a planilha está em ordem cronológica, encerra a busca
+                    if (kmTulipa === 0 || dadosRoadbookAtual[i].zerar === true) {
+                        inicioBloco = i;
+                        break;
                     }
                 }
-                
-                // 3. Atualiza a referência ativa no roadbook
+
+                // 3. Descobre até onde vai o bloco atual (próxima zeragem ou fim da planilha)
+                let fimBloco = dadosRoadbookAtual.length;
+                for (let i = inicioBloco + 1; i < dadosRoadbookAtual.length; i++) {
+                    const kmTulipa = parseFloat(dadosRoadbookAtual[i].km);
+                    if (kmTulipa === 0 || dadosRoadbookAtual[i].zerar === true) {
+                        fimBloco = i;
+                        break;
+                    }
+                }
+
+                // 4. Procura o KM ajustado exclusivamente dentro do bloco ativo
+                let novoIndice = inicioBloco;
+                for (let i = inicioBloco; i < fimBloco; i++) {
+                    const kmTulipa = parseFloat(dadosRoadbookAtual[i].km);
+                    if (val >= kmTulipa) {
+                        novoIndice = i;
+                    } else {
+                        break;
+                    }
+                }
+
+                // 5. Atualiza a tulipa ativa
                 indiceTulipaAtual = novoIndice;
                 destacarTulipa(indiceTulipaAtual, true);
             }
 
-            // 4. Atualiza o display do odômetro
+            // 6. Atualiza o display do odômetro
             atualizarTelaOdo();
         }
     }
