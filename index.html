@@ -130,7 +130,7 @@
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
-            margin-bottom: 10px;
+            margin-bottom: 25px;
         }
 
         .cat-chip {
@@ -472,19 +472,24 @@
         }
 
         function atualizarScrollRoadbook() {
-            if (!dadosRoadbookAtual || dadosRoadbookAtual.length === 0) return;
+    if (!dadosRoadbookAtual || dadosRoadbookAtual.length === 0) return;
 
-            const odoExibicao = Math.max(0, odoTotal - tripOffset);
+    const odoExibicao = Math.max(0, odoTotal - tripOffset);
 
-            if (indiceTulipaAtual + 1 < dadosRoadbookAtual.length) {
-                const proximoKm = parseFloat(dadosRoadbookAtual[indiceTulipaAtual + 1].km);
-                
-                if (odoExibicao >= (proximoKm - 0.0005)) {
-                    indiceTulipaAtual++;
-                    destacarTulipa(indiceTulipaAtual, true);
-                }
-            }
+    if (indiceTulipaAtual + 1 < dadosRoadbookAtual.length) {
+        const proximoKm = parseFloat(dadosRoadbookAtual[indiceTulipaAtual + 1].km);
+        const kmAtual = parseFloat(dadosRoadbookAtual[indiceTulipaAtual].km);
+        
+        // Calcula a distância necessária entre a tulipa atual e a próxima
+        const deltaRef = Math.max(0, proximoKm - kmAtual);
+
+        // Só avança automaticamente se o odômetro parcial atingir a distância do trecho
+        if (deltaRef > 0 && odoExibicao >= (deltaRef - 0.005)) {
+            indiceTulipaAtual++;
+            destacarTulipa(indiceTulipaAtual, true);
         }
+    }
+}
 
         function destacarTulipa(index, tocarSom) {
             const todosItens = document.querySelectorAll('.roadbook-item');
@@ -603,32 +608,33 @@
         }
 
         // Margem de tolerância em quilômetros (2.000m)
-const TOLERANCIA_ZERAR_KM = 2.00; 
+const TOLERANCIA_ZERAR_KM = 1.00; 
 
 // Guarda a distância acumulada (odoTotal) registrada no último zeramento
 let odoUltimoZerar = 0;
 
 function zerarOdo() {
-    // Calcula quanto o carro andou em KM desde a última vez que o botão ZERAR foi pressionado
+    // Distância percorrida em KM desde o último zeramento
     const distPercorrida = Math.abs(odoTotal - odoUltimoZerar);
 
-    if (distPercorrida < TOLERANCIA_ZERAR_KM) {
-        // Andou MENOS de 2km: Zera o parcial, mas MANTÉM na tulipa atual
-        tripOffset = odoTotal;
-    } else {
-        // Andou MAIS de 2km: Zera o parcial e AVANÇA para a próxima tulipa
-        tripOffset = odoTotal;
+    // Salva a posição absoluta do GPS do momento deste zeramento
+    odoUltimoZerar = odoTotal;
 
+    // Reseta o parcial
+    tripOffset = odoTotal;
+
+    if (distPercorrida >= TOLERANCIA_ZERAR_KM) {
+        // Se andou mais de 2km, avança estritamente 1 posição na lista
         if (dadosRoadbookAtual && dadosRoadbookAtual.length > 0) {
             if (indiceTulipaAtual + 1 < dadosRoadbookAtual.length) {
                 indiceTulipaAtual++;
-                destacarTulipa(indiceTulipaAtual, true);
             }
         }
     }
+    // Se andou menos de 2km, mantém o mesmo indiceTulipaAtual
 
-    // Salva a posição total do GPS do momento deste zeramento
-    odoUltimoZerar = odoTotal;
+    // Força o destaque da tulipa correta sem interferência do scroll automático
+    destacarTulipa(indiceTulipaAtual, true);
 
     somClique();
     atualizarTelaOdo();
