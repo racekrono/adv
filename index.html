@@ -130,7 +130,7 @@
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
-            margin-bottom: 25px;
+            margin-bottom: 10px;
         }
 
         .cat-chip {
@@ -602,25 +602,22 @@
             atualizarTelaOdo();
         }
 
-        // Margem de tolerância em quilómetros (2.000m)
+        // Margem de tolerância em quilômetros (2.000m)
 const TOLERANCIA_ZERAR_KM = 2.00; 
 
-// Guarda o Odômetro Parcial do último zeramento para cálculo da tolerância
+// Guarda a distância acumulada (odoTotal) registrada no último zeramento
 let odoUltimoZerar = 0;
 
 function zerarOdo() {
-    // Distância percorrida desde o último zerar (em KM)
-    const odoExibicao = Math.max(0, odoTotal - tripOffset);
-    const distPercorrida = Math.abs(odoExibicao - odoUltimoZerar);
+    // Calcula quanto o carro andou em KM desde a última vez que o botão ZERAR foi pressionado
+    const distPercorrida = Math.abs(odoTotal - odoUltimoZerar);
 
     if (distPercorrida < TOLERANCIA_ZERAR_KM) {
-        // Se andou menos de 2.000m: apenas reseta a contagem para 0.000 (mantém no trecho atual)
+        // Andou MENOS de 2km: Zera o parcial, mas MANTÉM na tulipa atual
         tripOffset = odoTotal;
-        odoUltimoZerar = 0;
     } else {
-        // Se andou mais de 2.000m: reseta o parcial e avança para a próxima referência/tulipa
+        // Andou MAIS de 2km: Zera o parcial e AVANÇA para a próxima tulipa
         tripOffset = odoTotal;
-        odoUltimoZerar = 0;
 
         if (dadosRoadbookAtual && dadosRoadbookAtual.length > 0) {
             if (indiceTulipaAtual + 1 < dadosRoadbookAtual.length) {
@@ -629,6 +626,9 @@ function zerarOdo() {
             }
         }
     }
+
+    // Salva a posição total do GPS do momento deste zeramento
+    odoUltimoZerar = odoTotal;
 
     somClique();
     atualizarTelaOdo();
