@@ -107,7 +107,7 @@
                     Acesse seu Desempenho
                 </h2>
                 <p class="text-slate-400 text-sm mt-2">
-                    Digite o número do seu veículo para visualizar tempos de volta, rastro e dados de telemetria em tempo real.
+                    Digite o número do seu veículo e a senha de acesso para visualizar tempos de volta e telemetria.
                 </p>
             </div>
 
@@ -133,10 +133,34 @@
                             #CAR
                         </div>
                     </div>
-                    <!-- Mensagem de erro -->
+                    <!-- Mensagem de erro do numero do carro -->
                     <p id="errorMessage" class="hidden text-rose-400 text-xs flex items-center gap-1 mt-1">
                         <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i>
-                        <span>Por favor, insira um número válido.</span>
+                        <span>Por favor, insira um número de veículo válido.</span>
+                    </p>
+                </div>
+
+                <!-- Campo de Senha -->
+                <div class="space-y-2">
+                    <label for="accessPassword" class="block text-xs font-semibold uppercase tracking-wider text-slate-300">
+                        Senha de Acesso
+                    </label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500">
+                            <i data-lucide="lock" class="w-5 h-5"></i>
+                        </div>
+                        <input 
+                            type="password" 
+                            id="accessPassword" 
+                            placeholder="Sua senha" 
+                            required
+                            class="w-full pl-12 pr-4 py-3.5 bg-slate-900/90 border border-slate-700/80 rounded-2xl text-lg font-mono text-white placeholder-slate-600 focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 transition-all shadow-inner"
+                        />
+                    </div>
+                    <!-- Mensagem de erro de senha -->
+                    <p id="passwordError" class="hidden text-rose-400 text-xs flex items-center gap-1 mt-1">
+                        <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i>
+                        <span>Senha incorreta! Tente novamente.</span>
                     </p>
                 </div>
 
@@ -214,12 +238,48 @@
         document.getElementById('year').textContent = new Date().getFullYear();
 
         const baseUrl = "http://racekrono.github.io/adv/rastropiloto.html?carro=";
+        const CORRECT_PASSWORD = "123456";
 
         // Auto-foco no campo ao carregar
         window.addEventListener('DOMContentLoaded', () => {
             document.getElementById('carNumber').focus();
             loadRecentCars();
         });
+
+        // Função de validação dos campos
+        function validateInputs() {
+            const carInput = document.getElementById('carNumber');
+            const pwdInput = document.getElementById('accessPassword');
+            const carValue = carInput.value.trim();
+            const pwdValue = pwdInput.value;
+            
+            const errorMsg = document.getElementById('errorMessage');
+            const pwdError = document.getElementById('passwordError');
+
+            let isValid = true;
+
+            // Valida Número do Carro
+            if (!carValue || isNaN(carValue) || Number(carValue) < 0) {
+                errorMsg.classList.remove('hidden');
+                carInput.classList.add('border-rose-500');
+                isValid = false;
+            } else {
+                errorMsg.classList.add('hidden');
+                carInput.classList.remove('border-rose-500');
+            }
+
+            // Valida Senha
+            if (pwdValue !== CORRECT_PASSWORD) {
+                pwdError.classList.remove('hidden');
+                pwdInput.classList.add('border-rose-500');
+                isValid = false;
+            } else {
+                pwdError.classList.add('hidden');
+                pwdInput.classList.remove('border-rose-500');
+            }
+
+            return isValid ? { carValue } : null;
+        }
 
         // Função principal para direcionamento
         function redirectCar(carNum) {
@@ -233,36 +293,18 @@
         // Submissão do Formulário
         function handleSubmit(e) {
             e.preventDefault();
-            const carInput = document.getElementById('carNumber');
-            const carValue = carInput.value.trim();
-            const errorMsg = document.getElementById('errorMessage');
-
-            if (!carValue || isNaN(carValue) || Number(carValue) < 0) {
-                errorMsg.classList.remove('hidden');
-                carInput.classList.add('border-rose-500');
-                return;
+            const result = validateInputs();
+            if (result) {
+                redirectCar(result.carValue);
             }
-
-            errorMsg.classList.add('hidden');
-            carInput.classList.remove('border-rose-500');
-            redirectCar(carValue);
         }
 
-        // Abrir em Modal (iFrame) sem sair totalmente da página se o piloto preferir
+        // Abrir em Modal (iFrame)
         function openInModal() {
-            const carInput = document.getElementById('carNumber');
-            const carValue = carInput.value.trim();
-            const errorMsg = document.getElementById('errorMessage');
+            const result = validateInputs();
+            if (!result) return;
 
-            if (!carValue || isNaN(carValue)) {
-                errorMsg.classList.remove('hidden');
-                carInput.classList.add('border-rose-500');
-                return;
-            }
-
-            errorMsg.classList.add('hidden');
-            carInput.classList.remove('border-rose-500');
-
+            const carValue = result.carValue;
             saveRecentCar(carValue);
 
             const targetUrl = baseUrl + encodeURIComponent(carValue);
@@ -285,7 +327,6 @@
         // Gerenciamento do LocalStorage para Veículos Recentes
         function saveRecentCar(num) {
             let list = JSON.parse(localStorage.getItem('racekrono_recent') || '[]');
-            // Remove duplicações e mantém no máximo 5 números
             list = list.filter(item => item !== num);
             list.unshift(num);
             if (list.length > 5) list.pop();
@@ -313,7 +354,7 @@
                 badge.innerHTML = `<span class="text-slate-500 group-hover:text-rose-400">#</span>${car}`;
                 badge.onclick = () => {
                     document.getElementById('carNumber').value = car;
-                    redirectCar(car);
+                    document.getElementById('accessPassword').focus();
                 };
                 recentList.appendChild(badge);
             });
