@@ -244,7 +244,7 @@
                 </div>
             </div>
 
-            <label class="input-label">NOME DO PILOTO</label>
+            <label class="input-label">NOME</label>
             <input type="text" id="nome" placeholder="Ex.: João da Silva" oninput="this.value = this.value.replace(/[0-9]/g, '')">
 
             <label class="input-label">Nº DO CARRO</label>
@@ -467,9 +467,18 @@
         }
 
         function selecionarTulipaManualmente(index) {
-            indiceTulipaAtual = index;
-            destacarTulipa(index, true);
+    indiceTulipaAtual = index;
+    destacarTulipa(index, true);
+
+    // Ajusta o odômetro para a quilometragem exata da tulipa selecionada
+    if (dadosRoadbookAtual && dadosRoadbookAtual[index]) {
+        const kmTulipa = parseFloat(dadosRoadbookAtual[index].km);
+        if (!isNaN(kmTulipa)) {
+            tripOffset = odoTotal - kmTulipa;
+            atualizarTelaOdo();
         }
+    }
+}
 
         function atualizarScrollRoadbook() {
             if (!dadosRoadbookAtual || dadosRoadbookAtual.length === 0) return;
