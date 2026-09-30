@@ -1,22 +1,21 @@
 {
-  "name": "Race Krono",
   "short_name": "Race Krono",
-  "description": "Cronômetro e roadbook offline para Rally de Aventura",
-  "start_url": ".",
-  "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#121212",
-  "theme_color": "#0d0af0",
+  "name": "Race Krono - Rally & Nav",
   "icons": [
     {
       "src": "icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "sizes": "192x192"
     },
     {
       "src": "icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "sizes": "512x512"
     }
-  ]
+  ],
+  "start_url": "./index.html",
+  "background_color": "#0f0f11",
+  "theme_color": "#0d0af0",
+  "display": "standalone",
+  "orientation": "portrait"
 }
