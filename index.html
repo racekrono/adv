@@ -852,6 +852,12 @@
             }
         }
 
+        function liberarWakeLock() {
+            if (wakeLock) {
+                wakeLock.release().then(() => { wakeLock = null; }).catch(() => {});
+            }
+        }
+
         function processarPontoGps(num, lat, lng, accuracy, kmh) {
             if (accuracy > 25) return;
 
@@ -876,7 +882,7 @@
                 db.ref('rastros/' + num).push(dados);
             }
         }
-        window.__rk = window.__rk || {};
+
         window.__rk.processarPontoGps = processarPontoGps;
 
         function iniciarFluxoRastreio(num) {
@@ -1029,6 +1035,7 @@
             const senha = prompt("Informe a senha para sair da prova:");
             if (senha === "123456") {
                 pararGps();
+                liberarWakeLock();
                 limparTudo();
                 location.reload();
             } else if (senha !== null) {
@@ -1038,6 +1045,7 @@
 
         function encerrarSessaoRemoto() {
             pararGps();
+            liberarWakeLock();
             limparTudo();
             alert("A organização encerrou a sessão.");
             location.reload();
@@ -1051,13 +1059,6 @@
         async function limparTudo() {
             localStorage.removeItem('rally_carro_ativo');
             localStorage.removeItem('rally_timestamp_login');
-        }
-
-        function verRastro() {
-            const num = window.__rk.carroAtivo || localStorage.getItem('rally_carro_ativo');
-            if (!num) return;
-            const url = `https://racekrono.github.io/adv/rastropiloto.html?carro=${encodeURIComponent(num)}`;
-            window.open(url, '_blank');
         }
 
         (function restaurarSessaoWeb() {
@@ -1080,22 +1081,13 @@
         })();
     </script>
     <script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js')
-        .then((reg) => console.log('Service Worker registado com sucesso:', reg.scope))
-        .catch((err) => console.error('Falha ao registar Service Worker:', err));
-    });
-  }
-</script>
-    <script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js')
-        .then((reg) => console.log('Service Worker registado com sucesso:', reg.scope))
-        .catch((err) => console.error('Falha ao registar Service Worker:', err));
-    });
-  }
-</script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js')
+            .then((reg) => console.log('Service Worker registrado com sucesso:', reg.scope))
+            .catch((err) => console.error('Falha ao registrar Service Worker:', err));
+        });
+      }
+    </script>
 </body>
 </html>
