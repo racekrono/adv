@@ -602,25 +602,29 @@
             atualizarTelaOdo();
         }
 
-        function zerarOdo() {
-            if(confirm("Zerar odômetro?")) {
-                tripOffset = odoTotal;
-                somClique();
-                
-                if (dadosRoadbookAtual && dadosRoadbookAtual.length) {
-                    for (let i = indiceTulipaAtual; i < dadosRoadbookAtual.length; i++) {
-                        const km = parseFloat(dadosRoadbookAtual[i].km);
-                        if (km === 0) {
-                            indiceTulipaAtual = i;
-                            destacarTulipa(indiceTulipaAtual, true);
-                            break;
-                        }
-                    }
-                }
-                
-                atualizarTelaOdo();
-            }
-        }
+        // Margem de tolerância em quilómetros (ex: 0.150 = 150 metros)
+const TOLERANCIA_ZERAR_KM = 2.00; 
+
+function zerarOdo() {
+    // Distância atual percorrida desde o último zerar
+    let distAtual = Math.abs(gPSkm - odoOff);
+
+    if (distAtual < TOLERANCIA_ZERAR_KM) {
+        // Se andou menos que a tolerância, apenas reseta a quilometragem na tulipa atual
+        odoOff = gPSkm;
+        localStorage.setItem('odoOff', odoOff);
+        
+        // Mantém/Força o Roadbook na posição inicial 0.000 do trecho atual
+        mudarKM(0);
+    } else {
+        // Se andou além da tolerância, executa o avanço normal para a próxima tulipa 0.000
+        odoOff = gPSkm;
+        localStorage.setItem('odoOff', odoOff);
+        
+        // Função existente no seu script para buscar a próxima referência de zerar
+        avancarProximaTulipaZerar(); 
+    }
+}
 
         function atualizarTelaOdo() {
             const odoExibicao = Math.max(0, odoTotal - tripOffset);
