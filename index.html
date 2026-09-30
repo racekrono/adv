@@ -652,17 +652,37 @@
         }
 
         function ajusteManualOdo() {
-            const odoExibicao = Math.max(0, odoTotal - tripOffset);
-            let n = prompt("Ajustar Odômetro (KM):", odoExibicao.toFixed(3));
-            if(n !== null) {
-                let val = parseFloat(n.replace(',','.'));
-                if(!isNaN(val)) {
-                    tripOffset = odoTotal - Math.max(0, val);
-                    somClique();
-                    atualizarTelaOdo();
+    const odoExibicao = Math.max(0, odoTotal - tripOffset);
+    let n = prompt("Ajustar Odômetro (KM):", odoExibicao.toFixed(3));
+    if (n !== null) {
+        let val = parseFloat(n.replace(',', '.'));
+        if (!isNaN(val)) {
+            // 1. Reajusta o offset do odômetro com base no valor inserido
+            tripOffset = odoTotal - Math.max(0, val);
+            somClique();
+
+            // 2. Busca a tulipa correta correspondente ao novo KM inserido
+            if (dadosRoadbookAtual && dadosRoadbookAtual.length) {
+                let novoIndice = 0;
+                for (let i = 0; i < dadosRoadbookAtual.length; i++) {
+                    const kmTulipa = parseFloat(dadosRoadbookAtual[i].km);
+                    if (val >= kmTulipa) {
+                        novoIndice = i; // Guarda a tulipa mais próxima (ou anterior) ao KM digitado
+                    } else {
+                        break; // Como a planilha está em ordem cronológica, encerra a busca
+                    }
                 }
+                
+                // 3. Atualiza a referência ativa no roadbook
+                indiceTulipaAtual = novoIndice;
+                destacarTulipa(indiceTulipaAtual, true);
             }
+
+            // 4. Atualiza o display do odômetro
+            atualizarTelaOdo();
         }
+    }
+}
 
         function encerrarSessao() {
             menuOpcoes.style.display = 'none';
