@@ -232,6 +232,7 @@
             <button id="btnMenu">☰</button>
             <div id="menuOpcoes">
                 <button onclick="enviarDatalogger()">📤 Enviar Datalogger</button>
+                <button onclick="encerrarSessao()" style="color: #ff5555;">➡️🚪❌ Sair (senha: 123456)</button>
             </div>
         </div>
 
@@ -258,7 +259,6 @@
                 <div class="cat-chip" data-value="INICIANTE 4x4">INICIANTE 4x4</div>
                 <div class="cat-chip" data-value="ANTIGOS">ANTIGOS</div>
             </div>
-            <!-- Campo oculto para manter compatibilidade com o JS existente -->
             <input type="hidden" id="categoria" value="UTV">
 
             <button id="btnIniciar" class="btn-action">INICIAR PROVA</button>
@@ -642,10 +642,14 @@
         }
 
         function encerrarSessao() {
-            if (confirm("Deseja realmente sair da prova?")) {
+            menuOpcoes.style.display = 'none';
+            const senha = prompt("Informe a senha para sair da prova:");
+            if (senha === "123456") {
                 pararGps();
                 limparTudo();
                 location.reload();
+            } else if (senha !== null) {
+                alert("Senha incorreta!");
             }
         }
 
