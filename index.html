@@ -195,6 +195,7 @@
             background: #000;
             border-radius: 8px;
             overflow-y: auto;
+            overflow-x: hidden;
             flex-grow: 1;
             border: 2px solid #333;
             min-height: 220px;
@@ -202,13 +203,26 @@
             margin-bottom: 10px;
             scroll-behavior: smooth;
             position: relative;
+            width: 100%;
+            box-sizing: border-box;
         }
-        .roadbook-item { display: flex; align-items: center; border-bottom: 1px solid #222; padding: 6px 4px; gap: 8px; transition: background 0.3s; cursor: pointer; box-sizing: border-box; }
+        .roadbook-item { 
+            display: flex; 
+            align-items: center; 
+            border-bottom: 1px solid #222; 
+            padding: 6px 4px; 
+            gap: 8px; 
+            transition: background 0.3s; 
+            cursor: pointer; 
+            box-sizing: border-box; 
+            width: 100%;
+            overflow: hidden;
+        }
         .rb-item-ativo { background-color: #262d37 !important; border-left: 6px solid #FF0000 ; }
-        .rb-col-km { flex: 0 0 55px; font-family: monospace; font-weight: bold; color: #f1c40f; font-size: 18px; text-align: right; }
-        .rb-col-tulipa { flex: 0 0 80px; background: white; padding: 2px; border-radius: 4px; display: flex; justify-content: center; align-items: center; min-height: 70px; }
-        .rb-col-tulipa img { max-width: 100%; height: auto; max-height: 70px; }
-        .rb-col-obs { flex: 1; font-size: 14px; color: #eee; text-align: left; text-transform: uppercase; font-weight: bold; }
+        .rb-col-km { flex: 0 0 55px; font-family: monospace; font-weight: bold; color: #f1c40f; font-size: 16px; text-align: right; }
+        .rb-col-tulipa { flex: 0 0 70px; background: white; padding: 2px; border-radius: 4px; display: flex; justify-content: center; align-items: center; min-height: 60px; overflow: hidden; }
+        .rb-col-tulipa img { max-width: 100%; height: auto; max-height: 60px; object-fit: contain; }
+        .rb-col-obs { flex: 1; font-size: 12px; color: #eee; text-align: left; text-transform: uppercase; font-weight: bold; word-break: break-word; overflow-wrap: anywhere; }
 
         .status-container { padding: 5px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid #333; margin-bottom: 5px; }
         .status-gps { color: #2ecc71; font-weight: bold; font-size: 11px; text-align: center; }
@@ -467,18 +481,18 @@
         }
 
         function selecionarTulipaManualmente(index) {
-    indiceTulipaAtual = index;
-    destacarTulipa(index, true);
+            indiceTulipaAtual = index;
+            destacarTulipa(index, true);
 
-    // Ajusta o odômetro para a quilometragem exata da tulipa selecionada
-    if (dadosRoadbookAtual && dadosRoadbookAtual[index]) {
-        const kmTulipa = parseFloat(dadosRoadbookAtual[index].km);
-        if (!isNaN(kmTulipa)) {
-            tripOffset = odoTotal - kmTulipa;
-            atualizarTelaOdo();
+            // Ajusta o odômetro para a quilometragem exata da tulipa selecionada
+            if (dadosRoadbookAtual && dadosRoadbookAtual[index]) {
+                const kmTulipa = parseFloat(dadosRoadbookAtual[index].km);
+                if (!isNaN(kmTulipa)) {
+                    tripOffset = odoTotal - kmTulipa;
+                    atualizarTelaOdo();
+                }
+            }
         }
-    }
-}
 
         function atualizarScrollRoadbook() {
             if (!dadosRoadbookAtual || dadosRoadbookAtual.length === 0) return;
@@ -496,18 +510,18 @@
         }
 
         function destacarTulipa(index, tocarSom) {
-    const todosItens = document.querySelectorAll('.roadbook-item');
-    todosItens.forEach(el => el.classList.remove('rb-item-ativo'));
+            const todosItens = document.querySelectorAll('.roadbook-item');
+            todosItens.forEach(el => el.classList.remove('rb-item-ativo'));
 
-    const itemAlvo = document.getElementById('rb-item-' + index);
-    if (itemAlvo) {
-        itemAlvo.classList.add('rb-item-ativo');
-        if (tocarSom) somTrocaReferencia();
-        
-        // Altera 'nearest' para 'center' para manter a próxima tulipa visível abaixo
-        itemAlvo.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-}
+            const itemAlvo = document.getElementById('rb-item-' + index);
+            if (itemAlvo) {
+                itemAlvo.classList.add('rb-item-ativo');
+                if (tocarSom) somTrocaReferencia();
+                
+                // Altera 'nearest' para 'center' para manter a próxima tulipa visível abaixo
+                itemAlvo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
 
         function calcularDistancia(lat1, lon1, lat2, lon2) {
             const R = 6371;
@@ -653,57 +667,57 @@
         }
 
         function ajusteManualOdo() {
-    const odoExibicao = Math.max(0, odoTotal - tripOffset);
-    let n = prompt("Ajustar Odômetro (KM):", odoExibicao.toFixed(3));
-    if (n !== null) {
-        let val = parseFloat(n.replace(',', '.'));
-        if (!isNaN(val)) {
-            // 1. Reajusta o offset do odômetro
-            tripOffset = odoTotal - Math.max(0, val);
-            somClique();
+            const odoExibicao = Math.max(0, odoTotal - tripOffset);
+            let n = prompt("Ajustar Odômetro (KM):", odoExibicao.toFixed(3));
+            if (n !== null) {
+                let val = parseFloat(n.replace(',', '.'));
+                if (!isNaN(val)) {
+                    // 1. Reajusta o offset do odômetro
+                    tripOffset = odoTotal - Math.max(0, val);
+                    somClique();
 
-            if (dadosRoadbookAtual && dadosRoadbookAtual.length) {
-                // 2. Identifica onde começa o bloco atual (procura a última zeragem para trás)
-                let inicioBloco = 0;
-                for (let i = indiceTulipaAtual; i >= 0; i--) {
-                    const kmTulipa = parseFloat(dadosRoadbookAtual[i].km);
-                    if (kmTulipa === 0 || dadosRoadbookAtual[i].zerar === true) {
-                        inicioBloco = i;
-                        break;
+                    if (dadosRoadbookAtual && dadosRoadbookAtual.length) {
+                        // 2. Identifica onde começa o bloco atual (procura a última zeragem para trás)
+                        let inicioBloco = 0;
+                        for (let i = indiceTulipaAtual; i >= 0; i--) {
+                            const kmTulipa = parseFloat(dadosRoadbookAtual[i].km);
+                            if (kmTulipa === 0 || dadosRoadbookAtual[i].zerar === true) {
+                                inicioBloco = i;
+                                break;
+                            }
+                        }
+
+                        // 3. Descobre até onde vai o bloco atual (próxima zeragem ou fim da planilha)
+                        let fimBloco = dadosRoadbookAtual.length;
+                        for (let i = inicioBloco + 1; i < dadosRoadbookAtual.length; i++) {
+                            const kmTulipa = parseFloat(dadosRoadbookAtual[i].km);
+                            if (kmTulipa === 0 || dadosRoadbookAtual[i].zerar === true) {
+                                fimBloco = i;
+                                break;
+                            }
+                        }
+
+                        // 4. Procura o KM ajustado exclusivamente dentro do bloco ativo
+                        let novoIndice = inicioBloco;
+                        for (let i = inicioBloco; i < fimBloco; i++) {
+                            const kmTulipa = parseFloat(dadosRoadbookAtual[i].km);
+                            if (val >= kmTulipa) {
+                                novoIndice = i;
+                            } else {
+                                break;
+                            }
+                        }
+
+                        // 5. Atualiza a tulipa ativa
+                        indiceTulipaAtual = novoIndice;
+                        destacarTulipa(indiceTulipaAtual, true);
                     }
-                }
 
-                // 3. Descobre até onde vai o bloco atual (próxima zeragem ou fim da planilha)
-                let fimBloco = dadosRoadbookAtual.length;
-                for (let i = inicioBloco + 1; i < dadosRoadbookAtual.length; i++) {
-                    const kmTulipa = parseFloat(dadosRoadbookAtual[i].km);
-                    if (kmTulipa === 0 || dadosRoadbookAtual[i].zerar === true) {
-                        fimBloco = i;
-                        break;
-                    }
+                    // 6. Atualiza o display do odômetro
+                    atualizarTelaOdo();
                 }
-
-                // 4. Procura o KM ajustado exclusivamente dentro do bloco ativo
-                let novoIndice = inicioBloco;
-                for (let i = inicioBloco; i < fimBloco; i++) {
-                    const kmTulipa = parseFloat(dadosRoadbookAtual[i].km);
-                    if (val >= kmTulipa) {
-                        novoIndice = i;
-                    } else {
-                        break;
-                    }
-                }
-
-                // 5. Atualiza a tulipa ativa
-                indiceTulipaAtual = novoIndice;
-                destacarTulipa(indiceTulipaAtual, true);
             }
-
-            // 6. Atualiza o display do odômetro
-            atualizarTelaOdo();
         }
-    }
-}
 
         function encerrarSessao() {
             menuOpcoes.style.display = 'none';
