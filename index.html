@@ -604,16 +604,30 @@
 
         function zerarOdo() {
             if(confirm("Zerar odômetro?")) {
+                const odoExibicao = Math.max(0, odoTotal - tripOffset);
                 tripOffset = odoTotal;
                 somClique();
                 
                 if (dadosRoadbookAtual && dadosRoadbookAtual.length) {
-                    for (let i = indiceTulipaAtual; i < dadosRoadbookAtual.length; i++) {
-                        const km = parseFloat(dadosRoadbookAtual[i].km);
-                        if (km === 0) {
-                            indiceTulipaAtual = i;
-                            destacarTulipa(indiceTulipaAtual, true);
-                            break;
+                    if (odoExibicao >= 2.0) {
+                        // Se percorreu 2.000 km ou mais: avança para a próxima tulipa de zerar (km: 0 ou zerar: true)
+                        for (let i = indiceTulipaAtual + 1; i < dadosRoadbookAtual.length; i++) {
+                            const km = parseFloat(dadosRoadbookAtual[i].km);
+                            if (km === 0 || dadosRoadbookAtual[i].zerar === true) {
+                                indiceTulipaAtual = i;
+                                destacarTulipa(indiceTulipaAtual, true);
+                                break;
+                            }
+                        }
+                    } else {
+                        // Se percorreu menos de 2.000 km: permanece/retorna para a tulipa de zerar atual/anterior
+                        for (let i = indiceTulipaAtual; i >= 0; i--) {
+                            const km = parseFloat(dadosRoadbookAtual[i].km);
+                            if (km === 0 || dadosRoadbookAtual[i].zerar === true) {
+                                indiceTulipaAtual = i;
+                                destacarTulipa(indiceTulipaAtual, true);
+                                break;
+                            }
                         }
                     }
                 }
