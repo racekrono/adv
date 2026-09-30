@@ -244,8 +244,8 @@
                 </div>
             </div>
 
-            <label class="input-label">NOME e copiloto</label>
-            <input type="text" id="nome" placeholder="Ex.: João da Silva" oninput="this.value = this.value.replace(/[0-9]/g, '')">
+            <label class="input-label">PILOTO / NAVEGADOR</label>
+            <input type="text" id="nome" placeholder="Ex.: João da Silva / Marcos Araújo" oninput="this.value = this.value.replace(/[0-9]/g, '')">
 
             <label class="input-label">Nº DO CARRO</label>
             <input type="number" id="carro" placeholder="Ex.: 42" min="1" max="100">
@@ -619,8 +619,8 @@
                 somClique();
                 
                 if (dadosRoadbookAtual && dadosRoadbookAtual.length) {
-                    if (odoExibicao >= 2.0) {
-                        // Se percorreu 2.000 km ou mais: avança para a próxima tulipa de zerar (km: 0 ou zerar: true)
+                    if (odoExibicao >= 5.0) {
+                        // Se percorreu 5.000 km ou mais: avança para a próxima tulipa de zerar (km: 0 ou zerar: true)
                         for (let i = indiceTulipaAtual + 1; i < dadosRoadbookAtual.length; i++) {
                             const km = parseFloat(dadosRoadbookAtual[i].km);
                             if (km === 0 || dadosRoadbookAtual[i].zerar === true) {
