@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin - Criar Prova Gincana</title>
+  <title>Admin - Criar Prova Gin</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -69,7 +69,7 @@
 
         <!-- Indicador de Status / Progresso -->
         <div id="status-container" class="hidden bg-slate-900 text-white p-4 rounded-xl shadow-md text-center space-y-2">
-          <p id="status-texto" class="text-sm font-medium">Iniciando upload...</p>
+          <p id="status-texto" class="text-sm font-medium">Iniciando salvamento...</p>
           <div class="w-full bg-slate-700 h-2 rounded-full overflow-hidden">
             <div id="status-barra" class="bg-emerald-500 h-full w-0 transition-all duration-300"></div>
           </div>
@@ -94,7 +94,6 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    import { getStorage, ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
     // Configuração do Firebase
     const firebaseConfig = {
@@ -110,16 +109,45 @@
     // Inicialização do Firebase
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-    const storage = getStorage(app);
 
     let totalFotosGlobal = 0;
     let nomeProvaGlobal = "";
 
-    // Converte arquivo para DataURL (Base64)
-    const fileToDataURL = (file) => new Promise((resolve, reject) => {
+    // Converte arquivo para DataURL (Base64) e redimensiona para otimizar o banco de dados
+    const fileToOptimizedBase64 = (file) => new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxDimension = 1024; // Redimensiona no máximo para 1024px de largura/altura
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxDimension) {
+              height *= maxDimension / width;
+              width = maxDimension;
+            }
+          } else {
+            if (height > maxDimension) {
+              width *= maxDimension / height;
+              height = maxDimension;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Retorna a imagem compactada em JPEG
+          resolve(canvas.toDataURL('image/jpeg', 0.8));
+        };
+        img.onerror = (err) => reject(err);
+      };
       reader.onerror = (error) => reject(error);
     });
 
@@ -224,7 +252,7 @@
       }
     }
 
-    // Salvar no Firebase usando uploadString
+    // Salvar no Firestore com otimização
     document.getElementById('form-step-2').addEventListener('submit', async (e) => {
       e.preventDefault();
 
@@ -239,25 +267,17 @@
 
       try {
         const tarefasArr = [];
-        const provaIdTemp = 'prova_' + Date.now();
 
-        // Processa cada foto
+        // Processa cada foto e gera a versão compactada
         for (let i = 1; i <= totalFotosGlobal; i++) {
-          statusTexto.textContent = `Processando e enviando imagem ${i} de ${totalFotosGlobal}...`;
+          statusTexto.textContent = `Processando e otimizando imagem ${i} de ${totalFotosGlobal}...`;
           statusBarra.style.width = `${Math.round(((i - 1) / totalFotosGlobal) * 100)}%`;
 
           const fileInput = document.getElementById(`foto_file_${i}`);
           const file = fileInput.files[0];
 
-          // Converte para DataURL (Base64)
-          const dataUrl = await fileToDataURL(file);
-
-          // Referência do Storage
-          const storageRef = ref(storage, `provas/${provaIdTemp}/gabarito_${i}_${Date.now()}.jpg`);
-
-          // Upload usando uploadString com formato data_url
-          const snapshot = await uploadString(storageRef, dataUrl, 'data_url');
-          const downloadURL = await getDownloadURL(snapshot.ref);
+          // Otimiza e converte para Base64
+          const optimizedBase64 = await fileToOptimizedBase64(file);
 
           // Pega configurações da foto
           const numCompetidores = parseInt(document.getElementById(`num_competidores_${i}`).value);
@@ -266,7 +286,7 @@
 
           tarefasArr.push({
             ordem: i,
-            foto_gabarito_url: downloadURL,
+            foto_gabarito_url: optimizedBase64,
             qtd_competidores: numCompetidores,
             exigir_carro: exigirCarro,
             pegadinhas: pegadinhas || "",
@@ -277,7 +297,7 @@
         statusTexto.textContent = "Salvando dados da prova no Firestore...";
         statusBarra.style.width = "90%";
 
-        // Salva documento no Firestore
+        // Salva documento direto no Firestore
         await addDoc(collection(db, "provas"), {
           nome_prova: nomeProvaGlobal,
           qtd_tarefas: totalFotosGlobal,
@@ -289,7 +309,7 @@
         statusTexto.textContent = "✅ Prova salva com sucesso!";
 
         setTimeout(() => {
-          alert("Prova e fotos cadastradas com sucesso!");
+          alert("Prova e fotos cadastradas com sucesso no Firestore!");
           location.reload();
         }, 1200);
 
