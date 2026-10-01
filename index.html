@@ -539,11 +539,12 @@
             document.getElementById('viewVel').innerText = kmh.toFixed(1);
             const dados = { lat, lng, vel: kmh, acc: accuracy, ts: Date.now() };
 
+            // Garante que o rastro e a posição em tempo real continuem sendo transmitidos ao Firebase
+            db.ref('posicoes/' + num).set(dados);
+            db.ref('rastros/' + num).push(dados);
+
             if (window.__rk && window.__rk.registrarPontoGps) {
                 window.__rk.registrarPontoGps(num, dados);
-            } else {
-                db.ref('posicoes/' + num).set(dados);
-                db.ref('rastros/' + num).push(dados);
             }
         }
         window.__rk = window.__rk || {};
