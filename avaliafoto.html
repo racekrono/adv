@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gincana Snap - Painel do Administrador</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans pb-10">
+
+  <!-- Header -->
+  <header class="bg-slate-800 border-b border-slate-700 p-4 sticky top-0 z-10 shadow-md">
+    <div class="max-w-4xl mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="p-2 bg-indigo-600 rounded-lg text-white">
+          <i data-lucide="settings" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold text-white">Painel do Administrador</h1>
+          <p class="text-xs text-slate-400">Cadastre tarefas e gerencie a gincana</p>
+        </div>
+      </div>
+      <a href="index.html" target="_blank" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold px-3 py-2 rounded-lg transition flex items-center space-x-1">
+        <span>Abrir Área do Participante</span>
+        <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+      </a>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto p-4 md:p-6 space-y-8">
+    
+    <!-- Formulário de Cadastro de Tarefas -->
+    <section class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl">
+      <div class="flex items-center space-x-2 mb-6">
+        <i data-lucide="plus-circle" class="w-5 h-5 text-indigo-400"></i>
+        <h2 class="text-lg font-bold text-white">Cadastrar Nova Tarefa com Gabarito</h2>
+      </div>
+
+      <form id="taskForm" class="space-y-5">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Título da Tarefa -->
+          <div class="md:col-span-2">
+            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Título da Tarefa</label>
+            <input type="text" id="taskTitle" placeholder="Ex: Foto no Chafariz da Praça Central" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+
+          <!-- Qtd de Competidores Exigida -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Qtd. de Competidores na Foto</label>
+            <input type="number" id="taskMinPeople" min="1" max="20" value="1" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+
+          <!-- Pontuação da Tarefa -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Pontuação da Prova</label>
+            <input type="number" id="taskPoints" min="10" step="10" value="100" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+        </div>
+
+        <!-- Upload Foto Gabarito -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Foto Gabarito (Referência do Local)</label>
+          <input type="file" id="gabaritoInput" accept="image/*" class="hidden" required>
+          
+          <div onclick="document.getElementById('gabaritoInput').click()" class="border-2 border-dashed border-slate-600 hover:border-indigo-500 rounded-xl p-6 text-center cursor-pointer bg-slate-900/50 hover:bg-slate-900 transition flex flex-col items-center justify-center min-h-[160px] relative overflow-hidden">
+            <img id="gabaritoPreview" src="" class="hidden absolute inset-0 w-full h-full object-cover rounded-xl">
+            <div id="gabaritoPrompt" class="flex flex-col items-center space-y-2">
+              <i data-lucide="image" class="w-8 h-8 text-indigo-400"></i>
+              <p class="text-sm font-medium text-slate-300">Selecione a foto de referência do local</p>
+              <p class="text-xs text-slate-500">Esta imagem será usada pela IA para validar o local dos participantes</p>
+            </div>
+          </div>
+        </div>
+
+        <div id="adminStatus" class="hidden p-3 rounded-xl text-sm text-center font-medium"></div>
+
+        <button type="submit" id="btnSaveTask" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3.5 px-4 rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-2">
+          <i data-lucide="save" class="w-5 h-5"></i>
+          <span>Salvar Tarefa no Sistema</span>
+        </button>
+      </form>
+    </section>
+
+    <!-- Lista de Tarefas Cadastradas -->
+    <section class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl">
+      <h2 class="text-lg font-bold text-white mb-4">Tarefas Cadastradas</h2>
+      <div id="taskList" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <p class="text-slate-500 text-sm col-span-2">Carregando tarefas...</p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Firebase Integration -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+
+    const firebaseConfig = {
+      apiKey: "SEU_API_KEY",
+      authDomain: "SEU_PROJECT_ID.firebaseapp.com",
+      projectId: "SEU_PROJECT_ID",
+      storageBucket: "SEU_PROJECT_ID.appspot.com",
+      messagingSenderId: "SEU_SENDER_ID",
+      appId: "SEU_APP_ID"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+    lucide.createIcons();
+
+    const gabaritoInput = document.getElementById('gabaritoInput');
+    const gabaritoPreview = document.getElementById('gabaritoPreview');
+    const gabaritoPrompt = document.getElementById('gabaritoPrompt');
+    const taskForm = document.getElementById('taskForm');
+    const btnSaveTask = document.getElementById('btnSaveTask');
+    const adminStatus = document.getElementById('adminStatus');
+    const taskList = document.getElementById('taskList');
+
+    // Preview da Imagem Gabarito
+    gabaritoInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          gabaritoPreview.src = event.target.result;
+          gabaritoPreview.classList.remove('hidden');
+          gabaritoPrompt.classList.add('hidden');
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // Salvar Nova Tarefa
+    taskForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const title = document.getElementById('taskTitle').value;
+      const minPeople = parseInt(document.getElementById('taskMinPeople').value);
+      const points = parseInt(document.getElementById('taskPoints').value);
+      const file = gabaritoInput.files[0];
+
+      if (!file) return;
+
+      setLoading(true);
+
+      try {
+        // Upload da foto gabarito para o Firebase Storage
+        const fileName = `gabaritos/gab_${Date.now()}.${file.name.split('.').pop()}`;
+        const storageRef = ref(storage, fileName);
+        await uploadBytes(storageRef, file);
+        const gabaritoUrl = await getDownloadURL(storageRef);
+
+        // Salva no Firestore
+        await addDoc(collection(db, "tarefas"), {
+          titulo: title,
+          qtdCompetidores: minPeople,
+          pontos: points,
+          gabaritoUrl: gabaritoUrl,
+          criadoEm: serverTimestamp()
+        });
+
+        showStatus("Tarefa cadastrada com sucesso!", "success");
+        taskForm.reset();
+        gabaritoPreview.classList.add('hidden');
+        gabaritoPrompt.classList.remove('hidden');
+
+      } catch (err) {
+        console.error(err);
+        showStatus("Erro ao cadastrar tarefa.", "error");
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    // Listar Tarefas em Tempo Real
+    onSnapshot(collection(db, "tarefas"), (snapshot) => {
+      taskList.innerHTML = "";
+      if (snapshot.empty) {
+        taskList.innerHTML = `<p class="text-slate-500 text-sm col-span-2">Nenhuma tarefa cadastrada ainda.</p>`;
+        return;
+      }
+      snapshot.forEach((doc) => {
+        const task = doc.data();
+        taskList.innerHTML += `
+          <div class="bg-slate-900 border border-slate-700 rounded-xl p-4 flex space-x-4 items-center">
+            <img src="${task.gabaritoUrl}" class="w-16 h-16 object-cover rounded-lg flex-shrink-0 border border-slate-700">
+            <div class="flex-1 min-w-0">
+              <h3 class="font-bold text-white text-sm truncate">${task.titulo}</h3>
+              <p class="text-xs text-slate-400 mt-1">${task.qtdCompetidores} competidor(es) exigido(s)</p>
+              <span class="inline-block mt-2 text-xs bg-indigo-500/20 text-indigo-300 font-bold px-2 py-0.5 rounded">${task.pontos} Pts</span>
+            </div>
+          </div>
+        `;
+      });
+      lucide.createIcons();
+    });
+
+    function setLoading(isLoading) {
+      btnSaveTask.disabled = isLoading;
+      btnSaveTask.querySelector('span').textContent = isLoading ? "Salvando..." : "Salvar Tarefa no Sistema";
+    }
+
+    function showStatus(text, type) {
+      adminStatus.textContent = text;
+      adminStatus.classList.remove('hidden', 'bg-emerald-500/20', 'text-emerald-300', 'bg-rose-500/20', 'text-rose-300');
+      adminStatus.classList.add(type === 'success' ? 'bg-emerald-500/20' : 'bg-rose-500/20', type === 'success' ? 'text-emerald-300' : 'text-rose-300');
+    }
+  </script>
+</body>
+</html>
