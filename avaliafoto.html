@@ -3,9 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gincana Snap - Painel do Administrador</title>
+  <title>Gincana Snap - Painel Admin</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Firebase SDK Compat v9 (Realtime Database + Storage) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen font-sans pb-10">
 
@@ -18,7 +22,7 @@
         </div>
         <div>
           <h1 class="text-xl font-bold text-white">Painel do Administrador</h1>
-          <p class="text-xs text-slate-400">Cadastre tarefas e gerencie a gincana</p>
+          <p class="text-xs text-slate-400">Cadastre tarefas e fotos gabarito</p>
         </div>
       </div>
       <a href="index.html" target="_blank" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold px-3 py-2 rounded-lg transition flex items-center space-x-1">
@@ -39,19 +43,19 @@
 
       <form id="taskForm" class="space-y-5">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- Título da Tarefa -->
+          <!-- Título -->
           <div class="md:col-span-2">
             <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Título da Tarefa</label>
             <input type="text" id="taskTitle" placeholder="Ex: Foto no Chafariz da Praça Central" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
           </div>
 
-          <!-- Qtd de Competidores Exigida -->
+          <!-- Qtd de Competidores -->
           <div>
             <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Qtd. de Competidores na Foto</label>
             <input type="number" id="taskMinPeople" min="1" max="20" value="1" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
           </div>
 
-          <!-- Pontuação da Tarefa -->
+          <!-- Pontuação -->
           <div>
             <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Pontuação da Prova</label>
             <input type="number" id="taskPoints" min="10" step="10" value="100" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
@@ -68,7 +72,7 @@
             <div id="gabaritoPrompt" class="flex flex-col items-center space-y-2">
               <i data-lucide="image" class="w-8 h-8 text-indigo-400"></i>
               <p class="text-sm font-medium text-slate-300">Selecione a foto de referência do local</p>
-              <p class="text-xs text-slate-500">Esta imagem será usada pela IA para validar o local dos participantes</p>
+              <p class="text-xs text-slate-500">A IA usará esta imagem para comparar com as fotos enviadas</p>
             </div>
           </div>
         </div>
@@ -77,12 +81,12 @@
 
         <button type="submit" id="btnSaveTask" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3.5 px-4 rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-2">
           <i data-lucide="save" class="w-5 h-5"></i>
-          <span>Salvar Tarefa no Sistema</span>
+          <span>Salvar Tarefa no Realtime Database</span>
         </button>
       </form>
     </section>
 
-    <!-- Lista de Tarefas Cadastradas -->
+    <!-- Lista de Tarefas -->
     <section class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl">
       <h2 class="text-lg font-bold text-white mb-4">Tarefas Cadastradas</h2>
       <div id="taskList" class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -92,24 +96,19 @@
 
   </main>
 
-  <!-- Firebase Integration -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
-
+  <script>
+    // Suas configurações do Firebase
     const firebaseConfig = {
-      apiKey: "SEU_API_KEY",
-      authDomain: "SEU_PROJECT_ID.firebaseapp.com",
-      projectId: "SEU_PROJECT_ID",
-      storageBucket: "SEU_PROJECT_ID.appspot.com",
-      messagingSenderId: "SEU_SENDER_ID",
-      appId: "SEU_APP_ID"
+      apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
+      authDomain: "cronometro-rally.firebaseapp.com",
+      databaseURL: "https://cronometro-rally-default-rtdb.firebaseio.com",
+      projectId: "cronometro-rally",
+      appId: "1:341731891354:web:d0c34265be68015e98a723"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const storage = getStorage(app);
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const storage = firebase.storage();
     lucide.createIcons();
 
     const gabaritoInput = document.getElementById('gabaritoInput');
@@ -120,7 +119,7 @@
     const adminStatus = document.getElementById('adminStatus');
     const taskList = document.getElementById('taskList');
 
-    // Preview da Imagem Gabarito
+    // Preview
     gabaritoInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (file) {
@@ -134,7 +133,7 @@
       }
     });
 
-    // Salvar Nova Tarefa
+    // Salvar Tarefa no Realtime Database
     taskForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const title = document.getElementById('taskTitle').value;
@@ -147,43 +146,46 @@
       setLoading(true);
 
       try {
-        // Upload da foto gabarito para o Firebase Storage
-        const fileName = `gabaritos/gab_${Date.now()}.${file.name.split('.').pop()}`;
-        const storageRef = ref(storage, fileName);
-        await uploadBytes(storageRef, file);
-        const gabaritoUrl = await getDownloadURL(storageRef);
+        // Upload imagem para Firebase Storage
+        const fileRef = storage.ref(`gabaritos/gab_${Date.now()}_${file.name}`);
+        await fileRef.put(file);
+        const gabaritoUrl = await fileRef.getDownloadURL();
 
-        // Salva no Firestore
-        await addDoc(collection(db, "tarefas"), {
+        // Salva nó no Realtime Database
+        const newTaskRef = db.ref('tarefas').push();
+        await newTaskRef.set({
           titulo: title,
           qtdCompetidores: minPeople,
           pontos: points,
           gabaritoUrl: gabaritoUrl,
-          criadoEm: serverTimestamp()
+          criadoEm: Date.now()
         });
 
-        showStatus("Tarefa cadastrada com sucesso!", "success");
+        showStatus("Tarefa salva com sucesso no banco!", "success");
         taskForm.reset();
         gabaritoPreview.classList.add('hidden');
         gabaritoPrompt.classList.remove('hidden');
 
       } catch (err) {
-        console.error(err);
-        showStatus("Erro ao cadastrar tarefa.", "error");
+        console.error("Erro ao salvar:", err);
+        showStatus("Erro ao salvar a tarefa.", "error");
       } finally {
         setLoading(false);
       }
     });
 
-    // Listar Tarefas em Tempo Real
-    onSnapshot(collection(db, "tarefas"), (snapshot) => {
+    // Escutar Tarefas do Realtime Database em tempo real
+    db.ref('tarefas').on('value', (snapshot) => {
       taskList.innerHTML = "";
-      if (snapshot.empty) {
+      const data = snapshot.val();
+
+      if (!data) {
         taskList.innerHTML = `<p class="text-slate-500 text-sm col-span-2">Nenhuma tarefa cadastrada ainda.</p>`;
         return;
       }
-      snapshot.forEach((doc) => {
-        const task = doc.data();
+
+      Object.keys(data).forEach((key) => {
+        const task = data[key];
         taskList.innerHTML += `
           <div class="bg-slate-900 border border-slate-700 rounded-xl p-4 flex space-x-4 items-center">
             <img src="${task.gabaritoUrl}" class="w-16 h-16 object-cover rounded-lg flex-shrink-0 border border-slate-700">
@@ -200,7 +202,7 @@
 
     function setLoading(isLoading) {
       btnSaveTask.disabled = isLoading;
-      btnSaveTask.querySelector('span').textContent = isLoading ? "Salvando..." : "Salvar Tarefa no Sistema";
+      btnSaveTask.querySelector('span').textContent = isLoading ? "Salvando..." : "Salvar Tarefa no Realtime Database";
     }
 
     function showStatus(text, type) {
