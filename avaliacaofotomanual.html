@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Juiz - Painel de Avaliação da Gincana</title>
+  <title>Painel de Avaliação das Fotos</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Bibliotecas para Geração de PDF -->
@@ -108,24 +108,24 @@
 
   </main>
 
-  <!-- Módulo Firebase JS (v10) -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { initializeFirestore, collection, getDocs, doc, getDoc, updateDoc, writeBatch, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  <!-- Firebase v9 Compat SDKs (Realtime Database) -->
+  <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 
+  <script>
+    // Configuração oficial do Realtime Database do sistema de rali
     const firebaseConfig = {
-      apiKey: "AIzaSyBF-_Q5NJIhEjWhA-4kdffoWbGY5Z4jnxw",
-      authDomain: "teste-2994e.firebaseapp.com",
-      projectId: "teste-2994e",
-      storageBucket: "teste-2994e.firebasestorage.app",
-      messagingSenderId: "614899420753",
-      appId: "1:614899420753:web:5fc23c3d0e8facdf593270"
+      apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
+      authDomain: "cronometro-rally.firebaseapp.com",
+      databaseURL: "https://cronometro-rally-default-rtdb.firebaseio.com",
+      projectId: "cronometro-rally",
+      storageBucket: "cronometro-rally.firebasestorage.app",
+      messagingSenderId: "341731891354",
+      appId: "1:341731891354:web:d0c34265be68015e98a723"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = initializeFirestore(app, {
-      experimentalForceLongPolling: true
-    });
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
     let enviosGlobais = [];
     let envioAtual = null;
@@ -155,16 +155,19 @@
       listaDiv.innerHTML = '<p class="text-xs text-slate-400 text-center py-6">Atualizando submissões...</p>';
 
       try {
-        const q = query(collection(db, "envios_competidores"), orderBy("enviado_em", "desc"));
-        const snapshot = await getDocs(q);
+        db.ref('envios_competidores').once('value', (snapshot) => {
+          enviosGlobais = [];
+          if (snapshot.exists()) {
+            snapshot.forEach((childSnap) => {
+              enviosGlobais.push({ id: childSnap.key, ...childSnap.val() });
+            });
+            // Ordenar por data de envio decrescente se houver timestamp
+            enviosGlobais.sort((a, b) => (b.enviado_em || 0) - (a.enviado_em || 0));
+          }
 
-        enviosGlobais = [];
-        snapshot.forEach((docSnap) => {
-          enviosGlobais.push({ id: docSnap.id, ...docSnap.data() });
+          document.getElementById('badge-total-envios').textContent = enviosGlobais.length;
+          renderizarListaEnvios();
         });
-
-        document.getElementById('badge-total-envios').textContent = enviosGlobais.length;
-        renderizarListaEnvios();
       } catch (err) {
         console.error("Erro ao carregar envios:", err);
         listaDiv.innerHTML = '<p class="text-xs text-rose-400 text-center py-6">Erro ao carregar dados.</p>';
@@ -192,7 +195,15 @@
             : 'bg-slate-900/60 border-slate-700/80 hover:border-slate-500 text-slate-300'
         }`;
 
-        const dataEnvio = envio.enviado_em ? new Date(envio.enviado_em.seconds * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--';
+        let dataEnvio = '--:--';
+        if (envio.enviado_em) {
+          const dateObj = typeof envio.enviado_em === 'object' && envio.enviado_em.seconds 
+            ? new Date(envio.enviado_em.seconds * 1000) 
+            : new Date(envio.enviado_em);
+          if (!isNaN(dateObj)) {
+            dataEnvio = dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+          }
+        }
 
         item.innerHTML = `
           <div>
@@ -224,15 +235,23 @@
       document.getElementById('eval-nome-prova').textContent = envio.nome_prova || 'Etapa Gincana';
       document.getElementById('eval-carro-titulo').textContent = `Carro / Equipe #${envio.numero_carro}`;
       
-      const dataStr = envio.enviado_em ? new Date(envio.enviado_em.seconds * 1000).toLocaleString() : 'Recentemente';
+      let dataStr = 'Recentemente';
+      if (envio.enviado_em) {
+        const dateObj = typeof envio.enviado_em === 'object' && envio.enviado_em.seconds 
+          ? new Date(envio.enviado_em.seconds * 1000) 
+          : new Date(envio.enviado_em);
+        if (!isNaN(dateObj)) {
+          dataStr = dateObj.toLocaleString();
+        }
+      }
       document.getElementById('eval-data').textContent = `Enviado em: ${dataStr}`;
 
       let tarefasGabarito = [];
       if (envio.prova_id) {
         try {
-          const provaSnap = await getDoc(doc(db, "provas", envio.prova_id));
+          const provaSnap = await db.ref(`provas/${envio.prova_id}`).once('value');
           if (provaSnap.exists()) {
-            tarefasGabarito = provaSnap.data().tarefas || [];
+            tarefasGabarito = provaSnap.val().tarefas || [];
           }
         } catch (e) {
           console.warn("Não foi possível carregar pontos da prova original:", e);
@@ -353,7 +372,6 @@
         btnReprovar.className = "px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-slate-700 text-slate-300 hover:bg-rose-700 hover:text-white";
         labelPts.className = "text-lg font-bold text-emerald-400";
         
-        // Se aprovado, esconde o campo de motivo e limpa o texto
         containerMotivo.classList.add('hidden');
         motivosLocais[numTarefa] = "";
         if (inputMotivo) inputMotivo.value = "";
@@ -362,7 +380,6 @@
         btnReprovar.className = "px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-rose-600 text-white shadow-md";
         labelPts.className = "text-lg font-bold text-rose-400";
         
-        // Se reprovado, exibe o campo de motivo
         containerMotivo.classList.remove('hidden');
       }
 
@@ -381,7 +398,7 @@
       document.getElementById('eval-placar-rodape').textContent = `${total} pts`;
     }
 
-    // SALVAR AVALIAÇÃO FINAL DO CARRO (COM TRAVA DE SEGURANÇA)
+    // SALVAR AVALIAÇÃO FINAL DO CARRO (COM TRAVA DE SEGURANÇA E INTEGRAÇÃO AO BANCO ANTIGO)
     document.getElementById('btn-finalizar-carro').addEventListener('click', async () => {
       if (!envioAtual) return;
 
@@ -426,14 +443,22 @@
           };
         });
 
-        const docRef = doc(db, "envios_competidores", envioAtual.id);
-        await updateDoc(docRef, {
+        // 1. Atualiza o envio no Realtime Database com a pontuação e status
+        await db.ref(`envios_competidores/${envioAtual.id}`).update({
           respostas: respostasAtualizadas,
           pontuacao_total: somaTotal,
           status_avaliacao: "avaliado"
         });
 
-        alert(`Avaliação do Carro #${envioAtual.numero_carro} salva com sucesso!\nPontuação Final: ${somaTotal} pontos.`);
+        // 2. INTEGRAÇÃO AUTOMÁTICA: Lança o total de pontos diretamente no cadastro do carro (mesmo campo que o fotos.html usa)
+        const numeroCarro = envioAtual.numero_carro;
+        if (numeroCarro) {
+          await db.ref(`competidores/${numeroCarro}`).update({
+            pontosFotos: somaTotal
+          });
+        }
+
+        alert(`Avaliação do Carro #${numeroCarro} salva com sucesso!\nPontuação Final de Fotos (${somaTotal} pts) enviada para o painel de competidores.`);
 
         btn.disabled = false;
         btn.innerHTML = '<span>💾 Salvar Avaliação Final</span>';
@@ -488,7 +513,7 @@
       docPdf.save(`Resultado_Gincana_${new Date().toISOString().slice(0,10)}.pdf`);
     });
 
-    // 2. APAGAR TODOS OS DADOS DO BANCO (SENHA 123456)
+    // 2. APAGAR DADOS (SENHA 123456)
     document.getElementById('btn-zerar-banco').addEventListener('click', async () => {
       const senha = prompt("🔒 ATENÇÃO: Esta ação apagará TODAS as provas e envios do banco de dados!\n\nDigite a senha de confirmação para continuar:");
 
@@ -499,7 +524,7 @@
         return;
       }
 
-      if (!confirm("⚠ Tem certeza absoluta? Todos os dados serão excluídos do Firebase permanentemente.")) {
+      if (!confirm("⚠ Tem certeza absoluta? Todos os dados de provas e envios serão excluídos do Realtime Database permanentemente.")) {
         return;
       }
 
@@ -508,17 +533,10 @@
       btn.textContent = "⌛ Apagando banco...";
 
       try {
-        const batch = writeBatch(db);
+        await db.ref('provas').remove();
+        await db.ref('envios_competidores').remove();
 
-        const snapshotProvas = await getDocs(collection(db, "provas"));
-        snapshotProvas.forEach((docSnap) => batch.delete(docSnap.ref));
-
-        const snapshotEnvios = await getDocs(collection(db, "envios_competidores"));
-        snapshotEnvios.forEach((docSnap) => batch.delete(docSnap.ref));
-
-        await batch.commit();
-
-        alert("✅ Banco de dados limpo com sucesso! Todos os registros foram removidos.");
+        alert("✅ Registros limpos com sucesso!");
         location.reload();
 
       } catch (err) {
