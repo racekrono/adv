@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Juiz - Painel de Avaliação da Gincana</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Bibliotecas para Geração de PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen">
+
+  <!-- Header -->
+  <header class="bg-slate-800 border-b border-slate-700 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+    <div class="flex items-center gap-3">
+      <span class="text-2xl">⚖️</span>
+      <div>
+        <h1 class="text-lg font-bold text-white">Painel do Juiz - Avaliação de Fotos</h1>
+        <p class="text-xs text-slate-400">Conferência de Gabaritos e Pontuação da Gincana</p>
+      </div>
+    </div>
+    
+    <!-- Botões de Ação Global no Header -->
+    <div class="flex items-center gap-2 flex-wrap">
+      <button id="btn-exportar-pdf" class="bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs px-3.5 py-2 rounded-lg border border-emerald-600 transition flex items-center gap-1.5 shadow-sm">
+        <span>📄 Exportar Resultados (PDF)</span>
+      </button>
+
+      <button id="btn-atualizar" class="bg-slate-700 hover:bg-slate-600 text-xs px-3 py-2 rounded-lg border border-slate-600 transition flex items-center gap-1">
+        <span>🔄 Atualizar</span>
+      </button>
+
+      <button id="btn-zerar-banco" class="bg-rose-900/80 hover:bg-rose-700 text-rose-200 hover:text-white border border-rose-700 text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1">
+        <span>🗑️ Zerar Banco</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
+
+    <!-- COLUNA ESQUERDA: LISTA DE SUBMISSÕES / CARROS -->
+    <aside class="lg:col-span-1 bg-slate-800 rounded-xl border border-slate-700 p-4 space-y-4 h-fit">
+      <div class="flex justify-between items-center pb-3 border-b border-slate-700">
+        <h2 class="font-bold text-slate-200 flex items-center gap-2">
+          <span>🚗</span> Equipes / Carros
+        </h2>
+        <span id="badge-total-envios" class="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">0</span>
+      </div>
+
+      <!-- Filtro por status -->
+      <div class="flex gap-1 p-1 bg-slate-900 rounded-lg text-xs">
+        <button id="filter-pendente" class="flex-1 py-1.5 rounded-md bg-indigo-600 font-semibold text-white transition">Pendentes</button>
+        <button id="filter-avaliado" class="flex-1 py-1.5 rounded-md hover:bg-slate-800 text-slate-400 transition">Avaliados</button>
+      </div>
+
+      <!-- Lista de Carros/Equipes -->
+      <div id="lista-envios" class="space-y-2 max-h-[70vh] overflow-y-auto pr-1">
+        <p class="text-xs text-slate-400 text-center py-6">Carregando submissões...</p>
+      </div>
+    </aside>
+
+    <!-- COLUNA DIREITA: ÁREA DE COMPARAÇÃO E AVALIAÇÃO LADO A LADO -->
+    <section class="lg:col-span-3 bg-slate-800 rounded-xl border border-slate-700 p-6 space-y-6">
+      
+      <!-- Estado Inicial -->
+      <div id="empty-state" class="text-center py-20 space-y-3">
+        <span class="text-5xl block">👈</span>
+        <h3 class="text-lg font-bold text-slate-300">Selecione um Carro na lista ao lado</h3>
+        <p class="text-sm text-slate-400 max-w-md mx-auto">Escolha uma equipe cadastrada para comparar as fotos enviadas com os gabaritos e atribuir a pontuação.</p>
+      </div>
+
+      <!-- Conteúdo da Avaliação -->
+      <div id="eval-content" class="hidden space-y-8">
+        
+        <!-- Header do Carro Selecionado -->
+        <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 flex flex-wrap justify-between items-center gap-4">
+          <div>
+            <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider" id="eval-nome-prova">---</span>
+            <h2 id="eval-carro-titulo" class="text-2xl font-black text-white">Carro #--</h2>
+            <p id="eval-data" class="text-xs text-slate-400">Enviado em: --</p>
+          </div>
+
+          <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 text-right">
+            <span class="text-xs text-slate-400 block">Pontuação Atual</span>
+            <span id="eval-placar-total" class="text-2xl font-bold text-emerald-400">0 pts</span>
+          </div>
+        </div>
+
+        <!-- Contêiner dinâmico para as fotos do carro -->
+        <div id="container-comparacao" class="space-y-8"></div>
+
+        <!-- BOTÃO DE SALVAMENTO AO FIM DA PÁGINA -->
+        <div class="bg-slate-900 p-6 rounded-xl border border-slate-700 flex flex-wrap justify-between items-center gap-4">
+          <div>
+            <span class="text-xs text-slate-400 block">Total Acumulado:</span>
+            <span id="eval-placar-rodape" class="text-2xl font-bold text-emerald-400">0 pts</span>
+          </div>
+          <button id="btn-finalizar-carro" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-base px-8 py-3 rounded-lg shadow-lg transition flex items-center gap-2">
+            <span>💾 Salvar Avaliação Final</span>
+          </button>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Módulo Firebase JS (v10) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { initializeFirestore, collection, getDocs, doc, getDoc, updateDoc, writeBatch, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBF-_Q5NJIhEjWhA-4kdffoWbGY5Z4jnxw",
+      authDomain: "teste-2994e.firebaseapp.com",
+      projectId: "teste-2994e",
+      storageBucket: "teste-2994e.firebasestorage.app",
+      messagingSenderId: "614899420753",
+      appId: "1:614899420753:web:5fc23c3d0e8facdf593270"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = initializeFirestore(app, {
+      experimentalForceLongPolling: true
+    });
+
+    let enviosGlobais = [];
+    let envioAtual = null;
+    let notasLocais = {};     
+    let decisoesTomadas = {}; 
+    let motivosLocais = {};   
+    let filtroStatus = "pendente";
+
+    document.getElementById('filter-pendente').addEventListener('click', (e) => {
+      filtroStatus = "pendente";
+      e.target.className = "flex-1 py-1.5 rounded-md bg-indigo-600 font-semibold text-white transition";
+      document.getElementById('filter-avaliado').className = "flex-1 py-1.5 rounded-md hover:bg-slate-800 text-slate-400 transition";
+      renderizarListaEnvios();
+    });
+
+    document.getElementById('filter-avaliado').addEventListener('click', (e) => {
+      filtroStatus = "avaliado";
+      e.target.className = "flex-1 py-1.5 rounded-md bg-indigo-600 font-semibold text-white transition";
+      document.getElementById('filter-pendente').className = "flex-1 py-1.5 rounded-md hover:bg-slate-800 text-slate-400 transition";
+      renderizarListaEnvios();
+    });
+
+    document.getElementById('btn-atualizar').addEventListener('click', carregarEnvios);
+
+    async function carregarEnvios() {
+      const listaDiv = document.getElementById('lista-envios');
+      listaDiv.innerHTML = '<p class="text-xs text-slate-400 text-center py-6">Atualizando submissões...</p>';
+
+      try {
+        const q = query(collection(db, "envios_competidores"), orderBy("enviado_em", "desc"));
+        const snapshot = await getDocs(q);
+
+        enviosGlobais = [];
+        snapshot.forEach((docSnap) => {
+          enviosGlobais.push({ id: docSnap.id, ...docSnap.data() });
+        });
+
+        document.getElementById('badge-total-envios').textContent = enviosGlobais.length;
+        renderizarListaEnvios();
+      } catch (err) {
+        console.error("Erro ao carregar envios:", err);
+        listaDiv.innerHTML = '<p class="text-xs text-rose-400 text-center py-6">Erro ao carregar dados.</p>';
+      }
+    }
+
+    function renderizarListaEnvios() {
+      const listaDiv = document.getElementById('lista-envios');
+      listaDiv.innerHTML = '';
+
+      const filtrados = enviosGlobais.filter(e => (e.status_avaliacao || "pendente") === filtroStatus);
+
+      if (filtrados.length === 0) {
+        listaDiv.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">Nenhum envio com status <strong>"${filtroStatus}"</strong>.</p>`;
+        return;
+      }
+
+      filtrados.forEach((envio) => {
+        const item = document.createElement('div');
+        const isSelected = envioAtual && envioAtual.id === envio.id;
+
+        item.className = `p-3 rounded-xl border transition cursor-pointer flex justify-between items-center ${
+          isSelected 
+            ? 'bg-indigo-900/50 border-indigo-500 text-white' 
+            : 'bg-slate-900/60 border-slate-700/80 hover:border-slate-500 text-slate-300'
+        }`;
+
+        const dataEnvio = envio.enviado_em ? new Date(envio.enviado_em.seconds * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--';
+
+        item.innerHTML = `
+          <div>
+            <div class="font-bold text-sm text-white">Carro #${envio.numero_carro}</div>
+            <div class="text-xs text-slate-400 truncate max-w-[130px]">${envio.nome_prova || 'Prova'}</div>
+          </div>
+          <div class="text-right">
+            <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded border border-slate-700 block mb-1">${dataEnvio}</span>
+            <span class="text-xs font-semibold ${envio.pontuacao_total !== undefined ? 'text-emerald-400' : 'text-amber-400'}">
+              ${envio.pontuacao_total !== undefined ? envio.pontuacao_total + ' pts' : 'Pendente'}
+            </span>
+          </div>
+        `;
+
+        item.addEventListener('click', () => selecionarCarroParaAvaliar(envio));
+        listaDiv.appendChild(item);
+      });
+    }
+
+    async function selecionarCarroParaAvaliar(envio) {
+      envioAtual = envio;
+      notasLocais = {};
+      decisoesTomadas = {};
+      motivosLocais = {};
+
+      document.getElementById('empty-state').classList.add('hidden');
+      document.getElementById('eval-content').classList.remove('hidden');
+
+      document.getElementById('eval-nome-prova').textContent = envio.nome_prova || 'Etapa Gincana';
+      document.getElementById('eval-carro-titulo').textContent = `Carro / Equipe #${envio.numero_carro}`;
+      
+      const dataStr = envio.enviado_em ? new Date(envio.enviado_em.seconds * 1000).toLocaleString() : 'Recentemente';
+      document.getElementById('eval-data').textContent = `Enviado em: ${dataStr}`;
+
+      let tarefasGabarito = [];
+      if (envio.prova_id) {
+        try {
+          const provaSnap = await getDoc(doc(db, "provas", envio.prova_id));
+          if (provaSnap.exists()) {
+            tarefasGabarito = provaSnap.data().tarefas || [];
+          }
+        } catch (e) {
+          console.warn("Não foi possível carregar pontos da prova original:", e);
+        }
+      }
+
+      renderizarComparativo(envio.respostas || [], tarefasGabarito);
+      renderizarListaEnvios();
+    }
+
+    function renderizarComparativo(respostas, tarefasGabarito) {
+      const container = document.getElementById('container-comparacao');
+      container.innerHTML = '';
+
+      respostas.forEach((item, index) => {
+        const numTarefa = item.ordem || (index + 1);
+
+        const tarefaOriginal = tarefasGabarito.find(t => (t.ordem || 0) === numTarefa) || tarefasGabarito[index];
+        const pontosOficiais = tarefaOriginal?.pontos ?? item.regras?.pontos ?? 100;
+
+        const jaAvaliadoAnteriormente = item.pontos_concedidos !== undefined;
+        const notaInicial = jaAvaliadoAnteriormente ? item.pontos_concedidos : 0;
+        const motivoInicial = item.motivo_reprovacao || "";
+        
+        notasLocais[numTarefa] = notaInicial;
+        decisoesTomadas[numTarefa] = jaAvaliadoAnteriormente;
+        motivosLocais[numTarefa] = motivoInicial;
+
+        const isAprovado = jaAvaliadoAnteriormente && notaInicial === pontosOficiais && pontosOficiais > 0;
+        const isReprovado = jaAvaliadoAnteriormente && notaInicial === 0;
+
+        const card = document.createElement('div');
+        card.id = `card-tarefa-${numTarefa}`;
+        card.className = `bg-slate-900 rounded-xl p-5 border transition-all space-y-4 ${
+          !jaAvaliadoAnteriormente ? 'border-amber-500/50 shadow-sm' : 'border-slate-700'
+        }`;
+
+        card.innerHTML = `
+          <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800">
+            <h3 class="font-bold text-white text-base flex items-center gap-2">
+              <span class="bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">${numTarefa}</span>
+              Tarefa #${numTarefa}
+            </h3>
+            <span class="text-xs bg-slate-800 text-emerald-400 border border-emerald-800/60 px-3 py-1 rounded-full font-bold">
+              VALOR DA FOTO: ${pontosOficiais} PONTOS
+            </span>
+          </div>
+
+          <div class="bg-indigo-950/40 border border-indigo-800/40 rounded-lg p-3 text-xs text-indigo-200 flex flex-wrap gap-4 items-center">
+            <span class="font-bold text-indigo-400">🔍 Critérios do Gabarito:</span>
+            <span>👥 <strong>Pessoas:</strong> ${item.regras?.qtd_competidores || tarefaOriginal?.qtd_competidores || 1}</span>
+            <span>🚗 <strong>Exige Carro:</strong> ${(item.regras?.exigir_carro ?? tarefaOriginal?.exigir_carro) ? 'SIM' : 'NÃO'}</span>
+            ${(item.regras?.pegadinhas || tarefaOriginal?.pegadinhas) ? `<span class="text-amber-300">💡 <strong>Pegadinha:</strong> ${item.regras?.pegadinhas || tarefaOriginal?.pegadinhas}</span>` : ''}
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700">
+              <span class="text-xs font-bold text-slate-400 block mb-2 uppercase">📌 Gabarito Oficial (Referência)</span>
+              <img src="${item.foto_gabarito_url}" class="w-full h-60 object-cover rounded-md border border-slate-600 bg-black cursor-pointer hover:opacity-95 transition" onclick="window.open('${item.foto_gabarito_url}')" title="Clique para ampliar">
+            </div>
+
+            <div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700">
+              <span class="text-xs font-bold text-emerald-400 block mb-2 uppercase">📸 Foto Enviada pelo Competidor</span>
+              <img src="${item.foto_competidor_url}" class="w-full h-60 object-cover rounded-md border border-slate-600 bg-black cursor-pointer hover:opacity-95 transition" onclick="window.open('${item.foto_competidor_url}')" title="Clique para ampliar">
+            </div>
+          </div>
+
+          <!-- AÇÕES DO JUIZ -->
+          <div class="bg-slate-800 p-4 rounded-lg border border-slate-700 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+              <span class="text-xs font-bold text-slate-300">Decisão:</span>
+              <button type="button" id="btn-aprovar-${numTarefa}" onclick="atribuirDecisao(${numTarefa}, ${pontosOficiais})" class="px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${isAprovado ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-700 text-slate-300 hover:bg-emerald-700 hover:text-white'}">
+                <span>✅ Aprovar (${pontosOficiais} pts)</span>
+              </button>
+              <button type="button" id="btn-reprovar-${numTarefa}" onclick="atribuirDecisao(${numTarefa}, 0)" class="px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${isReprovado ? 'bg-rose-600 text-white shadow-md' : 'bg-slate-700 text-slate-300 hover:bg-rose-700 hover:text-white'}">
+                <span>❌ Reprovar (0 pts)</span>
+              </button>
+            </div>
+
+            <div class="text-right">
+              <span class="text-xs text-slate-400 block">Pontos na Tarefa:</span>
+              <span id="label-pts-${numTarefa}" class="text-lg font-bold ${jaAvaliadoAnteriormente ? (notaInicial > 0 ? 'text-emerald-400' : 'text-rose-400') : 'text-amber-400'}">
+                ${jaAvaliadoAnteriormente ? notaInicial + ' pts' : 'Pendente'}
+              </span>
+            </div>
+          </div>
+
+          <!-- CAMPO DE JUSTIFICATIVA DA REPROVAÇÃO -->
+          <div id="container-motivo-${numTarefa}" class="${isReprovado ? '' : 'hidden'} space-y-1.5 bg-rose-950/20 p-3 rounded-lg border border-rose-900/40">
+            <label for="input-motivo-${numTarefa}" class="block text-xs font-semibold text-rose-300 flex items-center gap-1">
+              <span>✍️ Motivo da Reprovação (explicar para a equipe):</span>
+            </label>
+            <input type="text" id="input-motivo-${numTarefa}" value="${motivoInicial}" oninput="atualizarMotivo(${numTarefa}, this.value)" placeholder="Ex: Faltou um integrante na foto, carro cortado, etc..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-rose-500 transition">
+          </div>
+        `;
+
+        container.appendChild(card);
+      });
+
+      atualizarPlacarTotal();
+    }
+
+    window.atribuirDecisao = function(numTarefa, pontos) {
+      notasLocais[numTarefa] = pontos;
+      decisoesTomadas[numTarefa] = true;
+
+      const card = document.getElementById(`card-tarefa-${numTarefa}`);
+      if (card) card.className = "bg-slate-900 rounded-xl p-5 border border-slate-700 space-y-4";
+
+      const btnAprovar = document.getElementById(`btn-aprovar-${numTarefa}`);
+      const btnReprovar = document.getElementById(`btn-reprovar-${numTarefa}`);
+      const labelPts = document.getElementById(`label-pts-${numTarefa}`);
+      const containerMotivo = document.getElementById(`container-motivo-${numTarefa}`);
+      const inputMotivo = document.getElementById(`input-motivo-${numTarefa}`);
+
+      if (pontos > 0) {
+        btnAprovar.className = "px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-emerald-600 text-white shadow-md";
+        btnReprovar.className = "px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-slate-700 text-slate-300 hover:bg-rose-700 hover:text-white";
+        labelPts.className = "text-lg font-bold text-emerald-400";
+        
+        // Se aprovado, esconde o campo de motivo e limpa o texto
+        containerMotivo.classList.add('hidden');
+        motivosLocais[numTarefa] = "";
+        if (inputMotivo) inputMotivo.value = "";
+      } else {
+        btnAprovar.className = "px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-slate-700 text-slate-300 hover:bg-emerald-700 hover:text-white";
+        btnReprovar.className = "px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-rose-600 text-white shadow-md";
+        labelPts.className = "text-lg font-bold text-rose-400";
+        
+        // Se reprovado, exibe o campo de motivo
+        containerMotivo.classList.remove('hidden');
+      }
+
+      labelPts.textContent = `${pontos} pts`;
+      atualizarPlacarTotal();
+    };
+
+    window.atualizarMotivo = function(numTarefa, valor) {
+      motivosLocais[numTarefa] = valor;
+    };
+
+    function atualizarPlacarTotal() {
+      let total = 0;
+      Object.values(notasLocais).forEach(pts => total += pts);
+      document.getElementById('eval-placar-total').textContent = `${total} pts`;
+      document.getElementById('eval-placar-rodape').textContent = `${total} pts`;
+    }
+
+    // SALVAR AVALIAÇÃO FINAL DO CARRO (COM TRAVA DE SEGURANÇA)
+    document.getElementById('btn-finalizar-carro').addEventListener('click', async () => {
+      if (!envioAtual) return;
+
+      const totalTarefas = (envioAtual.respostas || []).length;
+      const tarefasPendentes = [];
+
+      for (let i = 1; i <= totalTarefas; i++) {
+        if (!decisoesTomadas[i]) {
+          tarefasPendentes.push(i);
+        }
+      }
+
+      if (tarefasPendentes.length > 0) {
+        const primeiraPendente = tarefasPendentes[0];
+        const cardPendente = document.getElementById(`card-tarefa-${primeiraPendente}`);
+        
+        if (cardPendente) {
+          cardPendente.classList.add('ring-2', 'ring-rose-500');
+          cardPendente.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        alert(`⚠️ ATENÇÃO: Você possui ${tarefasPendentes.length} ${tarefasPendentes.length === 1 ? 'foto não avaliada' : 'fotos não avaliadas'}!\n\nPor favor, tome a decisão (Aprovar ou Reprovar) para todas as fotos antes de salvar.\n\nTarefa(s) pendente(s): #${tarefasPendentes.join(', #')}`);
+        return;
+      }
+
+      const btn = document.getElementById('btn-finalizar-carro');
+      btn.disabled = true;
+      btn.innerHTML = '<span>⏳ Salvando...</span>';
+
+      try {
+        let somaTotal = 0;
+        const respostasAtualizadas = (envioAtual.respostas || []).map((resp, idx) => {
+          const numT = resp.ordem || (idx + 1);
+          const ptsConcedidos = notasLocais[numT] || 0;
+          const motivoReprov = ptsConcedidos === 0 ? (motivosLocais[numT] || "").trim() : "";
+          
+          somaTotal += ptsConcedidos;
+          return {
+            ...resp,
+            pontos_concedidos: ptsConcedidos,
+            motivo_reprovacao: motivoReprov
+          };
+        });
+
+        const docRef = doc(db, "envios_competidores", envioAtual.id);
+        await updateDoc(docRef, {
+          respostas: respostasAtualizadas,
+          pontuacao_total: somaTotal,
+          status_avaliacao: "avaliado"
+        });
+
+        alert(`Avaliação do Carro #${envioAtual.numero_carro} salva com sucesso!\nPontuação Final: ${somaTotal} pontos.`);
+
+        btn.disabled = false;
+        btn.innerHTML = '<span>💾 Salvar Avaliação Final</span>';
+
+        await carregarEnvios();
+
+      } catch (err) {
+        console.error("Erro ao salvar avaliação:", err);
+        alert("Erro ao salvar avaliação: " + err.message);
+        btn.disabled = false;
+        btn.innerHTML = '<span>💾 Salvar Avaliação Final</span>';
+      }
+    });
+
+    // 1. EXPORTAR RESULTADOS EM PDF
+    document.getElementById('btn-exportar-pdf').addEventListener('click', () => {
+      if (enviosGlobais.length === 0) {
+        alert("Não há dados de submissões para exportar!");
+        return;
+      }
+
+      const { jsPDF } = window.jspdf;
+      const docPdf = new jsPDF();
+
+      docPdf.setFontSize(18);
+      docPdf.text("Relatório da Gincana - Classificação Geral", 14, 20);
+      
+      docPdf.setFontSize(10);
+      docPdf.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 28);
+      docPdf.text(`Total de Carros/Equipes: ${enviosGlobais.length}`, 14, 34);
+
+      const ranking = [...enviosGlobais].sort((a, b) => (b.pontuacao_total || 0) - (a.pontuacao_total || 0));
+
+      const tableBody = ranking.map((item, index) => {
+        const posicao = `#${index + 1}`;
+        const carro = `Carro #${item.numero_carro}`;
+        const prova = item.nome_prova || "Gincana";
+        const pontos = item.pontuacao_total !== undefined ? `${item.pontuacao_total} pts` : "Pendente";
+        const status = item.status_avaliacao === 'avaliado' ? 'Avaliado' : 'Pendente';
+        
+        return [posicao, carro, prova, status, pontos];
+      });
+
+      docPdf.autoTable({
+        startY: 40,
+        head: [['Posição', 'Equipe / Carro', 'Prova', 'Status', 'Pontuação Total']],
+        body: tableBody,
+        theme: 'striped',
+        headStyles: { fillColor: [16, 185, 129] }
+      });
+
+      docPdf.save(`Resultado_Gincana_${new Date().toISOString().slice(0,10)}.pdf`);
+    });
+
+    // 2. APAGAR TODOS OS DADOS DO BANCO (SENHA 123456)
+    document.getElementById('btn-zerar-banco').addEventListener('click', async () => {
+      const senha = prompt("🔒 ATENÇÃO: Esta ação apagará TODAS as provas e envios do banco de dados!\n\nDigite a senha de confirmação para continuar:");
+
+      if (senha === null) return;
+
+      if (senha !== "123456") {
+        alert("❌ Senha incorreta! Operação cancelada.");
+        return;
+      }
+
+      if (!confirm("⚠ Tem certeza absoluta? Todos os dados serão excluídos do Firebase permanentemente.")) {
+        return;
+      }
+
+      const btn = document.getElementById('btn-zerar-banco');
+      btn.disabled = true;
+      btn.textContent = "⌛ Apagando banco...";
+
+      try {
+        const batch = writeBatch(db);
+
+        const snapshotProvas = await getDocs(collection(db, "provas"));
+        snapshotProvas.forEach((docSnap) => batch.delete(docSnap.ref));
+
+        const snapshotEnvios = await getDocs(collection(db, "envios_competidores"));
+        snapshotEnvios.forEach((docSnap) => batch.delete(docSnap.ref));
+
+        await batch.commit();
+
+        alert("✅ Banco de dados limpo com sucesso! Todos os registros foram removidos.");
+        location.reload();
+
+      } catch (err) {
+        console.error("Erro ao zerar banco:", err);
+        alert("Erro ao zerar banco de dados: " + err.message);
+        btn.disabled = false;
+        btn.innerHTML = "<span>🗑️ Zerar Banco</span>";
+      }
+    });
+
+    carregarEnvios();
+  </script>
+</body>
+</html>
