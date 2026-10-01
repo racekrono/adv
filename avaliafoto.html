@@ -3,401 +3,291 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gincana Rally - Sistema de Fotos</title>
+  <title>Admin - Criar Prova Gincana</title>
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- FontAwesome Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 </head>
-<body class="bg-slate-100 min-h-screen text-slate-800 font-sans pb-12">
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen">
 
-  <!-- Header / Navigation -->
-  <nav class="bg-indigo-900 text-white shadow-lg sticky top-0 z-50">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
-      <div class="flex items-center space-x-3">
-        <i class="fa-solid fa-flag-checkered text-amber-400 text-2xl"></i>
-        <span class="font-bold text-lg tracking-wide">Rally Gincana</span>
-      </div>
-      <div class="flex space-x-1 sm:space-x-2">
-        <button onclick="showTab('competitor')" id="tab-competitor" class="px-3 py-2 rounded-lg text-sm font-medium transition bg-indigo-700 text-white shadow">
-          <i class="fa-solid fa-car mr-1"></i> Competidor
-        </button>
-        <button onclick="showTab('admin-tasks')" id="tab-admin-tasks" class="px-3 py-2 rounded-lg text-sm font-medium transition hover:bg-indigo-800 text-indigo-200">
-          <i class="fa-solid fa-plus-circle mr-1"></i> Criar Tarefa
-        </button>
-        <button onclick="showTab('admin-results')" id="tab-admin-results" class="px-3 py-2 rounded-lg text-sm font-medium transition hover:bg-indigo-800 text-indigo-200">
-          <i class="fa-solid fa-clipboard-check mr-1"></i> Apuração
-        </button>
-      </div>
+  <!-- Header -->
+  <header class="bg-indigo-700 text-white shadow-md">
+    <div class="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
+      <h1 class="text-xl font-bold flex items-center gap-2">
+        <span>📸</span> Admin - Painel da Gincana
+      </h1>
+      <span class="text-xs bg-indigo-800 px-3 py-1 rounded-full text-indigo-200">Cronômetro Rally</span>
     </div>
-  </nav>
+  </header>
 
-  <!-- Main Container -->
-  <main class="max-w-4xl mx-auto px-4 mt-6">
+  <main class="max-w-5xl mx-auto px-4 py-8">
 
-    <!-- TAB 1: AREA DO COMPETIDOR -->
-    <section id="view-competitor" class="space-y-6">
-      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-        <div class="border-b pb-4 mb-4">
-          <h1 class="text-xl font-bold text-slate-900 flex items-center">
-            <i class="fa-solid fa-camera text-indigo-600 mr-2"></i> Envio de Foto da Prova
-          </h1>
-          <p class="text-sm text-slate-500">Informe o número do seu carro, escolha a tarefa e envie a comprovação.</p>
+    <!-- PASSO 1: INFORMAÇÕES GERAIS DA PROVA -->
+    <section id="step-1" class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 max-w-xl mx-auto">
+      <div class="flex items-center gap-3 mb-6 pb-4 border-b">
+        <span class="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-sm">1</span>
+        <div>
+          <h2 class="text-lg font-bold text-slate-900">Dados da Etapa / Prova</h2>
+          <p class="text-xs text-slate-500">Defina o nome da gincana e o total de fotos/tarefas.</p>
+        </div>
+      </div>
+
+      <form id="form-step-1" class="space-y-5">
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-1">Nome da Prova / Etapa</label>
+          <input type="text" id="nome-prova" required placeholder="Ex: Etapa 1 - Centro Histórico" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
         </div>
 
-        <form id="competitorForm" onsubmit="submitCompetitorPhoto(event)" class="space-y-4">
-          <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">Número do Carro / Equipe</label>
-            <input type="number" id="compCarNumber" required placeholder="Ex: 42" class="w-full border-slate-300 border rounded-lg p-3 text-lg font-bold text-indigo-900 focus:ring-2 focus:ring-indigo-500 outline-none">
-          </div>
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-1">Quantidade de Fotos / Tarefas</label>
+          <input type="number" id="qtd-fotos" min="1" max="50" required placeholder="Ex: 5" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+          <p class="text-xs text-slate-500 mt-1">Defina quantas fotos gabarito você deseja cadastrar nesta prova.</p>
+        </div>
 
-          <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">Selecione a Tarefa</label>
-            <select id="compTaskSelect" required class="w-full border-slate-300 border rounded-lg p-3 bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
-              <option value="">Carregando tarefas...</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">Sua Foto</label>
-            <input type="file" id="compPhoto" accept="image/*" capture="environment" required class="w-full border-slate-300 border rounded-lg p-2 bg-slate-50 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:bg-indigo-50 file:text-indigo-700 font-medium">
-          </div>
-
-          <button type="submit" id="btnSubmitPhoto" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-lg shadow transition flex items-center justify-center space-x-2">
-            <i class="fa-solid fa-paper-plane"></i>
-            <span>Enviar Foto para Validação</span>
-          </button>
-        </form>
-      </div>
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition shadow-sm flex items-center justify-center gap-2">
+          <span>Avançar para Upload das Fotos</span>
+          <span>→</span>
+        </button>
+      </form>
     </section>
 
-    <!-- TAB 2: CADASTRO DE TAREFAS (ADMIN) -->
-    <section id="view-admin-tasks" class="hidden space-y-6">
-      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-        <div class="border-b pb-4 mb-4">
-          <h1 class="text-xl font-bold text-slate-900 flex items-center">
-            <i class="fa-solid fa-folder-plus text-indigo-600 mr-2"></i> Cadastrar Nova Tarefa
-          </h1>
-          <p class="text-sm text-slate-500">Defina o local de referência, objeto e a quantidade de competidores exigida.</p>
+    <!-- PASSO 2: UPLOAD DAS FOTOS E REGRAS -->
+    <section id="step-2" class="hidden space-y-6">
+      <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-200 flex justify-between items-center">
+        <div>
+          <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider">Configurando Prova</span>
+          <h2 id="display-nome-prova" class="text-xl font-bold text-slate-900">---</h2>
+        </div>
+        <button id="btn-voltar" type="button" class="text-sm text-indigo-700 hover:underline font-semibold">
+          ← Voltar e alterar dados
+        </button>
+      </div>
+
+      <form id="form-step-2" class="space-y-6">
+        
+        <!-- Contêiner dinâmico para as fotos -->
+        <div id="container-fotos" class="space-y-6"></div>
+
+        <!-- Indicador de Status / Progresso -->
+        <div id="status-container" class="hidden bg-slate-900 text-white p-4 rounded-xl shadow-md text-center space-y-2">
+          <p id="status-texto" class="text-sm font-medium">Iniciando upload...</p>
+          <div class="w-full bg-slate-700 h-2 rounded-full overflow-hidden">
+            <div id="status-barra" class="bg-emerald-500 h-full w-0 transition-all duration-300"></div>
+          </div>
         </div>
 
-        <form id="taskForm" onsubmit="saveTask(event)" class="space-y-4">
-          <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">Título / Nome da Tarefa</label>
-            <input type="text" id="taskTitle" required placeholder="Ex: Tarefa 01 - Foto na Praça com Carro" class="w-full border-slate-300 border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none">
-          </div>
-
-          <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">Descrição / Instruções</label>
-            <textarea id="taskDescription" rows="2" placeholder="Ex: Deixar o carro visível ao fundo ao lado do monumento." class="w-full border-slate-300 border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none"></textarea>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-semibold text-slate-700 mb-1">Quantidade de Competidores Exigida</label>
-              <select id="taskPeopleCount" required class="w-full border-slate-300 border rounded-lg p-3 bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
-                <option value="1">1 Competidor</option>
-                <option value="2">2 Competidores</option>
-                <option value="3">3 Competidores</option>
-                <option value="0">Apenas o cenário / veículo (0 competidores)</option>
-              </select>
-            </div>
-
-            <div>
-              <label class="block text-sm font-semibold text-slate-700 mb-1">Foto de Referência (Gabarito)</label>
-              <input type="file" id="taskRefPhoto" accept="image/*" required class="w-full border-slate-300 border rounded-lg p-2 bg-slate-50 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:bg-indigo-50 file:text-indigo-700 font-medium">
-            </div>
-          </div>
-
-          <button type="submit" id="btnSaveTask" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg shadow transition flex items-center justify-center space-x-2">
-            <i class="fa-solid fa-save"></i>
-            <span>Salvar Tarefa</span>
+        <!-- Botões de Ação -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex justify-end gap-4">
+          <button type="button" id="btn-cancelar" class="px-6 py-2.5 border border-slate-300 rounded-lg font-semibold text-slate-600 hover:bg-slate-50 transition">
+            Cancelar
           </button>
-        </form>
-      </div>
-
-      <!-- Lista de tarefas cadastradas -->
-      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-        <h2 class="text-lg font-bold text-slate-900 mb-4">Tarefas Cadastradas</h2>
-        <div id="tasksList" class="space-y-3">
-          <p class="text-slate-400 text-sm">Nenhuma tarefa cadastrada ainda.</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- TAB 3: APURAÇÃO (ADMIN) -->
-    <section id="view-admin-results" class="hidden space-y-6">
-      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b pb-4 mb-4">
-          <div>
-            <h1 class="text-xl font-bold text-slate-900 flex items-center">
-              <i class="fa-solid fa-list-check text-indigo-600 mr-2"></i> Painel de Apuração
-            </h1>
-            <p class="text-sm text-slate-500">Revise os envios ou execute a validação de fotos enviadas.</p>
-          </div>
-          <div class="flex space-x-2">
-            <button onclick="loadSubmissions()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium px-3 py-2 rounded-lg text-sm">
-              <i class="fa-solid fa-rotate mr-1"></i> Atualizar
-            </button>
-          </div>
+          <button type="submit" id="btn-salvar" class="px-8 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition shadow-sm flex items-center gap-2">
+            <span>💾 Salvar Prova no Firebase</span>
+          </button>
         </div>
 
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                <th class="p-3">Carro</th>
-                <th class="p-3">Tarefa</th>
-                <th class="p-3">Fotos (Ref / Envio)</th>
-                <th class="p-3">Requisito</th>
-                <th class="p-3">Status</th>
-                <th class="p-3 text-right">Ação</th>
-              </tr>
-            </thead>
-            <tbody id="submissionsTable" class="divide-y divide-slate-100 text-sm">
-              <tr>
-                <td colspan="6" class="p-4 text-center text-slate-400">Nenhum envio registrado.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+      </form>
     </section>
 
   </main>
 
-  <!-- Script da aplicação -->
-  <script>
-    // Inicialização do Firebase
+  <!-- Módulo Firebase JS (v10) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+
+    // Configuração do Firebase
     const firebaseConfig = {
-    apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
-    authDomain: "cronometro-rally.firebaseapp.com",
-    databaseURL: "https://cronometro-rally-default-rtdb.firebaseio.com",
-    projectId: "cronometro-rally",
-    storageBucket: "cronometro-rally.appspot.com", // <-- ADICIONE ESTA LINHA
-    appId: "1:341731891354:web:d0c34265be68015e98a723"
-};
+      apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
+      authDomain: "cronometro-rally.firebaseapp.com",
+      databaseURL: "https://cronometro-rally-default-rtdb.firebaseio.com",
+      projectId: "cronometro-rally",
+      storageBucket: "cronometro-rally.firebasestorage.app",
+      messagingSenderId: "341731891354",
+      appId: "1:341731891354:web:d0c34265be68015e98a723"
+    };
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const storage = firebase.storage();
+    // Inicialização do Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
 
-    // Controle de Abas
-    function showTab(tabName) {
-      const views = ['competitor', 'admin-tasks', 'admin-results'];
-      views.forEach(v => {
-        document.getElementById(`view-${v}`).classList.add('hidden');
-        const btn = document.getElementById(`tab-${v}`);
-        btn.classList.remove('bg-indigo-700', 'text-white', 'shadow');
-        btn.classList.add('hover:bg-indigo-800', 'text-indigo-200');
-      });
+    let totalFotosGlobal = 0;
+    let nomeProvaGlobal = "";
 
-      document.getElementById(`view-${tabName}`).classList.remove('hidden');
-      const activeBtn = document.getElementById(`tab-${tabName}`);
-      activeBtn.classList.add('bg-indigo-700', 'text-white', 'shadow');
-      activeBtn.classList.remove('hover:bg-indigo-800', 'text-indigo-200');
-
-      if (tabName === 'competitor') loadTasksForSelect();
-      if (tabName === 'admin-tasks') loadAdminTasks();
-      if (tabName === 'admin-results') loadSubmissions();
-    }
-
-    // Auxiliar: Upload de arquivo para Firebase Storage em Base64 fallback se Storage regras falharem
-    async function uploadFile(file, path) {
-      const storageRef = storage.ref(path);
-      const snapshot = await storageRef.put(file);
-      return await snapshot.ref.getDownloadURL();
-    }
-
-    // 1. TAREFAS (ADMIN)
-    async function saveTask(e) {
+    // Evento Passo 1
+    document.getElementById('form-step-1').addEventListener('submit', (e) => {
       e.preventDefault();
-      const btn = document.getElementById('btnSaveTask');
-      btn.disabled = true;
-      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Salva Tarefa...`;
+      nomeProvaGlobal = document.getElementById('nome-prova').value;
+      totalFotosGlobal = parseInt(document.getElementById('qtd-fotos').value);
+
+      if (!nomeProvaGlobal || !totalFotosGlobal || totalFotosGlobal <= 0) return;
+
+      document.getElementById('display-nome-prova').textContent = `${nomeProvaGlobal} (${totalFotosGlobal} ${totalFotosGlobal === 1 ? 'Foto' : 'Fotos'})`;
+
+      gerarCamposDeFotos(totalFotosGlobal);
+
+      document.getElementById('step-1').classList.add('hidden');
+      document.getElementById('step-2').classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    // Voltar
+    document.getElementById('btn-voltar').addEventListener('click', voltarPasso1);
+    document.getElementById('btn-cancelar').addEventListener('click', voltarPasso1);
+
+    function voltarPasso1() {
+      document.getElementById('step-2').classList.add('hidden');
+      document.getElementById('step-1').classList.remove('hidden');
+    }
+
+    // Gerador dinâmico de formulários para fotos
+    function gerarCamposDeFotos(qtd) {
+      const container = document.getElementById('container-fotos');
+      container.innerHTML = '';
+
+      for (let i = 1; i <= qtd; i++) {
+        const fotoCard = document.createElement('div');
+        fotoCard.className = "bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4";
+        
+        fotoCard.innerHTML = `
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <h3 class="font-bold text-slate-800 text-lg flex items-center gap-2">
+              <span class="bg-indigo-100 text-indigo-700 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold">${i}</span>
+              Foto / Tarefa #${i}
+            </h3>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <!-- Upload de Imagem -->
+            <div class="space-y-3">
+              <label class="block text-sm font-semibold text-slate-700">Foto Gabarito (Referência)</label>
+              <input type="file" id="foto_file_${i}" required accept="image/*" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border rounded-lg p-1">
+              
+              <div id="preview-box-${i}" class="hidden mt-2">
+                <p class="text-xs text-slate-400 mb-1">Pré-visualização:</p>
+                <img id="preview-img-${i}" src="" class="h-44 w-full object-cover rounded-lg border border-slate-200">
+              </div>
+            </div>
+
+            <!-- Regras de Validação -->
+            <div class="space-y-4">
+              
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">Quantidade de Competidores na Foto</label>
+                <select id="num_competidores_${i}" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+                  <option value="1">1 Competidor</option>
+                  <option value="2">2 Competidores</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">Presença do Carro do Competidor</label>
+                <select id="exigir_carro_${i}" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+                  <option value="false">NÃO exigir o carro na foto</option>
+                  <option value="true">EXIGIR que o carro esteja na foto (Pegadinha)</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">Outras Pegadinhas / Instruções Secretas (Opcional)</label>
+                <input type="text" id="pegadinhas_${i}" placeholder="Ex: Estátua visível no lado esquerdo" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+              </div>
+
+            </div>
+
+          </div>
+        `;
+
+        container.appendChild(fotoCard);
+
+        // Event listener de preview
+        const inputImg = document.getElementById(`foto_file_${i}`);
+        inputImg.addEventListener('change', (e) => {
+          const file = e.target.files[0];
+          const previewBox = document.getElementById(`preview-box-${i}`);
+          const previewImg = document.getElementById(`preview-img-${i}`);
+          if (file) {
+            previewImg.src = URL.createObjectURL(file);
+            previewBox.classList.remove('hidden');
+          }
+        });
+      }
+    }
+
+    // Salvar no Firebase
+    document.getElementById('form-step-2').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const btnSalvar = document.getElementById('btn-salvar');
+      const statusContainer = document.getElementById('status-container');
+      const statusTexto = document.getElementById('status-texto');
+      const statusBarra = document.getElementById('status-barra');
+
+      btnSalvar.disabled = true;
+      btnSalvar.classList.add('opacity-50', 'cursor-not-allowed');
+      statusContainer.classList.remove('hidden');
 
       try {
-        const title = document.getElementById('taskTitle').value;
-        const description = document.getElementById('taskDescription').value;
-        const peopleCount = parseInt(document.getElementById('taskPeopleCount').value);
-        const file = document.getElementById('taskRefPhoto').files[0];
+        const tarefasArr = [];
+        const provaIdTemp = 'prova_' + Date.now();
 
-        const photoPath = `tasks/ref_${Date.now()}_${file.name}`;
-        const refUrl = await uploadFile(file, photoPath);
+        // Faz o upload foto por foto
+        for (let i = 1; i <= totalFotosGlobal; i++) {
+          statusTexto.textContent = `Enviando imagem ${i} de ${totalFotosGlobal} para o Firebase Storage...`;
+          statusBarra.style.width = `${Math.round(((i - 1) / totalFotosGlobal) * 100)}%`;
 
-        const newTaskRef = db.ref('tasks').push();
-        await newTaskRef.set({
-          title,
-          description,
-          peopleCount,
-          refUrl,
-          createdAt: Date.now()
-        });
+          const fileInput = document.getElementById(`foto_file_${i}`);
+          const file = fileInput.files[0];
 
-        alert('Tarefa cadastrada com sucesso!');
-        document.getElementById('taskForm').reset();
-        loadAdminTasks();
-      } catch (err) {
-        console.error(err);
-        alert('Erro ao salvar tarefa: ' + err.message);
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = `<i class="fa-solid fa-save"></i> <span>Salvar Tarefa</span>`;
-      }
-    }
+          // Upload no Storage
+          const storageRef = ref(storage, `provas/${provaIdTemp}/gabarito_${i}_${Date.now()}.jpg`);
+          const snapshot = await uploadBytes(storageRef, file);
+          const downloadURL = await getDownloadURL(snapshot.ref);
 
-    function loadAdminTasks() {
-      db.ref('tasks').once('value', snapshot => {
-        const tasksList = document.getElementById('tasksList');
-        tasksList.innerHTML = '';
-        const data = snapshot.val();
+          // Pega configurações da foto
+          const numCompetidores = parseInt(document.getElementById(`num_competidores_${i}`).value);
+          const exigirCarro = document.getElementById(`exigir_carro_${i}`).value === 'true';
+          const pegadinhas = document.getElementById(`pegadinhas_${i}`).value;
 
-        if (!data) {
-          tasksList.innerHTML = '<p class="text-slate-400 text-sm">Nenhuma tarefa cadastrada ainda.</p>';
-          return;
-        }
-
-        Object.keys(data).forEach(id => {
-          const task = data[id];
-          tasksList.innerHTML += `
-            <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
-              <div class="flex items-center space-x-3">
-                <img src="${task.refUrl}" class="w-12 h-12 object-cover rounded-md border">
-                <div>
-                  <h4 class="font-bold text-slate-800">${task.title}</h4>
-                  <p class="text-xs text-slate-500">Pessoas requeridas: <strong>${task.peopleCount}</strong></p>
-                </div>
-              </div>
-              <button onclick="deleteTask('${id}')" class="text-red-500 hover:text-red-700 p-2">
-                <i class="fa-solid fa-trash"></i>
-              </button>
-            </div>
-          `;
-        });
-      });
-    }
-
-    function deleteTask(id) {
-      if (confirm('Deseja excluir esta tarefa?')) {
-        db.ref(`tasks/${id}`).remove().then(() => loadAdminTasks());
-      }
-    }
-
-    // 2. COMPETIDOR
-    function loadTasksForSelect() {
-      db.ref('tasks').once('value', snapshot => {
-        const select = document.getElementById('compTaskSelect');
-        select.innerHTML = '<option value="">Selecione uma tarefa...</option>';
-        const data = snapshot.val();
-
-        if (data) {
-          Object.keys(data).forEach(id => {
-            select.innerHTML += `<option value="${id}">${data[id].title} (${data[id].peopleCount} pess.)</option>`;
+          tarefasArr.push({
+            ordem: i,
+            foto_gabarito_url: downloadURL,
+            qtd_competidores: numCompetidores,
+            exigir_carro: exigirCarro,
+            pegadinhas: pegadinhas || "",
+            status: "ativo"
           });
         }
-      });
-    }
 
-    async function submitCompetitorPhoto(e) {
-      e.preventDefault();
-      const btn = document.getElementById('btnSubmitPhoto');
-      btn.disabled = true;
-      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Enviando...`;
+        statusTexto.textContent = "Salvando dados da prova no Firestore...";
+        statusBarra.style.width = "90%";
 
-      try {
-        const carNumber = document.getElementById('compCarNumber').value;
-        const taskId = document.getElementById('compTaskSelect').value;
-        const file = document.getElementById('compPhoto').files[0];
-
-        const photoPath = `submissions/car_${carNumber}_${Date.now()}_${file.name}`;
-        const submittedUrl = await uploadFile(file, photoPath);
-
-        const newSubRef = db.ref('submissions').push();
-        await newSubRef.set({
-          carNumber,
-          taskId,
-          submittedUrl,
-          status: 'PENDENTE',
-          submittedAt: Date.now()
+        // Salva documento no Firestore
+        await addDoc(collection(db, "provas"), {
+          nome_prova: nomeProvaGlobal,
+          qtd_tarefas: totalFotosGlobal,
+          tarefas: tarefasArr,
+          criado_em: serverTimestamp()
         });
 
-        alert('Foto enviada com sucesso!');
-        document.getElementById('competitorForm').reset();
-      } catch (err) {
-        console.error(err);
-        alert('Erro ao enviar foto: ' + err.message);
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> <span>Enviar Foto para Validação</span>`;
+        statusBarra.style.width = "100%";
+        statusTexto.textContent = "✅ Prova salva com sucesso!";
+
+        setTimeout(() => {
+          alert("Prova e fotos cadastradas com sucesso!");
+          location.reload();
+        }, 1200);
+
+      } catch (error) {
+        console.error("Erro ao salvar no Firebase:", error);
+        alert("Erro ao salvar no Firebase: " + error.message);
+        btnSalvar.disabled = false;
+        btnSalvar.classList.remove('opacity-50', 'cursor-not-allowed');
+        statusContainer.classList.add('hidden');
       }
-    }
-
-    // 3. APURAÇÃO (ADMIN)
-    async function loadSubmissions() {
-      const tasksSnap = await db.ref('tasks').once('value');
-      const tasks = tasksSnap.val() || {};
-
-      db.ref('submissions').once('value', snapshot => {
-        const tbody = document.getElementById('submissionsTable');
-        tbody.innerHTML = '';
-        const data = snapshot.val();
-
-        if (!data) {
-          tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400">Nenhum envio registrado.</td></tr>';
-          return;
-        }
-
-        Object.keys(data).forEach(id => {
-          const sub = data[id];
-          const task = tasks[sub.taskId] || { title: 'Tarefa Removida', peopleCount: 'N/A', refUrl: '' };
-
-          let statusBadge = `<span class="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-full font-bold">Pendente</span>`;
-          if (sub.status === 'APROVADO') {
-            statusBadge = `<span class="bg-emerald-100 text-emerald-800 text-xs px-2 py-1 rounded-full font-bold">Aprovado</span>`;
-          } else if (sub.status === 'REPROVADO') {
-            statusBadge = `<span class="bg-rose-100 text-rose-800 text-xs px-2 py-1 rounded-full font-bold">Reprovado</span>`;
-          }
-
-          tbody.innerHTML += `
-            <tr class="hover:bg-slate-50">
-              <td class="p-3 font-bold text-indigo-900">Carro #${sub.carNumber}</td>
-              <td class="p-3">${task.title}</td>
-              <td class="p-3">
-                <div class="flex space-x-2">
-                  <a href="${task.refUrl}" target="_blank" title="Foto Referência">
-                    <img src="${task.refUrl}" class="w-10 h-10 object-cover rounded border border-indigo-300">
-                  </a>
-                  <a href="${sub.submittedUrl}" target="_blank" title="Foto do Competidor">
-                    <img src="${sub.submittedUrl}" class="w-10 h-10 object-cover rounded border border-slate-300">
-                  </a>
-                </div>
-              </td>
-              <td class="p-3 text-xs">${task.peopleCount} pessoa(s)</td>
-              <td class="p-3">${statusBadge}</td>
-              <td class="p-3 text-right space-x-1">
-                <button onclick="updateStatus('${id}', 'APROVADO')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 rounded text-xs">
-                  <i class="fa-solid fa-check"></i>
-                </button>
-                <button onclick="updateStatus('${id}', 'REPROVADO')" class="bg-rose-600 hover:bg-rose-700 text-white px-2 py-1 rounded text-xs">
-                  <i class="fa-solid fa-xmark"></i>
-                </button>
-              </td>
-            </tr>
-          `;
-        });
-      });
-    }
-
-    function updateStatus(id, newStatus) {
-      db.ref(`submissions/${id}`).update({ status: newStatus }).then(() => loadSubmissions());
-    }
-
-    // Inicialização da página na visão de competidor
-    showTab('competitor');
+    });
   </script>
 </body>
 </html>
