@@ -1,121 +1,315 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cadastro de Gabarito de Fotos</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Competidor - Envio de Fotos da Gincana</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 p-6">
-    <div class="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow-md">
-        <h1 class="text-2xl font-bold mb-4 text-gray-800">Cadastro de Gabarito de Fotos</h1>
-        
-        <div class="mb-4">
-            <label class="block text-gray-700 font-semibold mb-2">Nome da Prova:</label>
-            <input type="text" id="nomeProva" class="w-full p-2 border rounded" placeholder="Ex: Rally dos Sertões 2026">
-        </div>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen">
 
-        <div class="mb-4">
-            <h2 class="text-xl font-semibold text-gray-700 mb-2">Adicionar Posto (PC)</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
-                <input type="text" id="postoId" class="p-2 border rounded" placeholder="ID/Número do Posto (Ex: PC-01)">
-                <input type="text" id="postoDesc" class="p-2 border rounded" placeholder="Descrição da Referência">
-                <input type="number" id="postoPontos" class="p-2 border rounded" value="10" placeholder="Pontos">
-            </div>
-            <button id="btnAdicionarPonto" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Adicionar à Lista</button>
-        </div>
-
-        <div class="mb-4">
-            <h3 class="font-semibold text-gray-700 mb-2">Pontos Adicionados:</h3>
-            <ul id="listaGabarito" class="border p-2 rounded bg-gray-50 min-h-[80px]">
-                <li class="text-gray-400 text-sm">Nenhum ponto adicionado.</li>
-            </ul>
-        </div>
-
-        <button id="btnSalvarProva" class="w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700">Salvar Prova e Gabarito</button>
+  <!-- Header -->
+  <header class="bg-emerald-700 text-white shadow-md">
+    <div class="max-w-3xl mx-auto px-4 py-4 flex justify-between items-center">
+      <h1 class="text-xl font-bold flex items-center gap-2">
+        <span>🏁</span> CARREGUE SUAS FOTOS
+      </h1>
+      <span class="text-xs bg-emerald-800 px-3 py-1 rounded-full text-emerald-100"></span>
     </div>
+  </header>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, set, push } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  <main class="max-w-3xl mx-auto px-4 py-8 space-y-6">
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
-            authDomain: "cronometro-rally.firebaseapp.com",
-            databaseURL: "https://cronometro-rally-default-rtdb.firebaseio.com",
-            projectId: "cronometro-rally",
-            storageBucket: "cronometro-rally.firebasestorage.app",
-            messagingSenderId: "341731891354",
-            appId: "1:341731891354:web:d0c34265be68015e98a723"
-        };
+    <!-- PASSO 1: IDENTIFICAÇÃO DO COMPETIDOR -->
+    <section id="step-1" class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+      <div class="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+        <span class="w-8 h-8 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-sm">1</span>
+        <div>
+          <h2 class="text-lg font-bold text-slate-900">Identificação do Competidor</h2>
+          <p class="text-xs text-slate-500" id="subtitulo-identificacao">Buscando prova ativa...</p>
+        </div>
+      </div>
 
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
+      <form id="form-step-1" class="space-y-5">
+        
+        <!-- Número do Carro / Competidor -->
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-1">Número do Carro / Equipe</label>
+          <input type="number" id="numero-carro" min="1" required placeholder="Ex: 42" class="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none text-lg font-bold text-slate-800">
+        </div>
 
-        let pontosTemporarios = [];
+        <button type="submit" id="btn-iniciar" disabled class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-lg transition shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+          <span>Iniciar Envio das Fotos</span>
+          <span>→</span>
+        </button>
+      </form>
+    </section>
 
-        document.getElementById('btnAdicionarPonto').addEventListener('click', () => {
-            const id = document.getElementById('postoId').value.trim();
-            const descricao = document.getElementById('postoDesc').value.trim();
-            const pontos = document.getElementById('postoPontos').value.trim();
+    <!-- PASSO 2: UPLOAD DAS FOTOS -->
+    <section id="step-2" class="hidden space-y-6">
+      
+      <!-- Card Informativo -->
+      <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-200 flex justify-between items-center">
+        <div>
+          <span class="text-xs font-bold text-emerald-700 uppercase tracking-wider" id="info-carro">Carro #--</span>
+          <h2 id="info-prova" class="text-lg font-bold text-slate-900">--</h2>
+        </div>
+        <button id="btn-trocar-carro" type="button" class="text-xs text-emerald-700 hover:underline font-semibold">
+          Alterar número do carro
+        </button>
+      </div>
 
-            if (!id || !descricao) {
-                alert('Preencha o ID e a descrição do posto.');
-                return;
-            }
+      <form id="form-step-2" class="space-y-6">
+        
+        <!-- Contêiner dinâmico gerado com base nas tarefas da prova ativa -->
+        <div id="container-tarefas" class="space-y-6"></div>
 
-            pontosTemporarios.push({ id, descricao, pontos: Number(pontos) });
-            renderizarLista();
+        <!-- Barra de Progresso / Envio -->
+        <div id="status-container" class="hidden bg-slate-900 text-white p-4 rounded-xl shadow-md text-center space-y-2">
+          <p id="status-texto" class="text-sm font-medium">Processando e enviando fotos...</p>
+          <div class="w-full bg-slate-700 h-2 rounded-full overflow-hidden">
+            <div id="status-barra" class="bg-emerald-500 h-full w-0 transition-all duration-300"></div>
+          </div>
+        </div>
 
-            document.getElementById('postoId').value = '';
-            document.getElementById('postoDesc').value = '';
-            document.getElementById('postoId').focus();
-        });
+        <!-- Botão de Envio Final -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex justify-end">
+          <button type="submit" id="btn-enviar-tudo" class="w-full md:w-auto px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition shadow-sm flex items-center justify-center gap-2">
+            <span>🚀 Enviar Minhas Fotos para Avaliação</span>
+          </button>
+        </div>
 
-        function renderizarLista() {
-            const lista = document.getElementById('listaGabarito');
-            if (pontosTemporarios.length === 0) {
-                lista.innerHTML = '<li class="text-gray-400 text-sm">Nenhum ponto adicionado.</li>';
-                return;
-            }
-            lista.innerHTML = '';
-            pontosTemporarios.forEach((p, index) => {
-                const li = document.createElement('li');
-                li.className = "flex justify-between items-center py-1 border-b";
-                li.innerHTML = `<span><strong>${p.id}</strong> - ${p.descricao} (${p.pontos} pts)</span>
-                                <button onclick="remover(${index})" class="text-red-500 text-xs">Remover</button>`;
-                lista.appendChild(li);
-            });
+      </form>
+    </section>
+
+  </main>
+
+  <!-- Módulo Firebase JS (v10) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { initializeFirestore, collection, getDocs, addDoc, serverTimestamp, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBF-_Q5NJIhEjWhA-4kdffoWbGY5Z4jnxw",
+      authDomain: "teste-2994e.firebaseapp.com",
+      projectId: "teste-2994e",
+      storageBucket: "teste-2994e.firebasestorage.app",
+      messagingSenderId: "614899420753",
+      appId: "1:614899420753:web:5fc23c3d0e8facdf593270"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = initializeFirestore(app, {
+      experimentalForceLongPolling: true
+    });
+
+    let provaAtiva = null;
+    let numeroCarroGlobal = "";
+
+    async function carregarProvaAtiva() {
+      const subtitulo = document.getElementById('subtitulo-identificacao');
+      const btnIniciar = document.getElementById('btn-iniciar');
+
+      try {
+        const q = query(collection(db, "provas"), orderBy("criado_em", "desc"), limit(1));
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+          subtitulo.textContent = "Nenhuma prova cadastrada no momento.";
+          subtitulo.className = "text-xs text-rose-500 font-semibold";
+          return;
         }
 
-        window.remover = function(index) {
-            pontosTemporarios.splice(index, 1);
-            renderizarLista();
-        };
-
-        document.getElementById('btnSalvarProva').addEventListener('click', async () => {
-            const nomeProva = document.getElementById('nomeProva').value.trim();
-            if (!nomeProva || pontosTemporarios.length === 0) {
-                alert('Informe o nome da prova e adicione ao menos um ponto.');
-                return;
-            }
-
-            try {
-                const novaProvaRef = push(ref(db, 'provas_fotos'));
-                await set(novaProvaRef, {
-                    nome: nomeProva,
-                    gabarito: pontosTemporarios,
-                    criadoEm: Date.now()
-                });
-                alert('Prova salva com sucesso!');
-                pontosTemporarios = [];
-                document.getElementById('nomeProva').value = '';
-                renderizarLista();
-            } catch (error) {
-                console.error("Erro ao salvar:", error);
-                alert('Erro ao salvar prova.');
-            }
+        snapshot.forEach((docSnap) => {
+          provaAtiva = { id: docSnap.id, ...docSnap.data() };
         });
-    </script>
+
+        subtitulo.textContent = `Prova Ativa: ${provaAtiva.nome_prova} (${provaAtiva.qtd_tarefas} ${provaAtiva.qtd_tarefas === 1 ? 'foto' : 'fotos'})`;
+        subtitulo.className = "text-xs text-emerald-600 font-semibold";
+        btnIniciar.disabled = false;
+
+      } catch (err) {
+        console.error("Erro ao carregar prova ativa:", err);
+        subtitulo.textContent = "Erro ao conectar com o servidor.";
+        subtitulo.className = "text-xs text-rose-500 font-semibold";
+      }
+    }
+
+    carregarProvaAtiva();
+
+    document.getElementById('form-step-1').addEventListener('submit', (e) => {
+      e.preventDefault();
+      numeroCarroGlobal = document.getElementById('numero-carro').value;
+
+      if (!provaAtiva || !numeroCarroGlobal) return;
+
+      document.getElementById('info-carro').textContent = `Carro / Equipe #${numeroCarroGlobal}`;
+      document.getElementById('info-prova').textContent = provaAtiva.nome_prova;
+
+      gerarCamposDeEnvio(provaAtiva.tarefas);
+
+      document.getElementById('step-1').classList.add('hidden');
+      document.getElementById('step-2').classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    document.getElementById('btn-trocar-carro').addEventListener('click', () => {
+      document.getElementById('step-2').classList.add('hidden');
+      document.getElementById('step-1').classList.remove('hidden');
+    });
+
+    function gerarCamposDeEnvio(tarefas) {
+      const container = document.getElementById('container-tarefas');
+      container.innerHTML = '';
+
+      tarefas.forEach((tarefa, index) => {
+        const numTarefa = tarefa.ordem || (index + 1);
+        const card = document.createElement('div');
+        card.className = "bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4";
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <h3 class="font-bold text-slate-800 text-lg flex items-center gap-2">
+              <span class="bg-emerald-100 text-emerald-800 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold">${numTarefa}</span>
+              Foto / Tarefa #${numTarefa}
+            </h3>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+            <div>
+              <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Gabarito de Referência:</p>
+              <img src="${tarefa.foto_gabarito_url}" class="h-44 w-full object-cover rounded-lg border border-slate-200 bg-slate-50" alt="Referência">
+            </div>
+
+            <div class="space-y-3">
+              <label class="block text-sm font-semibold text-slate-700">Sua Foto Realizada</label>
+              <input type="file" id="foto_competidor_${numTarefa}" required accept="image/*" class="w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer border rounded-lg p-1">
+              
+              <div id="preview-box-comp-${numTarefa}" class="hidden mt-2">
+                <p class="text-xs text-slate-400 mb-1">Pré-visualização da sua foto:</p>
+                <img id="preview-img-comp-${numTarefa}" src="" class="h-44 w-full object-cover rounded-lg border border-slate-200">
+              </div>
+            </div>
+          </div>
+        `;
+
+        container.appendChild(card);
+
+        const inputImg = document.getElementById(`foto_competidor_${numTarefa}`);
+        inputImg.addEventListener('change', (e) => {
+          const file = e.target.files[0];
+          const previewBox = document.getElementById(`preview-box-comp-${numTarefa}`);
+          const previewImg = document.getElementById(`preview-img-comp-${numTarefa}`);
+          if (file) {
+            previewImg.src = URL.createObjectURL(file);
+            previewBox.classList.remove('hidden');
+          }
+        });
+      });
+    }
+
+    function otimizarImagemBase64(file, maxWidth = 1024, maxQuality = 0.75) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            resolve(canvas.toDataURL('image/jpeg', maxQuality));
+          };
+          img.onerror = reject;
+          img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    document.getElementById('form-step-2').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const btnEnviar = document.getElementById('btn-enviar-tudo');
+      const statusContainer = document.getElementById('status-container');
+      const statusTexto = document.getElementById('status-texto');
+      const statusBarra = document.getElementById('status-barra');
+
+      btnEnviar.disabled = true;
+      btnEnviar.classList.add('opacity-50', 'cursor-not-allowed');
+      statusContainer.classList.remove('hidden');
+
+      try {
+        const respostasArr = [];
+        const totalTarefas = provaAtiva.tarefas.length;
+
+        for (let i = 0; i < totalTarefas; i++) {
+          const numTarefa = provaAtiva.tarefas[i].ordem || (i + 1);
+          
+          statusTexto.textContent = `Otimizando sua foto ${i + 1} de ${totalTarefas}...`;
+          statusBarra.style.width = `${Math.round(((i) / totalTarefas) * 80)}%`;
+
+          const fileInput = document.getElementById(`foto_competidor_${numTarefa}`);
+          const file = fileInput.files[0];
+
+          const fotoBase64 = await otimizarImagemBase64(file);
+
+          respostasArr.push({
+            ordem: numTarefa,
+            foto_competidor_url: fotoBase64,
+            foto_gabarito_url: provaAtiva.tarefas[i].foto_gabarito_url,
+            regras: {
+              pontos: provaAtiva.tarefas[i].pontos || 100,
+              qtd_competidores: provaAtiva.tarefas[i].qtd_competidores,
+              exigir_carro: provaAtiva.tarefas[i].exigir_carro,
+              pegadinhas: provaAtiva.tarefas[i].pegadinhas || ""
+            }
+          });
+        }
+
+        statusTexto.textContent = "Salvando envio no banco de dados...";
+        statusBarra.style.width = "90%";
+
+        // Salvando com redundância nos campos de identificação do carro para evitar "#undefined" no painel do juiz
+        await addDoc(collection(db, "envios_competidores"), {
+          prova_id: provaAtiva.id,
+          nome_prova: provaAtiva.nome_prova,
+          numero_carro: numeroCarroGlobal,
+          competidor: numeroCarroGlobal, // Compatibilidade garantida
+          carro: numeroCarroGlobal,       // Compatibilidade garantida
+          respostas: respostasArr,
+          status_avaliacao: "pendente",
+          enviado_em: serverTimestamp()
+        });
+
+        statusBarra.style.width = "100%";
+        statusTexto.textContent = "✅ Fotos enviadas com sucesso!";
+
+        setTimeout(() => {
+          alert("Suas fotos foram salvas com sucesso e enviadas para avaliação!");
+          location.reload();
+        }, 1200);
+
+      } catch (error) {
+        console.error("Erro ao enviar respostas:", error);
+        alert("Erro ao enviar fotos: " + error.message);
+        btnEnviar.disabled = false;
+        btnEnviar.classList.remove('opacity-50', 'cursor-not-allowed');
+        statusContainer.classList.add('hidden');
+      }
+    });
+  </script>
 </body>
 </html>
