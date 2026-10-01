@@ -6,6 +6,10 @@
   <title>Gincana Snap - Envio de Provas</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Firebase SDK Compat v9 (Realtime Database + Storage) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between font-sans">
 
@@ -26,10 +30,10 @@
       
       <div>
         <h2 class="text-lg font-bold text-white mb-1">Enviar Prova de Tarefa</h2>
-        <p class="text-sm text-slate-400">Envie a foto do local. O sistema validará se o cenário e o número de competidores correspondem ao gabarito.</p>
+        <p class="text-sm text-slate-400">Tire a foto no local. O sistema validará automaticamente se o cenário e a quantidade de competidores correspondem ao gabarito.</p>
       </div>
 
-      <!-- Equipe -->
+      <!-- Seleção de Equipe -->
       <div>
         <label for="teamSelect" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">1. Selecione sua Equipe</label>
         <select id="teamSelect" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
@@ -41,7 +45,7 @@
         </select>
       </div>
 
-      <!-- Tarefa -->
+      <!-- Seleção de Tarefa -->
       <div>
         <label for="taskSelect" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">2. Selecione a Tarefa</label>
         <select id="taskSelect" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
@@ -49,7 +53,7 @@
         </select>
       </div>
 
-      <!-- Área de Foto -->
+      <!-- Upload Foto -->
       <div>
         <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">3. Tirar ou Selecionar Foto</label>
         <input type="file" id="photoInput" accept="image/*" capture="environment" class="hidden" required>
@@ -66,7 +70,7 @@
         </div>
       </div>
 
-      <!-- Modal/Card de Resultado da IA -->
+      <!-- Card do Resultado da IA -->
       <div id="resultCard" class="hidden border rounded-xl p-4 space-y-2">
         <div class="flex items-center space-x-2 font-bold text-sm" id="resultHeader"></div>
         <p id="resultBody" class="text-xs text-slate-300 leading-relaxed"></p>
@@ -81,30 +85,28 @@
   </main>
 
   <footer class="p-4 text-center text-xs text-slate-500">
-    Gincana Snap &copy; 2026 - Sistema com Validação Automática por IA
+    Gincana Snap &copy; 2026 - Realtime Database & Gemini Vision
   </footer>
 
-  <!-- Firebase & Google Gen AI SDK -->
+  <!-- Module ES para chamar Google Gen AI SDK -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, getDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
     import { GoogleGenAI } from "https://esm.sh/@google/genai";
 
+    // Configuração do seu Firebase
     const firebaseConfig = {
-      apiKey: "SEU_API_KEY",
-      authDomain: "SEU_PROJECT_ID.firebaseapp.com",
-      projectId: "SEU_PROJECT_ID",
-      storageBucket: "SEU_PROJECT_ID.appspot.com",
-      messagingSenderId: "SEU_SENDER_ID",
-      appId: "SEU_APP_ID"
+      apiKey: "AIzaSyBPJkehV9C1x0hiY5dQSwSRtVf5c4P2JGE",
+      authDomain: "cronometro-rally.firebaseapp.com",
+      databaseURL: "https://cronometro-rally-default-rtdb.firebaseio.com",
+      projectId: "cronometro-rally",
+      appId: "1:341731891354:web:d0c34265be68015e98a723"
     };
 
-    const GEMINI_API_KEY = "SUA_GEMINI_API_KEY"; // Cole sua chave de API do Google AI Studio
+    // Cole a sua chave de API gerada no Google AI Studio
+    const GEMINI_API_KEY = "SUA_GEMINI_API_KEY_AQUI";
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const storage = getStorage(app);
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const storage = firebase.storage();
     const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
     lucide.createIcons();
 
@@ -120,13 +122,16 @@
 
     let tarefasCache = {};
 
-    // Carregar tarefas dinamicamente do banco
-    onSnapshot(collection(db, "tarefas"), (snapshot) => {
+    // Ouvir e carregar as tarefas cadastradas
+    db.ref('tarefas').on('value', (snapshot) => {
       taskSelect.innerHTML = `<option value="" disabled selected>Escolha a tarefa...</option>`;
-      snapshot.forEach((documento) => {
-        const t = documento.data();
-        tarefasCache[documento.id] = t;
-        taskSelect.innerHTML += `<option value="${documento.id}">${t.titulo} (${t.pontos} Pts)</option>`;
+      const data = snapshot.val();
+      if (!data) return;
+
+      Object.keys(data).forEach((id) => {
+        const t = data[id];
+        tarefasCache[id] = t;
+        taskSelect.innerHTML += `<option value="${id}">${t.titulo} (${t.pontos} Pts)</option>`;
       });
     });
 
@@ -144,7 +149,6 @@
       }
     });
 
-    // Função para converter File para Base64
     const fileToBase64 = file => new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
@@ -152,7 +156,6 @@
       reader.onerror = error => reject(error);
     });
 
-    // Função para buscar imagem do Gabarito e converter em Base64
     async function urlToBase64(url) {
       const response = await fetch(url);
       const blob = await response.blob();
@@ -164,7 +167,7 @@
       });
     }
 
-    // Submissão
+    // Submissão do Formulário
     uploadForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const team = document.getElementById('teamSelect').value;
@@ -179,11 +182,11 @@
       try {
         const tarefa = tarefasCache[taskId];
 
-        // 1. Converte imagens para base64
+        // 1. Converter fotos para Base64
         const envioBase64 = await fileToBase64(file);
         const gabaritoBase64 = await urlToBase64(tarefa.gabaritoUrl);
 
-        // 2. Chamada à API Gemini 2.5 Flash para comparar o local e competidores
+        // 2. Prompt de avaliação da IA Gemini 2.5 Flash
         const prompt = `
         Você é o validador automático de uma gincana fotográfica.
         
@@ -220,15 +223,16 @@
 
         const avaliacao = JSON.parse(response.text);
 
-        // 3. Salva no Storage e Firestore
-        const fileName = `envios/${Date.now()}_${file.name}`;
-        const storageRef = ref(storage, fileName);
-        await uploadBytes(storageRef, file);
-        const envUrl = await getDownloadURL(storageRef);
+        // 3. Upload da foto do participante para Firebase Storage
+        const fileRef = storage.ref(`envios/${Date.now()}_${file.name}`);
+        await fileRef.put(file);
+        const envUrl = await fileRef.getDownloadURL();
 
         const pontosGanhos = avaliacao.aprovado ? tarefa.pontos : 0;
 
-        await addDoc(collection(db, "submissoes"), {
+        // 4. Salva a submissão no Realtime Database
+        const newSubRef = db.ref('submissoes').push();
+        await newSubRef.set({
           equipe: team,
           tarefaId: taskId,
           tarefaTitulo: tarefa.titulo,
@@ -236,15 +240,15 @@
           aprovado: avaliacao.aprovado,
           pontosGanhos: pontosGanhos,
           motivoIA: avaliacao.motivo,
-          enviadoEm: serverTimestamp()
+          enviadoEm: Date.now()
         });
 
-        // 4. Exibe Resultado Visual
+        // 5. Exibe resultado ao usuário
         displayResult(avaliacao, pontosGanhos);
 
       } catch (err) {
-        console.error("Erro na validação:", err);
-        alert("Erro ao validar foto. Tente novamente.");
+        console.error("Erro no processamento:", err);
+        alert("Erro ao enviar e validar a imagem. Tente novamente.");
       } finally {
         setLoading(false);
       }
