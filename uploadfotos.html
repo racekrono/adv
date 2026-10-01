@@ -6,41 +6,39 @@
     <title>Envio de Fotos - Competidor</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 min-h-screen p-4">
-    <div class="max-w-xl mx-auto bg-white shadow-md rounded-lg p-6">
-        <h1 class="text-2xl font-bold text-gray-800 mb-6">Painel de Envio de Fotos</h1>
+<body class="bg-gray-100 p-6">
+    <div class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-md">
+        <h1 class="text-xl font-bold mb-4 text-gray-800">Enviar Foto do Posto</h1>
 
         <div class="mb-4">
-            <label class="block text-gray-700 font-semibold mb-2">Selecione a Prova:</label>
-            <select id="selectProva" class="w-full border rounded px-3 py-2 bg-white">
+            <label class="block text-gray-700 font-semibold mb-2">Prova:</label>
+            <select id="selectProva" class="w-full p-2 border rounded bg-white">
                 <option value="">Carregando provas...</option>
             </select>
         </div>
 
         <div class="mb-4">
-            <label class="block text-gray-700 font-semibold mb-2">Número da Moto / Competidor:</label>
-            <input type="text" id="numCompetidor" class="w-full border rounded px-3 py-2" placeholder="Ex: 42">
+            <label class="block text-gray-700 font-semibold mb-2">Número do Carro / Moto:</label>
+            <input type="text" id="numCompetidor" class="w-full p-2 border rounded" placeholder="Ex: 101">
         </div>
 
         <div class="mb-4">
-            <label class="block text-gray-700 font-semibold mb-2">Posto / PC Referente:</label>
-            <input type="text" id="numPosto" class="w-full border rounded px-3 py-2" placeholder="Ex: PC-01">
+            <label class="block text-gray-700 font-semibold mb-2">Posto / PC:</label>
+            <input type="text" id="numPosto" class="w-full p-2 border rounded" placeholder="Ex: PC-01">
         </div>
 
         <div class="mb-4">
-            <label class="block text-gray-700 font-semibold mb-2">Foto do Posto:</label>
-            <input type="file" id="inputFoto" accept="image/*" capture="environment" class="w-full border rounded px-3 py-2 bg-gray-50">
+            <label class="block text-gray-700 font-semibold mb-2">Foto:</label>
+            <input type="file" id="inputFoto" accept="image/*" capture="environment" class="w-full p-2 border rounded">
         </div>
 
         <div id="previewContainer" class="mb-4 hidden">
-            <p class="text-sm font-semibold text-gray-600 mb-1">Pré-visualização:</p>
-            <img id="imgPreview" class="w-full h-48 object-cover rounded border" alt="Preview">
+            <img id="imgPreview" class="w-full h-40 object-cover rounded border" alt="Preview">
         </div>
 
-        <button id="btnEnviar" class="w-full bg-blue-600 text-white py-3 rounded hover:bg-blue-700 font-bold text-lg">Enviar Foto para Análise</button>
+        <button id="btnEnviar" class="w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700">Enviar Foto</button>
     </div>
 
-    <!-- Firebase SDKs (Compat / Modular Realtime Database) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, push, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -60,38 +58,35 @@
 
         let imagemBase64 = "";
 
-        // Carregar provas disponíveis
         async function carregarProvas() {
             const select = document.getElementById('selectProva');
             try {
                 const snapshot = await get(ref(db, 'provas_fotos'));
                 if (snapshot.exists()) {
-                    select.innerHTML = '<option value="">Selecione...</option>';
-                    snapshot.forEach((childSnapshot) => {
-                        const prova = childSnapshot.val();
+                    select.innerHTML = '<option value="">Selecione a Prova</option>';
+                    snapshot.forEach((child) => {
                         const opt = document.createElement('option');
-                        opt.value = childSnapshot.key;
-                        opt.textContent = prova.nome;
+                        opt.value = child.key;
+                        opt.textContent = child.val().nome;
                         select.appendChild(opt);
                     });
                 } else {
                     select.innerHTML = '<option value="">Nenhuma prova cadastrada</option>';
                 }
-            } catch (error) {
-                console.error("Erro ao carregar provas:", error);
+            } catch (err) {
+                console.error(err);
                 select.innerHTML = '<option value="">Erro ao carregar provas</option>';
             }
         }
 
         carregarProvas();
 
-        // Converter imagem para Base64 para armazenamento direto no Realtime Database
         document.getElementById('inputFoto').addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
-                reader.onload = function(uploadEvent) {
-                    imagemBase64 = uploadEvent.target.result;
+                reader.onload = (ev) => {
+                    imagemBase64 = ev.target.result;
                     document.getElementById('imgPreview').src = imagemBase64;
                     document.getElementById('previewContainer').classList.remove('hidden');
                 };
@@ -101,7 +96,7 @@
 
         document.getElementById('btnEnviar').addEventListener('click', async () => {
             const provaId = document.getElementById('selectProva').value;
-            const competidor = document.getElementById('numCompetidor').value.trim();
+            const competidor = document.getElementById('numCompetidor').value.trim(); // Captura correta do número do carro/competidor
             const posto = document.getElementById('numPosto').value.trim();
 
             if (!provaId || !competidor || !posto || !imagemBase64) {
@@ -114,30 +109,30 @@
             btn.textContent = "Enviando...";
 
             try {
-                const enviosRef = push(ref(db, 'envios_competidores'));
-                await set(enviosRef, {
+                const novoEnvioRef = push(ref(db, 'envios_competidores'));
+                await set(novoEnvioRef, {
                     provaId: provaId,
-                    competidor: competidor,
+                    competidor: competidor, // Propriedade enviada de forma compatível com o painel do juiz
+                    carro: competidor,       // Garantindo redundância para evitar que fique em branco na avaliação
                     posto: posto,
                     imagem: imagemBase64,
                     status: 'pendente',
                     enviadoEm: Date.now()
                 });
 
-                alert('Foto enviada com sucesso para o juiz!');
-                // Limpar formulário
+                alert('Foto enviada com sucesso!');
                 document.getElementById('numCompetidor').value = '';
                 document.getElementById('numPosto').value = '';
                 document.getElementById('inputFoto').value = '';
                 document.getElementById('imgPreview').src = '';
                 document.getElementById('previewContainer').classList.add('hidden');
                 imagemBase64 = "";
-            } catch (error) {
-                console.error("Erro ao enviar foto:", error);
-                alert('Erro ao enviar foto. Tente novamente.');
+            } catch (err) {
+                console.error(err);
+                alert('Erro ao enviar foto.');
             } finally {
                 btn.disabled = false;
-                btn.textContent = "Enviar Foto para Análise";
+                btn.textContent = "Enviar Foto";
             }
         });
     </script>
