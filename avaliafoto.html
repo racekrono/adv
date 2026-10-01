@@ -94,7 +94,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+    import { getStorage, ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
     // Configuração do Firebase
     const firebaseConfig = {
@@ -114,6 +114,14 @@
 
     let totalFotosGlobal = 0;
     let nomeProvaGlobal = "";
+
+    // Converte arquivo para DataURL (Base64)
+    const fileToDataURL = (file) => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (error) => reject(error);
+    });
 
     // Evento Passo 1
     document.getElementById('form-step-1').addEventListener('submit', (e) => {
@@ -216,7 +224,7 @@
       }
     }
 
-    // Salvar no Firebase
+    // Salvar no Firebase usando uploadString
     document.getElementById('form-step-2').addEventListener('submit', async (e) => {
       e.preventDefault();
 
@@ -233,17 +241,22 @@
         const tarefasArr = [];
         const provaIdTemp = 'prova_' + Date.now();
 
-        // Faz o upload foto por foto
+        // Processa cada foto
         for (let i = 1; i <= totalFotosGlobal; i++) {
-          statusTexto.textContent = `Enviando imagem ${i} de ${totalFotosGlobal} para o Firebase Storage...`;
+          statusTexto.textContent = `Processando e enviando imagem ${i} de ${totalFotosGlobal}...`;
           statusBarra.style.width = `${Math.round(((i - 1) / totalFotosGlobal) * 100)}%`;
 
           const fileInput = document.getElementById(`foto_file_${i}`);
           const file = fileInput.files[0];
 
-          // Upload no Storage
+          // Converte para DataURL (Base64)
+          const dataUrl = await fileToDataURL(file);
+
+          // Referência do Storage
           const storageRef = ref(storage, `provas/${provaIdTemp}/gabarito_${i}_${Date.now()}.jpg`);
-          const snapshot = await uploadBytes(storageRef, file);
+
+          // Upload usando uploadString com formato data_url
+          const snapshot = await uploadString(storageRef, dataUrl, 'data_url');
           const downloadURL = await getDownloadURL(snapshot.ref);
 
           // Pega configurações da foto
