@@ -115,8 +115,8 @@
             <div class="dropdown" id="dropPlanilhas">
                 <button onclick="toggleDropdown('dropPlanilhas')" style="background: #d69e2e;">☰ Planilhas ▾</button>
                 <div class="dropdown-content">
-                    <button onclick="window.location.href='editor.html'" style="background: #d69e2e; width:100%;">📋 Editor Planilha</button>
-                    <button onclick="document.getElementById('importPlanilhaInput').click()" style="background: #2b6cb0; border: 1px solid white; width:100%;">📂 Importar Planilha (JSON)</button>
+                    <button onclick="window.location.href='editor.html'" style="background: #2b6cb0; width:100%;">📋 Editor Planilha</button>
+                    <button onclick="document.getElementById('importPlanilhaInput').click()" style="background: #c53030; border: 1px solid white; width:100%;">📂 Importar Planilha (JSON)</button>
                 </div>
             </div>
             <input type="file" id="importPlanilhaInput" accept=".json" style="display:none" onchange="importarPlanilhaParaFirebase(this)">
@@ -163,6 +163,11 @@
                 <button onclick="toggleDropdown('dropAdmin')" style="background: #3182ce;">☰ Admin ▾</button>
                 <div class="dropdown-content">
                     <button onclick="window.location.href='gestao.html'" style="background: #c53030; width:100%;">🧏 Gestão Pilotos</button>
+                    <button onclick="resetar()" style="background: #38a169;">⚠️ Resetar Tudo</button>
+            <button onclick="excluirTodosCarros()" style="background: #c53030; border: 1px solid white;">💀 APAGAR TODOS OS CARROS</button>
+            <button onclick="logoffGeral()" style="background: #2d3748; border: 1px solid #a0aec0;">🚪 LOGOFF GERAL</button>
+            <button onclick="exportarBackup()" style="background: #2b6cb0;">📤 Exportar Backup</button>
+            <button onclick="importarBackup()" style="background: #718096;">📥 Importar Backup</button>
                 </div>
             </div>
         </div>
@@ -176,11 +181,6 @@
                 <option value="">Carro...</option>
             </select>
             <button onclick="excluirCarro()" style="background: #e53e3e;">🗑️ Excluir</button>  
-            <button onclick="resetar()" style="background: #38a169;">⚠️ Resetar Tudo</button>
-            <button onclick="excluirTodosCarros()" style="background: #c53030; border: 1px solid white;">💀 APAGAR TODOS OS CARROS</button>
-            <button onclick="logoffGeral()" style="background: #2d3748; border: 1px solid #a0aec0;">🚪 LOGOFF GERAL</button>
-            <button onclick="exportarBackup()" style="background: #2b6cb0;">📤 Exportar Backup</button>
-            <button onclick="importarBackup()" style="background: #718096;">📥 Importar Backup</button>
         </div>
     </div>
     
